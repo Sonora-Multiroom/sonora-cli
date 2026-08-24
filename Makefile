@@ -1,7 +1,9 @@
 .PHONY: build test fmt vet check
 
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
 build:
-	go build ./...
+	go build -ldflags "-X sonora-cli/internal/version.Version=$(VERSION)" -o sonora.exe ./cmd/sonora
 
 test:
 	go test ./...

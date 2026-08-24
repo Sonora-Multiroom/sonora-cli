@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"sonora-cli/internal/cli/outputs"
+	"sonora-cli/internal/version"
 )
 
 func main() {
@@ -16,6 +17,11 @@ func main() {
 // run dispatches `sonora <noun> <verb> [flags]` to the matching command
 // handler. Unrecognized noun/verb is a usage error (exit 2).
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) >= 1 && (args[0] == "--version" || args[0] == "-v") {
+		fmt.Fprintln(stdout, version.Version)
+		return 0
+	}
+
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: sonora <noun> <verb> [flags]")
 		return 2
