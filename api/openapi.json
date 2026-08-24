@@ -1,0 +1,2020 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multiroom Audio Hub v2 API",
+    "description": "Professional REST API v2 for real-time multi-room audio routing. Provides full CRUD for inputs, output volume/mute control, route lifecycle management, instant URI-based playback, and idempotent master mute control.",
+    "contact": {
+      "name": "Multiroom AI Team"
+    },
+    "license": {
+      "name": "AGPL-3.0",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+    },
+    "version": "0.1.11"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Inputs",
+      "description": "Audio input lifecycle management — create, list, retrieve, and delete ephemeral inputs"
+    },
+    {
+      "name": "Master Mute",
+      "description": "System-wide master mute control — silence all audio outputs"
+    },
+    {
+      "name": "Playback",
+      "description": "Instant URI-based audio playback — create ephemeral input and route in one call"
+    },
+    {
+      "name": "Outputs",
+      "description": "Audio output management — list outputs, control volume and mute state"
+    },
+    {
+      "name": "Routes",
+      "description": "Audio route lifecycle — create, list, retrieve, stop, and transfer routes"
+    },
+    {
+      "name": "Groups",
+      "description": "Audio output group management — list groups and control group volume"
+    }
+  ],
+  "paths": {
+    "/api/v2/routes/{routeId}/pause": {
+      "put": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Set pause state on a route",
+        "description": "Pauses or resumes audio playback for an active route. Set paused=true to pause, paused=false to resume. Idempotent — setting the same state returns 200 OK with the current state.",
+        "operationId": "setPauseState",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "description": "Unique route identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "route-abc-123"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Pause state updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Route not active, input does not support pause, or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Route not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs/{outputId}/volume": {
+      "put": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Set output volume",
+        "description": "Sets the volume level for an audio output. Returns the applied volume in the response.",
+        "operationId": "setOutputVolume",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Volume set successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputVolumeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs/{outputId}/mute": {
+      "put": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Set output mute state",
+        "description": "Mutes or unmutes an audio output. Returns the applied mute state.",
+        "operationId": "setOutputMute",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Mute state set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputMuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs/{outputId}/enabled": {
+      "put": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Set output enabled state",
+        "description": "Enables or disables an audio output. A disabled output remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "operationId": "setOutputEnabled",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Output enabled state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/master-mute": {
+      "get": {
+        "tags": [
+          "Master Mute"
+        ],
+        "summary": "Get master mute state",
+        "description": "Returns the current global mute state. When active, all audio outputs are silenced.",
+        "operationId": "getMasterMute",
+        "responses": {
+          "200": {
+            "description": "Current mute state returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterMuteResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Master Mute"
+        ],
+        "summary": "Set master mute state",
+        "description": "Sets the global mute state. PUT is idempotent — same request repeated produces the same result.",
+        "operationId": "setMasterMute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Mute state set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterMuteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/inputs/{inputId}/enabled": {
+      "put": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "Set input enabled state",
+        "description": "Enables or disables an audio input. A disabled input remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "operationId": "setInputEnabled",
+        "parameters": [
+          {
+            "name": "inputId",
+            "in": "path",
+            "description": "Unique input identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "spotify-1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Input enabled state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Input not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups/{groupId}/volume": {
+      "put": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Set volume for all outputs in a group",
+        "description": "Sets the volume level for every output in the specified group.",
+        "operationId": "setGroupVolume",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Unique group identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "living-room"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Volume set successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupVolumeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups/{groupId}/mute": {
+      "put": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Mute or unmute all outputs in a group",
+        "description": "Sets the mute state for every output in the specified group. Idempotent — setting the same state returns 200 OK with the current state.",
+        "operationId": "setGroupMute",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Unique group identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "living-room"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Mute state updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups/{groupId}/enabled": {
+      "put": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Set group enabled state",
+        "description": "Enables or disables an output group. A disabled group remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "operationId": "setGroupEnabled",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Unique group identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "living-room"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Group enabled state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/routes": {
+      "get": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "List all active audio routes",
+        "description": "Returns all current routes with their input, target, and status. Supports optional query parameters for filtering by status, inputId, and targetId (AND logic).",
+        "operationId": "listRoutes",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by route status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STARTING",
+                "ACTIVE",
+                "STOPPING",
+                "STOPPED",
+                "FAILED"
+              ]
+            }
+          },
+          {
+            "name": "inputId",
+            "in": "query",
+            "description": "Filter by source input ID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "spotify-1"
+              ]
+            }
+          },
+          {
+            "name": "targetId",
+            "in": "query",
+            "description": "Filter by target output or group ID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "kitchen-speaker"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of routes returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status filter value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Create a new audio route",
+        "description": "Routes audio from an input to a target output or group. Resolves the target based on targetType (SINGLE_OUTPUT or OUTPUT_GROUP).",
+        "operationId": "createRoute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Route created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Input, output, or group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Route creation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/routes/{routeId}/transfer": {
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Transfer an active route to a new output or group",
+        "description": "Seamlessly moves audio playback to a new target without interruption. The old route is replaced — callers must update their references to the new routeId.",
+        "operationId": "transferRoute",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "description": "Unique route identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "route-abc-123"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Route transferred successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or route not transferable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Route or target not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Transfer failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/play": {
+      "post": {
+        "tags": [
+          "Playback"
+        ],
+        "summary": "Play audio from a URI",
+        "description": "Provides instant playback: supply a URI and target, and the system automatically creates an ephemeral input and route. Supports YouTube, SoundCloud, and other URI schemes. If volume is provided, it is set before playback starts.",
+        "operationId": "playback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Playback started successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or invalid URI",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output or group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Route creation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "URI unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/inputs": {
+      "get": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "List all audio inputs",
+        "description": "Returns all inputs. By default only enabled inputs are returned; use includeDisabled=true to include disabled inputs.",
+        "operationId": "listInputs",
+        "parameters": [
+          {
+            "name": "includeDisabled",
+            "in": "query",
+            "description": "Include disabled inputs in the response",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of inputs returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InputResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "Create a new ephemeral audio input",
+        "description": "Registers an ephemeral audio input that can be routed to outputs. Returns 201 with a Location header pointing to the created resource.",
+        "operationId": "createInput",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInputRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Input created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Input ID already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/routes/{routeId}": {
+      "get": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Get a single route by ID",
+        "description": "Returns the route with its current status and timestamps.",
+        "operationId": "getRoute",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "description": "Unique route identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "route-abc-123"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Route found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Route not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Stop and delete a route",
+        "description": "Stops audio playback and removes the route. Ephemeral inputs with autoRemove=true are cleaned up automatically.",
+        "operationId": "deleteRoute",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "description": "Unique route identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "route-abc-123"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Route stopped and removed"
+          },
+          "404": {
+            "description": "Route not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Route stop failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs": {
+      "get": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "List all audio outputs",
+        "description": "Returns all outputs with current volume and mute state. By default only enabled outputs are returned.",
+        "operationId": "listOutputs",
+        "parameters": [
+          {
+            "name": "includeDisabled",
+            "in": "query",
+            "description": "Include disabled outputs in the response",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of outputs returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OutputResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs/{outputId}": {
+      "get": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Get a single output by ID",
+        "description": "Returns the output with current volume and mute state.",
+        "operationId": "getOutput",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Output found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/inputs/{inputId}": {
+      "get": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "Get a single input by ID",
+        "description": "Returns the input if it exists.",
+        "operationId": "getInput",
+        "parameters": [
+          {
+            "name": "inputId",
+            "in": "path",
+            "description": "Unique input identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "spotify-1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Input found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Input not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "Delete an ephemeral audio input",
+        "description": "Removes a previously registered ephemeral input. Static (YAML-configured) inputs cannot be deleted.",
+        "operationId": "deleteInput",
+        "parameters": [
+          {
+            "name": "inputId",
+            "in": "path",
+            "description": "Unique input identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "spotify-1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Input deleted"
+          },
+          "400": {
+            "description": "Input is a static (YAML-configured) input and cannot be deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Input not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups": {
+      "get": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "List all audio output groups",
+        "description": "Returns all groups with their member output IDs. By default only enabled groups are returned.",
+        "operationId": "listGroups",
+        "parameters": [
+          {
+            "name": "includeDisabled",
+            "in": "query",
+            "description": "Include disabled groups in the response",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of groups returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups/{groupId}": {
+      "get": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Get a single group by ID",
+        "description": "Returns the group with its member output IDs.",
+        "operationId": "getGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Unique group identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "living-room"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PauseRequest": {
+        "type": "object",
+        "description": "Request body for setting pause state on a route",
+        "properties": {
+          "paused": {
+            "type": "boolean",
+            "description": "true to pause playback, false to resume playback"
+          }
+        },
+        "required": [
+          "paused"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "RFC 7807 Problem Details error response",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Static URN identifying the error type",
+            "examples": [
+              "urn:multiroom:error:validation-error"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, stable title for the error type",
+            "examples": [
+              "Validation Error"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable explanation of this specific error",
+            "examples": [
+              "inputId must not be blank"
+            ]
+          },
+          "instance": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Request URI that caused this error",
+            "examples": [
+              "/api/v2/inputs"
+            ]
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ]
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 UTC timestamp when error occurred",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          }
+        }
+      },
+      "RouteResponse": {
+        "type": "object",
+        "description": "Audio route with lifecycle timestamps",
+        "properties": {
+          "routeId": {
+            "type": "string",
+            "description": "Unique route identifier",
+            "examples": [
+              "route-abc-123"
+            ]
+          },
+          "inputId": {
+            "type": "string",
+            "description": "Source audio input ID",
+            "examples": [
+              "spotify-1"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Target output or group ID",
+            "examples": [
+              "office-speaker"
+            ]
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ],
+            "examples": [
+              "SINGLE_OUTPUT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Route status",
+            "enum": [
+              "STARTING",
+              "ACTIVE",
+              "STOPPING",
+              "STOPPED",
+              "FAILED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when route was created",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Timestamp when audio began playing (nullable before playback starts)",
+            "examples": [
+              "2026-06-22T14:30:01Z"
+            ]
+          },
+          "transferable": {
+            "type": "boolean",
+            "description": "Whether route can be transferred to another target"
+          },
+          "pauseable": {
+            "type": "boolean",
+            "description": "Whether the input driving this route supports pause/resume"
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "Whether playback is currently paused"
+          }
+        }
+      },
+      "VolumeRequest": {
+        "type": "object",
+        "description": "Request body for setting volume level",
+        "properties": {
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Volume level 0-100 (inclusive)",
+            "examples": [
+              75
+            ],
+            "maximum": 100,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "volume"
+        ]
+      },
+      "OutputVolumeResponse": {
+        "type": "object",
+        "description": "Confirmation of applied volume level for an output",
+        "properties": {
+          "outputId": {
+            "type": "string",
+            "description": "The output ID that was modified",
+            "examples": [
+              "office-speaker"
+            ]
+          },
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The volume level that was applied (0-100)",
+            "examples": [
+              75
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when volume was set",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          }
+        }
+      },
+      "MuteRequest": {
+        "type": "object",
+        "description": "Request body for setting mute state",
+        "properties": {
+          "muted": {
+            "type": "boolean",
+            "description": "true to mute, false to unmute"
+          }
+        },
+        "required": [
+          "muted"
+        ]
+      },
+      "OutputMuteResponse": {
+        "type": "object",
+        "description": "Confirmation of applied output mute state",
+        "properties": {
+          "outputId": {
+            "type": "string",
+            "description": "The output ID that was modified",
+            "examples": [
+              "kitchen-speaker"
+            ]
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Whether the output is muted"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when mute state was set",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          }
+        }
+      },
+      "EnabledRequest": {
+        "type": "object",
+        "description": "Set the enabled state of an audio input",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the input should be enabled"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "OutputResponse": {
+        "type": "object",
+        "description": "Audio output device details with current volume and mute state",
+        "properties": {
+          "outputId": {
+            "type": "string",
+            "description": "Unique output identifier",
+            "examples": [
+              "office-speaker"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name",
+            "examples": [
+              "Office Speaker"
+            ]
+          },
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Current volume level (0-100)",
+            "examples": [
+              75
+            ]
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Current mute state"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "Whether hardware is currently connected"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether output is enabled for new route creation"
+          }
+        }
+      },
+      "MasterMuteResponse": {
+        "type": "object",
+        "description": "Current system-wide master mute state",
+        "properties": {
+          "muted": {
+            "type": "boolean",
+            "description": "true if master mute is active, false if unmuted"
+          }
+        }
+      },
+      "InputResponse": {
+        "type": "object",
+        "description": "Audio input details with source and creation metadata",
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "description": "Unique input identifier",
+            "examples": [
+              "spotify-1"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name",
+            "examples": [
+              "Spotify Stream"
+            ]
+          },
+          "uri": {
+            "type": "string",
+            "description": "Source URI",
+            "examples": [
+              "https://stream.example.com/live.mp3"
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether input is active"
+          },
+          "autoRemove": {
+            "type": "boolean",
+            "description": "Auto-remove input when route stops"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source type: STATIC (YAML-configured) or EPHEMERAL (API-created)",
+            "enum": [
+              "STATIC",
+              "EPHEMERAL"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Creation timestamp (null for static inputs)",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          },
+          "pauseable": {
+            "type": "boolean",
+            "description": "Whether this input supports pause/resume"
+          }
+        }
+      },
+      "GroupVolumeResponse": {
+        "type": "object",
+        "description": "Confirmation of applied volume level for a group",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "The group ID that was modified",
+            "examples": [
+              "downstairs"
+            ]
+          },
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The volume level that was applied (0-100)",
+            "examples": [
+              80
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when volume was set",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          }
+        }
+      },
+      "GroupMuteResponse": {
+        "type": "object",
+        "description": "Confirmation of applied group mute state",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "The group ID that was modified",
+            "examples": [
+              "living-room"
+            ]
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Whether the group is muted"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when mute state was set",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          }
+        }
+      },
+      "GroupResponse": {
+        "type": "object",
+        "description": "Audio output group with member output IDs",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "description": "Unique group identifier",
+            "examples": [
+              "living-room"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name",
+            "examples": [
+              "Living Room Speakers"
+            ]
+          },
+          "outputIds": {
+            "type": "array",
+            "description": "List of member output IDs",
+            "examples": [
+              [
+                "office-speaker",
+                "bedroom-speaker"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "muted": {
+            "type": "boolean",
+            "description": "Whether all member outputs are muted"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether group is enabled for new route creation"
+          }
+        }
+      },
+      "CreateRouteRequest": {
+        "type": "object",
+        "description": "Request body for creating an audio route",
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "description": "Source audio input ID",
+            "examples": [
+              "spotify-1"
+            ],
+            "minLength": 1
+          },
+          "targetId": {
+            "type": "string",
+            "description": "ID of the destination output or group",
+            "examples": [
+              "office-speaker"
+            ],
+            "minLength": 1
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ],
+            "examples": [
+              "SINGLE_OUTPUT"
+            ]
+          }
+        },
+        "required": [
+          "inputId",
+          "targetId",
+          "targetType"
+        ]
+      },
+      "TransferRequest": {
+        "type": "object",
+        "description": "Request body for transferring a route to a new target",
+        "properties": {
+          "targetId": {
+            "type": "string",
+            "description": "ID of the destination output or group",
+            "examples": [
+              "bedroom-speaker"
+            ],
+            "minLength": 1
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ],
+            "examples": [
+              "SINGLE_OUTPUT"
+            ]
+          }
+        },
+        "required": [
+          "targetId",
+          "targetType"
+        ]
+      },
+      "PlaybackRequest": {
+        "type": "object",
+        "description": "Request body for instant URI-based playback",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Audio source URI",
+            "examples": [
+              "https://stream.example.com/live.mp3"
+            ],
+            "minLength": 1
+          },
+          "targetId": {
+            "type": "string",
+            "description": "ID of the destination output or group",
+            "examples": [
+              "office-speaker"
+            ],
+            "minLength": 1
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ],
+            "examples": [
+              "SINGLE_OUTPUT"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional friendly name for the ephemeral input",
+            "examples": [
+              "Radio Stream"
+            ]
+          },
+          "volume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Optional volume level (0-100), set before playback starts",
+            "examples": [
+              75
+            ],
+            "maximum": 100,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "targetId",
+          "targetType",
+          "uri"
+        ]
+      },
+      "PlaybackResponse": {
+        "type": "object",
+        "description": "Playback result with ephemeral input and route details",
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "description": "Auto-created ephemeral input ID",
+            "examples": [
+              "playback_1782345678"
+            ]
+          },
+          "route": {
+            "$ref": "#/components/schemas/RouteResponse",
+            "description": "Nested route details"
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message describing the playback state",
+            "examples": [
+              "Playback started: Radio Stream → office-speaker"
+            ]
+          }
+        }
+      },
+      "CreateInputRequest": {
+        "type": "object",
+        "description": "Request body for creating a new ephemeral audio input",
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "description": "Unique identifier for the input (alphanumeric, hyphens, underscores, 1-255 chars)",
+            "examples": [
+              "spotify-1"
+            ],
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9\\-_]{1,255}$"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name",
+            "examples": [
+              "Spotify Stream"
+            ],
+            "minLength": 1
+          },
+          "uri": {
+            "type": "string",
+            "description": "Source URI (http://, file://, alsa://, signal://, etc.)",
+            "examples": [
+              "https://stream.example.com/live.mp3"
+            ],
+            "minLength": 1
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether input is active (defaults to true)"
+          },
+          "autoRemove": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Auto-remove input when its route is stopped (defaults to false)"
+          }
+        },
+        "required": [
+          "displayName",
+          "inputId",
+          "uri"
+        ]
+      }
+    }
+  }
+}
