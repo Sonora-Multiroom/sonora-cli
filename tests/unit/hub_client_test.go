@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -111,15 +112,38 @@ func TestClassifyError_DecodeMismatch(t *testing.T) {
 
 func TestErrorClass_ExitCodes(t *testing.T) {
 	cases := map[hub.ErrorClass]int{
-		hub.ClassNone:    0,
-		hub.ClassUsage:   2,
-		hub.ClassHub:     3,
-		hub.ClassNetwork: 4,
+		hub.ClassNone:     0,
+		hub.ClassUsage:    2,
+		hub.ClassHub:      3,
+		hub.ClassNetwork:  4,
+		hub.ClassNotFound: 5,
 	}
 	for class, want := range cases {
 		if got := class.ExitCode(); got != want {
 			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
 		}
+	}
+}
+
+func TestClassifyError_NotFound(t *testing.T) {
+	class, msg := hub.ClassifyError(&hub.NotFoundError{OutputID: "x"})
+	if class != hub.ClassNotFound {
+		t.Errorf("got class %v, want ClassNotFound", class)
+	}
+	if !strings.Contains(msg, "x") {
+		t.Errorf("expected friendly message to name the identifier, got: %q", msg)
+	}
+
+	distinct := map[hub.ErrorClass]bool{hub.ClassUsage: true, hub.ClassHub: true, hub.ClassNetwork: true}
+	if distinct[hub.ClassNotFound] {
+		t.Fatalf("test setup error: ClassNotFound must not equal ClassUsage/ClassHub/ClassNetwork")
+	}
+	codes := map[int]bool{}
+	for _, c := range []hub.ErrorClass{hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound} {
+		if codes[c.ExitCode()] {
+			t.Errorf("exit code %d reused across classes", c.ExitCode())
+		}
+		codes[c.ExitCode()] = true
 	}
 }
 

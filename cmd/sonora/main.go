@@ -26,7 +26,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "outputs":
 		switch verb {
 		case "list":
-			return outputs.Run(rest, stdout, stderr)
+			return outputs.RunList(rest, stdout, stderr)
+		case "get":
+			return outputs.RunGet(rest, stdout, stderr)
 		default:
 			fmt.Fprintf(stderr, "sonora: unknown verb %q for %q\n", verb, noun)
 			return 2

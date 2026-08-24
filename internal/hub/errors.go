@@ -16,6 +16,7 @@ const (
 	ClassUsage
 	ClassHub
 	ClassNetwork
+	ClassNotFound
 )
 
 // ExitCode returns the CLI exit code for this error class, per research.md §6.
@@ -27,6 +28,8 @@ func (c ErrorClass) ExitCode() int {
 		return 3
 	case ClassNetwork:
 		return 4
+	case ClassNotFound:
+		return 5
 	default:
 		return 0
 	}
@@ -53,12 +56,27 @@ func (e *DecodeError) Error() string {
 
 func (e *DecodeError) Unwrap() error { return e.Err }
 
+// NotFoundError indicates the hub responded 404 for a specific output
+// identifier, distinct from a generic StatusError (FR-012).
+type NotFoundError struct {
+	OutputID string
+}
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf("output not found: %s", e.OutputID)
+}
+
 // ClassifyError maps an error from a hub API call to its exit-code class
 // and a short, friendly, user-facing message. The underlying error remains
 // available to the caller for --verbose output.
 func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	if err == nil {
 		return ClassNone, ""
+	}
+
+	var notFoundErr *NotFoundError
+	if errors.As(err, &notFoundErr) {
+		return ClassNotFound, "output not found: " + notFoundErr.OutputID
 	}
 
 	var statusErr *StatusError

@@ -12,12 +12,12 @@ import (
 	"sonora-cli/internal/render"
 )
 
-// Run implements `sonora outputs list`: it defines and parses this
+// RunList implements `sonora outputs list`: it defines and parses this
 // command's flags, resolves the hub URL, fetches outputs from the hub, and
 // renders them to stdout. Any failure is reported on stderr, never stdout,
 // so scripts piping stdout never see error text. It returns the process
 // exit code per the exit code classes in research.md §6.
-func Run(args []string, stdout, stderr io.Writer) int {
+func RunList(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("outputs list", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
