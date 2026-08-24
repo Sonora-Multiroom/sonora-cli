@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.1.0 → 1.1.1
-Modified principles:
-  - V. CLI UX Consistency — output-format rule clarified: default output is now
-    explicitly YAML (was vague "human-readable"); `--json` remains the explicit
-    machine-readable override
+Version change: 1.1.1 → 1.1.2
+Modified principles: none
+Renamed: document title corrected from "Sonora CLI Constitution" to "Sonora Multiroom
+  CLI Constitution" — the product name is "Sonora Multiroom"; "Sonora CLI" was an
+  informal shorthand. The invoked binary/command name (`sonora`) is unaffected.
 Added principles: none
 Removed sections: none
 Deferred / TODO items: none
@@ -13,7 +13,7 @@ Templates requiring follow-up: none checked automatically by this command; downs
   templates (plan/spec/tasks) read this file at runtime and need no edits here.
 -->
 
-# Sonora CLI Constitution
+# Sonora Multiroom CLI Constitution
 
 ## Core Principles
 
@@ -141,4 +141,4 @@ description or resolved by amending this constitution first. Use this file as th
 guidance for planning and implementation commands (`/speckit-plan`, `/speckit-tasks`,
 `/speckit-implement`).
 
-**Version**: 1.1.1 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-08-24
+**Version**: 1.1.2 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-08-24
