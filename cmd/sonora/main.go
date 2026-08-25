@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"sonora-cli/internal/cli/inputs"
 	"sonora-cli/internal/cli/outputs"
 	"sonora-cli/internal/version"
 )
@@ -29,6 +30,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	noun, verb, rest := args[0], args[1], args[2:]
 	switch noun {
+	case "inputs":
+		switch verb {
+		case "list":
+			return inputs.RunList(rest, stdout, stderr)
+		case "get":
+			return inputs.RunGet(rest, stdout, stderr)
+		default:
+			fmt.Fprintf(stderr, "sonora: unknown verb %q for %q\n", verb, noun)
+			return 2
+		}
 	case "outputs":
 		switch verb {
 		case "list":

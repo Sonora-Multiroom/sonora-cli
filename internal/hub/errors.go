@@ -56,14 +56,16 @@ func (e *DecodeError) Error() string {
 
 func (e *DecodeError) Unwrap() error { return e.Err }
 
-// NotFoundError indicates the hub responded 404 for a specific output
-// identifier, distinct from a generic StatusError (FR-012).
+// NotFoundError indicates the hub responded 404 for a specific resource
+// identifier (e.g. "output", "input"), distinct from a generic StatusError
+// (FR-012).
 type NotFoundError struct {
-	OutputID string
+	Resource string
+	ID       string
 }
 
 func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("output not found: %s", e.OutputID)
+	return fmt.Sprintf("%s not found: %s", e.Resource, e.ID)
 }
 
 // ClassifyError maps an error from a hub API call to its exit-code class
@@ -76,7 +78,7 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 
 	var notFoundErr *NotFoundError
 	if errors.As(err, &notFoundErr) {
-		return ClassNotFound, "output not found: " + notFoundErr.OutputID
+		return ClassNotFound, fmt.Sprintf("%s not found: %s", notFoundErr.Resource, notFoundErr.ID)
 	}
 
 	var statusErr *StatusError

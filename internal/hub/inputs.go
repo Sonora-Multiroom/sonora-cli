@@ -1,0 +1,115 @@
+package hub
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+// Input mirrors #/components/schemas/InputResponse in api/openapi.json
+// field-for-field (constitution Principle II).
+type Input struct {
+	InputID     string  `json:"inputId"`
+	DisplayName string  `json:"displayName"`
+	URI         string  `json:"uri"`
+	Enabled     bool    `json:"enabled"`
+	AutoRemove  bool    `json:"autoRemove"`
+	Source      string  `json:"source"`
+	CreatedAt   *string `json:"createdAt"`
+	Pauseable   bool    `json:"pauseable"`
+}
+
+func validateInput(i Input) error {
+	if i.InputID == "" || i.DisplayName == "" {
+		return fmt.Errorf("input missing required inputId/displayName")
+	}
+	if i.Source != "STATIC" && i.Source != "EPHEMERAL" {
+		return fmt.Errorf("input %q has unrecognized source %q", i.InputID, i.Source)
+	}
+	return nil
+}
+
+// ListInputs calls GET {baseURL}/api/v2/inputs, optionally including
+// disabled inputs, and returns the decoded input list. Any transport,
+// non-2xx, or shape-mismatch failure is returned as an error suitable for
+// hub.ClassifyError.
+func ListInputs(ctx context.Context, client *http.Client, baseURL string, includeDisabled bool) ([]Input, error) {
+	reqURL, err := url.Parse(strings.TrimRight(baseURL, "/") + "/api/v2/inputs")
+	if err != nil {
+		return nil, fmt.Errorf("invalid hub URL %q: %w", baseURL, err)
+	}
+	q := reqURL.Query()
+	q.Set("includeDisabled", strconv.FormatBool(includeDisabled))
+	reqURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var inputs []Input
+	if err := json.NewDecoder(resp.Body).Decode(&inputs); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if inputs == nil {
+		inputs = []Input{}
+	}
+	for _, i := range inputs {
+		if err := validateInput(i); err != nil {
+			return nil, &DecodeError{Err: err}
+		}
+	}
+	return inputs, nil
+}
+
+// GetInput calls GET {baseURL}/api/v2/inputs/{inputId} and returns the
+// decoded input. A 404 response is returned as a *NotFoundError; any other
+// non-2xx status is returned as a *StatusError; a malformed 200 body is
+// returned as a *DecodeError.
+func GetInput(ctx context.Context, client *http.Client, baseURL, inputID string) (*Input, error) {
+	reqURL, err := url.Parse(strings.TrimRight(baseURL, "/") + "/api/v2/inputs/" + url.PathEscape(inputID))
+	if err != nil {
+		return nil, fmt.Errorf("invalid hub URL %q: %w", baseURL, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "input", ID: inputID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var input Input
+	if err := json.NewDecoder(resp.Body).Decode(&input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateInput(input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &input, nil
+}

@@ -126,12 +126,23 @@ func TestErrorClass_ExitCodes(t *testing.T) {
 }
 
 func TestClassifyError_NotFound(t *testing.T) {
-	class, msg := hub.ClassifyError(&hub.NotFoundError{OutputID: "x"})
+	class, msg := hub.ClassifyError(&hub.NotFoundError{Resource: "output", ID: "x"})
 	if class != hub.ClassNotFound {
 		t.Errorf("got class %v, want ClassNotFound", class)
 	}
 	if !strings.Contains(msg, "x") {
 		t.Errorf("expected friendly message to name the identifier, got: %q", msg)
+	}
+	if msg != "output not found: x" {
+		t.Errorf("regression: output not-found message changed, got: %q", msg)
+	}
+
+	inputClass, inputMsg := hub.ClassifyError(&hub.NotFoundError{Resource: "input", ID: "x"})
+	if inputClass != hub.ClassNotFound {
+		t.Errorf("got class %v, want ClassNotFound", inputClass)
+	}
+	if inputMsg != "input not found: x" {
+		t.Errorf("expected %q, got %q", "input not found: x", inputMsg)
 	}
 
 	distinct := map[hub.ErrorClass]bool{hub.ClassUsage: true, hub.ClassHub: true, hub.ClassNetwork: true}

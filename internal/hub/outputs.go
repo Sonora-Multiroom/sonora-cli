@@ -86,7 +86,7 @@ func GetOutput(ctx context.Context, client *http.Client, baseURL, outputID strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, &NotFoundError{OutputID: outputID}
+		return nil, &NotFoundError{Resource: "output", ID: outputID}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}
