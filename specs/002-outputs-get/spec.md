@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-24
 
-**Status**: Approved
+**Status**: Completed
 
 **Input**: User description: "Natural next step following the same list-then-mutate pattern: outputs get <id> — reuses existing hub client, render, and error-handling code almost as-is, and is the simplest way to validate those \"reusable patterns\" the plan.md mentions before tackling routes/groups/inputs."
 
