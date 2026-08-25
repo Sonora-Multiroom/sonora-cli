@@ -8,6 +8,7 @@ import (
 
 	"sonora-cli/internal/cli/inputs"
 	"sonora-cli/internal/cli/outputs"
+	"sonora-cli/internal/cli/routes"
 	"sonora-cli/internal/version"
 )
 
@@ -46,6 +47,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return outputs.RunList(rest, stdout, stderr)
 		case "get":
 			return outputs.RunGet(rest, stdout, stderr)
+		default:
+			fmt.Fprintf(stderr, "sonora: unknown verb %q for %q\n", verb, noun)
+			return 2
+		}
+	case "routes":
+		switch verb {
+		case "list":
+			return routes.RunList(rest, stdout, stderr)
+		case "get":
+			return routes.RunGet(rest, stdout, stderr)
 		default:
 			fmt.Fprintf(stderr, "sonora: unknown verb %q for %q\n", verb, noun)
 			return 2
