@@ -19,6 +19,9 @@ Produces `sonora.exe` (or `sonora` on Unix), with the version injected from `git
 
 Usage: `sonora <noun> <verb> [flags]`
 
+Run `sonora help` (or `-h`/`--help`, or `sonora` with no arguments) to print this command
+table, global flags, and examples from the terminal.
+
 | Noun | Verbs |
 | --- | --- |
 | `outputs` | `list`, `get` |

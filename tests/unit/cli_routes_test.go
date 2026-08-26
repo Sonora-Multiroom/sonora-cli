@@ -23,6 +23,21 @@ func TestRoutesRunList_UnreachableHubURL(t *testing.T) {
 	}
 }
 
+func TestRoutesRunList_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := routes.RunList([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "Usage of") {
+		t.Errorf("expected the default flag.PrintDefaults() header to be replaced, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestRoutesRunList_UnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := routes.RunList([]string{"--unknown-flag"}, &stdout, &stderr)

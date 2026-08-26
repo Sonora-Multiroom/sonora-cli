@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 
+	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/config"
 	"sonora-cli/internal/hub"
 	"sonora-cli/internal/render"
 )
+
+const getUsage = "usage: sonora inputs get <input-id> [--json] [--verbose] [--hub-url URL]"
 
 // RunGet implements `sonora inputs get <input-id>`: it defines and parses
 // this command's flags, resolves the hub URL, fetches the single named
@@ -20,6 +23,7 @@ import (
 func RunGet(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("inputs get", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	clihelp.SetUsage(fs, stderr, getUsage)
 
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
@@ -44,7 +48,7 @@ func RunGet(args []string, stdout, stderr io.Writer) int {
 		remaining = rest[1:]
 	}
 	if len(positional) != 1 {
-		fmt.Fprintf(stderr, "usage: sonora inputs get <input-id> [--json] [--verbose] [--hub-url URL]\n")
+		fmt.Fprintln(stderr, getUsage)
 		if len(positional) == 0 {
 			fmt.Fprintf(stderr, "error: missing required argument: <input-id>\n")
 		} else {
