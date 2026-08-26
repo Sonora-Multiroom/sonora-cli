@@ -1,10 +1,12 @@
-package clihelp
+package unit
 
 import (
 	"bytes"
 	"flag"
 	"strings"
 	"testing"
+
+	"sonora-cli/internal/cli/clihelp"
 )
 
 func TestSetUsage(t *testing.T) {
@@ -13,7 +15,7 @@ func TestSetUsage(t *testing.T) {
 	fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 
 	var buf bytes.Buffer
-	SetUsage(fs, &buf, "usage: sonora routes list [--status STATUS] [--json]")
+	clihelp.SetUsage(fs, &buf, "usage: sonora routes list [--status STATUS] [--json]")
 	fs.Usage()
 
 	out := buf.String()
@@ -43,7 +45,7 @@ func TestSetUsage_NoFlags(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 
 	var buf bytes.Buffer
-	SetUsage(fs, &buf, "usage: sonora help")
+	clihelp.SetUsage(fs, &buf, "usage: sonora help")
 	fs.Usage()
 
 	if strings.Contains(buf.String(), "Flags:") {
