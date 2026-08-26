@@ -7,6 +7,46 @@ control real-time audio routing, volume, and mute across your speakers from the 
 sonora outputs list
 ```
 
+## Building
+
+```
+make build
+```
+
+Produces `sonora.exe` (or `sonora` on Unix), with the version injected from `git describe`.
+
+## Commands
+
+Usage: `sonora <noun> <verb> [flags]`
+
+| Noun | Verbs |
+| --- | --- |
+| `outputs` | `list`, `get` |
+| `inputs` | `list`, `get` |
+| `routes` | `list`, `get` |
+| `groups` | `list`, `get` |
+
+Every command supports `-json` (strict JSON instead of the default YAML), `-hub-url`
+(override the hub base URL), and `-verbose` (print underlying error detail on failure).
+`list` commands additionally support `-include-disabled`; `routes list` also supports
+`-input-id`, `-target-id`, and `-status` filters. Run `sonora <noun> <verb> --help` for
+the full flag reference of any command.
+
+```
+sonora outputs list -include-disabled
+sonora routes list -status active
+sonora groups get <id> -json
+```
+
+## Configuration
+
+The hub base URL is resolved in order of precedence:
+
+1. `-hub-url` flag
+2. `MULTIROOM_URL` environment variable
+3. `hubUrl` field in `~/.config/sonora/config.json`
+4. default (`http://localhost:8080`)
+
 ## Status
 
 Early development. The project follows a spec-first workflow: features are specified,
