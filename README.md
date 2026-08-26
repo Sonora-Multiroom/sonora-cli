@@ -24,6 +24,9 @@ make build
 
 Produces `sonora.exe` (or `sonora` on Unix), with the version injected from `git describe`.
 
+No Go toolchain installed? Use `make docker-build` to build the Linux binary inside a
+`golang:1.27-alpine` container instead.
+
 ## Commands
 
 Usage: `sonora <noun> <verb> [flags]`
