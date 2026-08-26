@@ -11,6 +11,13 @@
 - The backend service this CLI talks to is the **Multiroom Audio Hub API**
   (`api/openapi.json`), a separate component from the CLI itself.
 
+## CLI flag conventions
+
+- Strict GNU/POSIX style (like `kubectl`/`gh`): long flags require `--` (e.g.
+  `--version`, `--help`), short flags are single-letter with `-` (e.g. `-v`, `-h`).
+  Single-dash multi-letter forms (`-version`, `-help`) are invalid and must not be
+  added.
+
 ## Project context
 
 - Governance and non-negotiable engineering principles live in

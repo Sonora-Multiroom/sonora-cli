@@ -27,10 +27,10 @@ func TestSetUsage(t *testing.T) {
 	if !strings.Contains(out, "Flags:") {
 		t.Errorf("output missing Flags: header, got:\n%s", out)
 	}
-	if !strings.Contains(out, "-status value") {
+	if !strings.Contains(out, "--status value") {
 		t.Errorf("expected string flag to show a value placeholder, got:\n%s", out)
 	}
-	if strings.Contains(out, "-json value") {
+	if strings.Contains(out, "--json value") {
 		t.Errorf("expected bool flag to omit the value placeholder, got:\n%s", out)
 	}
 	if !strings.Contains(out, "only return routes with this status") {
@@ -75,7 +75,7 @@ func TestSetUsage_CustomBoolFlagValue(t *testing.T) {
 	if !strings.Contains(out, "Flags:") {
 		t.Fatalf("output missing Flags: header, got:\n%s", out)
 	}
-	if strings.Contains(out, "-custom value") {
+	if strings.Contains(out, "--custom value") {
 		t.Errorf("expected custom bool-like flag to omit the value placeholder, got:\n%s", out)
 	}
 }

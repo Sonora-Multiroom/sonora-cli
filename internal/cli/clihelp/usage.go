@@ -11,8 +11,8 @@ import (
 )
 
 // boolFlag mirrors the unexported interface the flag package's own
-// PrintDefaults uses to tell a value-less flag (e.g. -json) apart from one
-// that takes a value (e.g. -hub-url).
+// PrintDefaults uses to tell a value-less flag (e.g. --json) apart from one
+// that takes a value (e.g. --hub-url).
 type boolFlag interface {
 	IsBoolFlag() bool
 }
@@ -34,7 +34,7 @@ func SetUsage(fs *flag.FlagSet, w io.Writer, usageLine string) {
 		fmt.Fprintln(w, "Flags:")
 		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 		fs.VisitAll(func(f *flag.Flag) {
-			name := "-" + f.Name
+			name := "--" + f.Name
 			if bf, ok := f.Value.(boolFlag); !ok || !bf.IsBoolFlag() {
 				name += " value"
 			}

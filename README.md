@@ -42,27 +42,27 @@ table, global flags, and examples from the terminal.
 operation: instant playback of an audio URI to an output or output group, creating the
 ephemeral input and route in one call. It returns as soon as the hub accepts the request
 (no polling for the route to become active). The target type is auto-detected by default;
-`-group`/`-output` force it explicitly when an identifier collides across both. `-volume N`
-(0-100) sets the starting volume, and `-name NAME` sets the ephemeral input's display name.
+`--group`/`--output` force it explicitly when an identifier collides across both. `--volume N`
+(0-100) sets the starting volume, and `--name NAME` sets the ephemeral input's display name.
 
-Every command supports `-json` (strict JSON instead of the default YAML), `-hub-url`
-(override the hub base URL), and `-verbose` (print underlying error detail on failure).
-`list` commands additionally support `-include-disabled`; `routes list` also supports
-`-input-id`, `-target-id`, and `-status` filters. Run `sonora <noun> <verb> --help` for
+Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
+(override the hub base URL), and `--verbose` (print underlying error detail on failure).
+`list` commands additionally support `--include-disabled`; `routes list` also supports
+`--input-id`, `--target-id`, and `--status` filters. Run `sonora <noun> <verb> --help` for
 the full flag reference of any command.
 
 ```
-sonora outputs list -include-disabled
-sonora routes list -status active
-sonora groups get <id> -json
-sonora play "https://stream.example.com/live.mp3" office-speaker -volume 40
+sonora outputs list --include-disabled
+sonora routes list --status active
+sonora groups get <id> --json
+sonora play "https://stream.example.com/live.mp3" office-speaker --volume 40
 ```
 
 ## Configuration
 
 The hub base URL is resolved in order of precedence:
 
-1. `-hub-url` flag
+1. `--hub-url` flag
 2. `MULTIROOM_URL` environment variable
 3. `hubUrl` field in `~/.config/sonora/config.json`
 4. default (`http://localhost:8080`)

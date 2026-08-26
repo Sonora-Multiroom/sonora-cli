@@ -26,15 +26,16 @@ Commands:
   help                Show this help
 
 Global flags:
-  -json               Output strict JSON instead of the default YAML
-  -hub-url URL        Override the hub base URL
-  -verbose            Print underlying error detail on failure
+  --json               Output strict JSON instead of the default YAML
+  --hub-url URL        Override the hub base URL
+  --verbose            Print underlying error detail on failure
+  --version, -v        Print the CLI version
 
 Examples:
-  sonora outputs list -include-disabled
-  sonora routes list -status active
-  sonora groups get <id> -json
-  sonora play "https://stream.example.com/live.mp3" office-speaker -volume 40
+  sonora outputs list --include-disabled
+  sonora routes list --status active
+  sonora groups get <id> --json
+  sonora play "https://stream.example.com/live.mp3" office-speaker --volume 40
 
 Run 'sonora <noun> <verb> --help' for the full flag reference of any command.
 `
