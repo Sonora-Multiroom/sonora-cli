@@ -26,6 +26,13 @@ Usage: `sonora <noun> <verb> [flags]`
 | `routes` | `list`, `get` |
 | `groups` | `list`, `get` |
 
+`play` is verb-less — `sonora play <uri> <target-id>` — since it wraps a single hub
+operation: instant playback of an audio URI to an output or output group, creating the
+ephemeral input and route in one call. It returns as soon as the hub accepts the request
+(no polling for the route to become active). The target type is auto-detected by default;
+`-group`/`-output` force it explicitly when an identifier collides across both. `-volume N`
+(0-100) sets the starting volume, and `-name NAME` sets the ephemeral input's display name.
+
 Every command supports `-json` (strict JSON instead of the default YAML), `-hub-url`
 (override the hub base URL), and `-verbose` (print underlying error detail on failure).
 `list` commands additionally support `-include-disabled`; `routes list` also supports
@@ -36,6 +43,7 @@ the full flag reference of any command.
 sonora outputs list -include-disabled
 sonora routes list -status active
 sonora groups get <id> -json
+sonora play "https://stream.example.com/live.mp3" office-speaker -volume 40
 ```
 
 ## Configuration

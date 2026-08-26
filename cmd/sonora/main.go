@@ -9,6 +9,7 @@ import (
 	"sonora-cli/internal/cli/groups"
 	"sonora-cli/internal/cli/inputs"
 	"sonora-cli/internal/cli/outputs"
+	"sonora-cli/internal/cli/play"
 	"sonora-cli/internal/cli/routes"
 	"sonora-cli/internal/version"
 )
@@ -23,6 +24,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) >= 1 && (args[0] == "--version" || args[0] == "-v") {
 		fmt.Fprintln(stdout, version.Version)
 		return 0
+	}
+
+	if len(args) >= 1 && args[0] == "play" {
+		return play.Run(args[1:], stdout, stderr)
 	}
 
 	if len(args) < 2 {

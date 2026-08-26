@@ -158,6 +158,68 @@ func TestClassifyError_NotFound(t *testing.T) {
 	}
 }
 
+func TestClassifyError_APIError_StatusMappings(t *testing.T) {
+	cases := []struct {
+		status int
+		class  hub.ErrorClass
+	}{
+		{400, hub.ClassValidation},
+		{422, hub.ClassRouteFailed},
+		{502, hub.ClassSourceUnreachable},
+		{503, hub.ClassServiceUnavailable},
+		{418, hub.ClassHub}, // any other status code falls back to ClassHub
+	}
+	for _, c := range cases {
+		class, msg := hub.ClassifyError(&hub.APIError{StatusCode: c.status, Title: "Error", Detail: "detail"})
+		if class != c.class {
+			t.Errorf("status %d: got class %v, want %v", c.status, class, c.class)
+		}
+		if msg == "" {
+			t.Errorf("status %d: expected a non-empty friendly message", c.status)
+		}
+	}
+}
+
+func TestClassifyError_AmbiguousTarget(t *testing.T) {
+	class, msg := hub.ClassifyError(&hub.AmbiguousTargetError{ID: "shared-id"})
+	if class != hub.ClassAmbiguous {
+		t.Errorf("got class %v, want ClassAmbiguous", class)
+	}
+	if !strings.Contains(msg, "shared-id") {
+		t.Errorf("expected friendly message to name the identifier, got: %q", msg)
+	}
+}
+
+func TestErrorClass_NewExitCodes(t *testing.T) {
+	cases := map[hub.ErrorClass]int{
+		hub.ClassValidation:         6,
+		hub.ClassAmbiguous:          7,
+		hub.ClassRouteFailed:        8,
+		hub.ClassSourceUnreachable:  9,
+		hub.ClassServiceUnavailable: 10,
+	}
+	for class, want := range cases {
+		if got := class.ExitCode(); got != want {
+			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
+		}
+	}
+}
+
+func TestErrorClass_AllExitCodesDistinct(t *testing.T) {
+	all := []hub.ErrorClass{
+		hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound,
+		hub.ClassValidation, hub.ClassAmbiguous, hub.ClassRouteFailed,
+		hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
+	}
+	codes := map[int]hub.ErrorClass{}
+	for _, c := range all {
+		if prev, ok := codes[c.ExitCode()]; ok {
+			t.Errorf("exit code %d reused: %v and %v", c.ExitCode(), prev, c)
+		}
+		codes[c.ExitCode()] = c
+	}
+}
+
 // opErrStub satisfies net.Error the way a *net.OpError does for the
 // purposes of classification testing, without depending on constructing a
 // real *net.OpError.

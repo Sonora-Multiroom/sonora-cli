@@ -17,6 +17,11 @@ const (
 	ClassHub
 	ClassNetwork
 	ClassNotFound
+	ClassValidation
+	ClassAmbiguous
+	ClassRouteFailed
+	ClassSourceUnreachable
+	ClassServiceUnavailable
 )
 
 // ExitCode returns the CLI exit code for this error class, per research.md §6.
@@ -30,6 +35,16 @@ func (c ErrorClass) ExitCode() int {
 		return 4
 	case ClassNotFound:
 		return 5
+	case ClassValidation:
+		return 6
+	case ClassAmbiguous:
+		return 7
+	case ClassRouteFailed:
+		return 8
+	case ClassSourceUnreachable:
+		return 9
+	case ClassServiceUnavailable:
+		return 10
 	default:
 		return 0
 	}
@@ -68,6 +83,33 @@ func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%s not found: %s", e.Resource, e.ID)
 }
 
+// APIError indicates the hub responded with a non-2xx status and a decodable
+// #/components/schemas/ErrorResponse body (FR-009): 400/422/502/503 for
+// POST /api/v2/play.
+type APIError struct {
+	StatusCode int
+	Title      string
+	Detail     string
+}
+
+func (e *APIError) Error() string {
+	if e.Detail != "" {
+		return e.Detail
+	}
+	return fmt.Sprintf("hub returned HTTP %d: %s", e.StatusCode, e.Title)
+}
+
+// AmbiguousTargetError indicates a target identifier matched both an output
+// and a group during resolution, with neither --group nor --output given to
+// disambiguate (FR-003a).
+type AmbiguousTargetError struct {
+	ID string
+}
+
+func (e *AmbiguousTargetError) Error() string {
+	return fmt.Sprintf("target %q matches both an output and a group; use --group or --output to disambiguate", e.ID)
+}
+
 // ClassifyError maps an error from a hub API call to its exit-code class
 // and a short, friendly, user-facing message. The underlying error remains
 // available to the caller for --verbose output.
@@ -79,6 +121,37 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	var notFoundErr *NotFoundError
 	if errors.As(err, &notFoundErr) {
 		return ClassNotFound, fmt.Sprintf("%s not found: %s", notFoundErr.Resource, notFoundErr.ID)
+	}
+
+	var ambiguousErr *AmbiguousTargetError
+	if errors.As(err, &ambiguousErr) {
+		return ClassAmbiguous, ambiguousErr.Error()
+	}
+
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		msg := apiErr.Detail
+		if msg == "" {
+			msg = apiErr.Title
+		}
+		switch apiErr.StatusCode {
+		case 400:
+			if msg == "" {
+				msg = "the request was rejected as invalid"
+			}
+			return ClassValidation, msg
+		case 422:
+			if msg == "" {
+				msg = "route creation failed"
+			}
+			return ClassRouteFailed, msg
+		case 502:
+			return ClassSourceUnreachable, "the audio source could not be reached"
+		case 503:
+			return ClassServiceUnavailable, "the hub's playback service is temporarily unavailable"
+		default:
+			return ClassHub, fmt.Sprintf("hub reported an error (HTTP %d)", apiErr.StatusCode)
+		}
 	}
 
 	var statusErr *StatusError
