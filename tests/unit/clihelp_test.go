@@ -52,3 +52,30 @@ func TestSetUsage_NoFlags(t *testing.T) {
 		t.Errorf("expected no Flags: header when fs has no flags, got:\n%s", buf.String())
 	}
 }
+
+// customBoolFlag is a hand-rolled flag.Value (not one of the flag package's
+// own bool/string/int types) that reports itself as boolean via
+// IsBoolFlag(), to prove SetUsage detects bool-ness through that interface
+// generically rather than only for flag.Bool's built-in type.
+type customBoolFlag struct{}
+
+func (customBoolFlag) String() string   { return "" }
+func (customBoolFlag) Set(string) error { return nil }
+func (customBoolFlag) IsBoolFlag() bool { return true }
+
+func TestSetUsage_CustomBoolFlagValue(t *testing.T) {
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.Var(customBoolFlag{}, "custom", "a custom bool-like flag")
+
+	var buf bytes.Buffer
+	clihelp.SetUsage(fs, &buf, "usage: test")
+	fs.Usage()
+
+	out := buf.String()
+	if !strings.Contains(out, "Flags:") {
+		t.Fatalf("output missing Flags: header, got:\n%s", out)
+	}
+	if strings.Contains(out, "-custom value") {
+		t.Errorf("expected custom bool-like flag to omit the value placeholder, got:\n%s", out)
+	}
+}
