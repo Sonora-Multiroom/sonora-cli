@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"sonora-cli/internal/version"
 )
 
 func TestRunHelp(t *testing.T) {
@@ -30,6 +32,33 @@ func TestRunHelp(t *testing.T) {
 			if !strings.Contains(out, want) {
 				t.Errorf("run(%v) stdout missing %q, got:\n%s", args, want, out)
 			}
+		}
+	}
+}
+
+func TestRunVersionPrecedence(t *testing.T) {
+	cases := [][]string{
+		{"--version", "--help"},
+		{"-v", "--help"},
+	}
+
+	for _, args := range cases {
+		var stdout, stderr bytes.Buffer
+		code := run(args, &stdout, &stderr)
+
+		if code != 0 {
+			t.Errorf("run(%v) exit code = %d, want 0", args, code)
+		}
+		if stderr.Len() != 0 {
+			t.Errorf("run(%v) stderr = %q, want empty", args, stderr.String())
+		}
+
+		out := stdout.String()
+		if out != version.Version+"\n" {
+			t.Errorf("run(%v) stdout = %q, want version output %q (not help)", args, out, version.Version+"\n")
+		}
+		if strings.Contains(out, "Commands:") || strings.Contains(out, "Flags:") {
+			t.Errorf("run(%v) printed help content instead of version:\n%s", args, out)
 		}
 	}
 }
