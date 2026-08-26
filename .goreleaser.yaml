@@ -32,6 +32,18 @@ archives:
 checksum:
   name_template: checksums.txt
 
+scoops:
+  - name: sonora
+    ids: [sonora]
+    repository:
+      owner: Sonora-Multiroom
+      name: scoop-bucket
+      branch: main
+      token: "{{ .Env.SCOOP_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/Sonora-Multiroom/sonora-cli"
+    description: "Sonora CLI"
+    license: AGPL-3.0
+
 changelog:
   sort: asc
   use: github

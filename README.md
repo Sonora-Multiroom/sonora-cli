@@ -7,7 +7,16 @@ control real-time audio routing, volume, and mute across your speakers from the 
 sonora outputs list
 ```
 
-## Building
+## Installation
+
+### Scoop (Windows)
+
+```
+scoop bucket add sonora https://github.com/Sonora-Multiroom/scoop-bucket
+scoop install sonora
+```
+
+### Building from source
 
 ```
 make build
