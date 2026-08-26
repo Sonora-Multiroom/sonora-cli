@@ -9,6 +9,18 @@ import (
 	"sonora-cli/internal/cli/routes"
 )
 
+func TestRoutesRunGet_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := routes.RunGet([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestRoutesRunGet_MissingIdentifier(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := routes.RunGet([]string{}, &stdout, &stderr)

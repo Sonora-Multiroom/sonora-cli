@@ -9,6 +9,18 @@ import (
 	"sonora-cli/internal/cli/groups"
 )
 
+func TestGroupsRunList_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := groups.RunList([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestGroupsRunList_UnreachableHubURL(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	start := time.Now()

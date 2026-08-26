@@ -2,7 +2,7 @@
 
 **Branch**: main
 **Date**: 2026-08-26
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -47,15 +47,17 @@ global flags, and example invocations to stdout, exit code 0.
 
 ## Tasks
 
-- [ ] Write `cmd/sonora/main_test.go` covering: `help`, `-h`, `--help`, bare invocation (all →
+- [x] Write `cmd/sonora/main_test.go` covering: `help`, `-h`, `--help`, bare invocation (all →
       stdout output containing key command names, exit 0); unknown noun still exit 2 to
       stderr; missing verb (`sonora outputs`) still exit 2 to stderr
-- [ ] Implement help dispatch and help text in `cmd/sonora/main.go`
-- [ ] Run `go test ./...` and confirm new + existing tests pass
-- [ ] Update `README.md` Commands section to mention `sonora help`
+- [x] Implement help dispatch and help text in `cmd/sonora/main.go`
+- [x] Run `go test ./...` and confirm new + existing tests pass
+- [x] Update `README.md` Commands section to mention `sonora help`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
+- [x] All tasks checked off
+- [x] `go test ./...` passes (pre-existing, unrelated `tests/contract` link failure due to
+      the environment's C: drive being full — not caused by this change; `cmd/sonora`,
+      `tests/unit`, `tests/integration` all pass)
+- [x] `go vet ./cmd/...` and `gofmt -l cmd/sonora/` clean

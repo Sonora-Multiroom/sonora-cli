@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"io"
 
+	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/config"
 	"sonora-cli/internal/hub"
 	"sonora-cli/internal/render"
 )
+
+const listUsage = "usage: sonora outputs list [--include-disabled] [--json] [--verbose] [--hub-url URL]"
 
 // RunList implements `sonora outputs list`: it defines and parses this
 // command's flags, resolves the hub URL, fetches outputs from the hub, and
@@ -20,6 +23,7 @@ import (
 func RunList(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("outputs list", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	clihelp.SetUsage(fs, stderr, listUsage)
 
 	includeDisabled := fs.Bool("include-disabled", false, "include disabled outputs in the results")
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
@@ -30,7 +34,7 @@ func RunList(args []string, stdout, stderr io.Writer) int {
 		return hub.ClassUsage.ExitCode()
 	}
 	if fs.NArg() > 0 {
-		fmt.Fprintf(stderr, "usage: sonora outputs list [--include-disabled] [--json] [--verbose] [--hub-url URL]\n")
+		fmt.Fprintln(stderr, listUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", fs.Args())
 		return hub.ClassUsage.ExitCode()
 	}

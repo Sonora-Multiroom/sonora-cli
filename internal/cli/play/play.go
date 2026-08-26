@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/config"
 	"sonora-cli/internal/hub"
 	"sonora-cli/internal/render"
@@ -24,6 +25,7 @@ const usage = "usage: sonora play <uri> <target-id> [--group | --output] [--volu
 func Run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("play", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	clihelp.SetUsage(fs, stderr, usage)
 
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")

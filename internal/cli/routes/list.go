@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"io"
 
+	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/config"
 	"sonora-cli/internal/hub"
 	"sonora-cli/internal/render"
 )
+
+const listUsage = "usage: sonora routes list [--status STATUS] [--input-id ID] [--target-id ID] [--json] [--verbose] [--hub-url URL]"
 
 // RunList implements `sonora routes list`: it defines and parses this
 // command's flags, resolves the hub URL, fetches routes from the hub
@@ -21,6 +24,7 @@ import (
 func RunList(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("routes list", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	clihelp.SetUsage(fs, stderr, listUsage)
 
 	status := fs.String("status", "", "only return routes with this status")
 	inputID := fs.String("input-id", "", "only return routes sourced from this input identifier")
@@ -33,7 +37,7 @@ func RunList(args []string, stdout, stderr io.Writer) int {
 		return hub.ClassUsage.ExitCode()
 	}
 	if fs.NArg() > 0 {
-		fmt.Fprintf(stderr, "usage: sonora routes list [--status STATUS] [--input-id ID] [--target-id ID] [--json] [--verbose] [--hub-url URL]\n")
+		fmt.Fprintln(stderr, listUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", fs.Args())
 		return hub.ClassUsage.ExitCode()
 	}

@@ -14,6 +14,31 @@ import (
 	"sonora-cli/internal/version"
 )
 
+const helpText = `Usage: sonora <noun> <verb> [flags]
+
+Commands:
+  outputs list|get   Manage multiroom outputs
+  inputs  list|get   Manage multiroom inputs
+  routes  list|get   Manage multiroom routes
+  groups  list|get   Manage multiroom output groups
+  play <uri> <target-id>
+                      Instant playback of an audio URI to an output or group
+  help                Show this help
+
+Global flags:
+  -json               Output strict JSON instead of the default YAML
+  -hub-url URL        Override the hub base URL
+  -verbose            Print underlying error detail on failure
+
+Examples:
+  sonora outputs list -include-disabled
+  sonora routes list -status active
+  sonora groups get <id> -json
+  sonora play "https://stream.example.com/live.mp3" office-speaker -volume 40
+
+Run 'sonora <noun> <verb> --help' for the full flag reference of any command.
+`
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -26,7 +51,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	if len(args) >= 1 && args[0] == "play" {
+	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+		fmt.Fprint(stdout, helpText)
+		return 0
+	}
+
+	if args[0] == "play" {
 		return play.Run(args[1:], stdout, stderr)
 	}
 

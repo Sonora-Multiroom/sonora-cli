@@ -8,6 +8,18 @@ import (
 	"sonora-cli/internal/cli/outputs"
 )
 
+func TestOutputsRunList_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunList([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestOutputsRun_VerboseAppendsRawErrorDetail(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	// Nothing listens on port 1: a fast, deterministic connection failure.

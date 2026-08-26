@@ -26,6 +26,18 @@ func countingHub(t *testing.T) (*httptest.Server, *int32) {
 	return srv, &count
 }
 
+func TestPlayRun_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestPlayRun_MissingBothArguments(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := play.Run([]string{}, &stdout, &stderr)
