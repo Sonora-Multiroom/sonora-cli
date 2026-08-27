@@ -21,6 +21,8 @@ const (
 	ClassRouteFailed
 	ClassSourceUnreachable
 	ClassServiceUnavailable
+	ClassInputNotFound
+	ClassTargetNotFound
 )
 
 // ExitCode returns the CLI exit code for this error class, per research.md §6.
@@ -45,6 +47,10 @@ func (c ErrorClass) ExitCode() int {
 		return 9
 	case ClassServiceUnavailable:
 		return 10
+	case ClassInputNotFound:
+		return 11
+	case ClassTargetNotFound:
+		return 12
 	default:
 		return 0
 	}

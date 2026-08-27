@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,14 @@ type Route struct {
 	Transferable bool    `json:"transferable"`
 	Pauseable    bool    `json:"pauseable"`
 	Paused       bool    `json:"paused"`
+}
+
+// CreateRouteRequest mirrors #/components/schemas/CreateRouteRequest in
+// api/openapi.json field-for-field (constitution Principle II).
+type CreateRouteRequest struct {
+	InputID    string `json:"inputId"`
+	TargetID   string `json:"targetId"`
+	TargetType string `json:"targetType"`
 }
 
 func validateRoute(r Route) error {
@@ -116,6 +125,60 @@ func GetRoute(ctx context.Context, client *http.Client, baseURL, routeID string)
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, &NotFoundError{Resource: "route", ID: routeID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var route Route
+	if err := json.NewDecoder(resp.Body).Decode(&route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateRoute(route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &route, nil
+}
+
+// CreateRoute calls POST {baseURL}/api/v2/routes (operationId "createRoute"),
+// connecting an existing input to an existing output/group. On 201, the
+// decoded Route is returned, validated via the existing validateRoute
+// helper (malformed body → *DecodeError, FR-011). A 404 is returned as a
+// *NotFoundError naming the target (data-model.md: the pre-checks in
+// route.Run give the input/target distinction its real meaning; this is a
+// same-shape backstop for the rare race where a resource vanishes between
+// the pre-checks and this call, mirroring Playback's own 404 handling). A
+// 400/422 attempts to decode the body as an errorResponse into an
+// *APIError, falling back to a *StatusError if that decode fails; any other
+// non-2xx status is a *StatusError.
+func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req CreateRouteRequest) (*Route, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/api/v2/routes", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "target", ID: req.TargetID}
+	}
+	switch resp.StatusCode {
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}

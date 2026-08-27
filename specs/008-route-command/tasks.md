@@ -39,7 +39,7 @@ Single Go project (established by `001-list-outputs`, unchanged): `cmd/sonora/`,
 **Purpose**: Confirm the existing `001`–`007` codebase this feature builds on is in a
 known-good state before touching it.
 
-- [ ] T001 Run `go build ./...` and `go test ./...` from the repo root on branch
+- [X] T001 Run `go build ./...` and `go test ./...` from the repo root on branch
   `008-route-command` and confirm everything passes, establishing the baseline this feature's
   changes are layered on (no files modified by this task).
 
@@ -57,7 +57,7 @@ no foundational work of their own.
 
 ### Tests for Foundational work (write first; MUST fail before implementation exists)
 
-- [ ] T002 [P] Contract test for `hub.CreateRoute` in tests/contract/route_test.go: an
+- [X] T002 [P] Contract test for `hub.CreateRoute` in tests/contract/route_test.go: an
   `httptest.Server` serving `POST /api/v2/routes` per `createRoute` in `api/openapi.json` —
   assert the request body always includes `inputId`/`targetId`/`targetType`; a `201
   RouteResponse` body decodes into the existing `hub.Route` (reusing `validateRoute`'s
@@ -68,7 +68,7 @@ no foundational work of their own.
   malformed `201` body (missing `routeId`/`inputId`/`targetId`, or an unrecognized
   `targetType`/`status`) yields `*hub.DecodeError` per FR-011. Also assert the mock server
   receives exactly one request per `CreateRoute` call (FR-009 — no automatic retry).
-- [ ] T003 [P] Unit test for the two new `hub.ErrorClass` values, extending
+- [X] T003 [P] Unit test for the two new `hub.ErrorClass` values, extending
   tests/unit/hub_client_test.go: `ClassInputNotFound.ExitCode() == 11` and
   `ClassTargetNotFound.ExitCode() == 12`; assert every exit code in data-model.md's exit code
   table is mutually distinct (FR-010). Also assert `hub.ClassifyError` is unchanged for this
@@ -79,15 +79,15 @@ no foundational work of their own.
 
 ### Implementation for Foundational work
 
-- [ ] T004 [P] Define `CreateRouteRequest` struct in internal/hub/routes.go, mapping
+- [X] T004 [P] Define `CreateRouteRequest` struct in internal/hub/routes.go, mapping
   field-for-field to `#/components/schemas/CreateRouteRequest` in `api/openapi.json` per
   data-model.md: `InputID`, `TargetID`, `TargetType` (`string`, all required, json tags
   `inputId`/`targetId`/`targetType`). No function yet, struct only.
-- [ ] T005 [P] Extend internal/hub/errors.go: add `ClassInputNotFound` (exit 11) and
+- [X] T005 [P] Extend internal/hub/errors.go: add `ClassInputNotFound` (exit 11) and
   `ClassTargetNotFound` (exit 12) to the `ErrorClass` enum and its `ExitCode()` switch.
   `ClassifyError` itself is **not** modified — its existing `*NotFoundError` branch continues
   to return `ClassNotFound` regardless of `.Resource`, per research.md §3. Makes T003 pass.
-- [ ] T006 Implement `CreateRoute(ctx context.Context, client *http.Client, baseURL string, req
+- [X] T006 Implement `CreateRoute(ctx context.Context, client *http.Client, baseURL string, req
   CreateRouteRequest) (*Route, error)` in internal/hub/routes.go: `POST
   {baseURL}/api/v2/routes` with `req` JSON-encoded as the body; on `201`, decode into `Route`
   and validate via the existing `validateRoute` helper, returning `*DecodeError` on failure; on
@@ -117,7 +117,7 @@ created).
 
 ### Tests for User Story 1 (write first; MUST fail before implementation exists)
 
-- [ ] T007 [P] [US1] Integration tests for the route command's success and failure paths in
+- [X] T007 [P] [US1] Integration tests for the route command's success and failure paths in
   tests/integration/route_test.go: build/run the `sonora` binary (following the
   `binPath`/`TestMain` pattern in tests/integration/outputs_list_test.go) against a fake hub
   serving `/api/v2/inputs/{id}`, `/api/v2/outputs/{id}`, `/api/v2/groups/{id}`, and
@@ -132,11 +132,11 @@ created).
   `/api/v2/routes` returning `400` → exit `6`, `422` → exit `8`, a generic `500` → exit `3`,
   and a malformed `201` body (e.g. missing `routeId`) → exit `3` (FR-008, FR-010, FR-011,
   SC-003).
-- [ ] T008 [P] [US1] Unit test for route-creation rendering in
+- [X] T008 [P] [US1] Unit test for route-creation rendering in
   tests/unit/render_route_test.go: `render.RenderRouteCreatedYAML(hub.Route{...}, message)` and
   `RenderRouteCreatedJSON` each emit exactly `routeId`, `status`, `message` — in that order —
   and JSON output round-trips through `encoding/json.Unmarshal` without error (FR-005).
-- [ ] T009 [P] [US1] Unit test for `route.Run`'s flag/positional parsing and validation
+- [X] T009 [P] [US1] Unit test for `route.Run`'s flag/positional parsing and validation
   failures in tests/unit/cli_route_test.go: missing `<input-path>` or `<target-path>` → exit
   `2` naming the missing argument; more than two positional arguments → exit `2`; an input path
   whose prefix is not `inputs`/`in` (e.g. `outputs/x`) → exit `2` identifying the invalid
@@ -149,12 +149,12 @@ created).
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Implement `RenderRouteCreatedYAML(r hub.Route, message string) string` and
+- [X] T010 [P] [US1] Implement `RenderRouteCreatedYAML(r hub.Route, message string) string` and
   `RenderRouteCreatedJSON(r hub.Route, message string) string` in internal/render/route.go:
   both read `RouteID`, `Status` off `r` plus the given `message` and render exactly those three
   fields (YAML as a bare record, JSON as a flat object via a small local payload struct — see
   data-model.md's "RoutingResult" section), never the full `hub.Route`. Makes T008 pass.
-- [ ] T011 [US1] Implement `Run(args []string, stdout, stderr io.Writer) int` in
+- [X] T011 [US1] Implement `Run(args []string, stdout, stderr io.Writer) int` in
   internal/cli/route/route.go: `flag.NewFlagSet("route", flag.ContinueOnError)` with `--json`,
   `--verbose`, `--hub-url` only; two required positionals `<input-path>` and `<target-path>`
   via the same re-parse-loop pattern `play.Run` uses; parse both via `respath.Parse`, returning
@@ -176,7 +176,7 @@ created).
   `fmt.Sprintf("Routed %s to %s.", inputArg, targetArg)` (the two arguments exactly as typed)
   and render via `render.RenderRouteCreatedYAML`/`RenderRouteCreatedJSON`. Depends on T006,
   T010. Makes T007, T009 pass.
-- [ ] T012 [US1] Add a special case for `route` in cmd/sonora/main.go's `run()` function,
+- [X] T012 [US1] Add a special case for `route` in cmd/sonora/main.go's `run()` function,
   alongside the existing `play` special case: `if args[0] == "route" { return
   route.Run(args[1:], stdout, stderr) }`, placed before the `get`/`list` verb switch (same
   reasoning as `play`'s placement — `route` has no verb token for the switch to dispatch on).
@@ -201,7 +201,7 @@ prefix, and verify each invocation targets only the stated type.
 
 ### Tests for User Story 2 (write first; MUST fail before implementation exists)
 
-- [ ] T013 [P] [US2] Extend tests/integration/route_test.go: `sonora route inputs/<input-id>
+- [X] T013 [P] [US2] Extend tests/integration/route_test.go: `sonora route inputs/<input-id>
   groups/<target-id>` where `<target-id>` exists only as a group succeeds with the same
   three-field shape as US1 (FR-002, FR-005). Add a fake-hub scenario where one identifier
   exists as both an output and a group with distinct underlying resources: `sonora route
@@ -214,13 +214,13 @@ prefix, and verify each invocation targets only the stated type.
   "group not found" message, confirming the wrong-type lookup does not fall back to the other
   type's match; assert the symmetric case (`outputs/<group-only-id>` → exit `12`, "output not
   found") too.
-- [ ] T014 [P] [US2] Extend tests/unit/cli_route_test.go: target paths using the `groups`/`gr`
+- [X] T014 [P] [US2] Extend tests/unit/cli_route_test.go: target paths using the `groups`/`gr`
   prefixes both map to `targetType` `"OUTPUT_GROUP"`, and `outputs`/`out` both map to
   `"SINGLE_OUTPUT"`; the input path's `inputs`/`in` aliases are both accepted.
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] No new production code is expected: `route.Run` (T011) already derives
+- [X] T015 [US2] No new production code is expected: `route.Run` (T011) already derives
   `targetType` solely from the target path's `respath.Kind` and calls the already-generic
   `hub.ResolveTarget` (research.md §1), so a `groups/<id>` target and a same-identifier
   collision are handled by the exact same code path as US1's `outputs/<id>` case. Run T013 and
@@ -237,11 +237,11 @@ passes; User Story 1's behavior is unaffected.
 
 **Purpose**: Final quality gates spanning both stories.
 
-- [ ] T016 [P] Run `gofmt -l .`, `go vet ./...`, and the project's configured linter across all
+- [X] T016 [P] Run `gofmt -l .`, `go vet ./...`, and the project's configured linter across all
   files touched by this feature (internal/hub/routes.go, internal/hub/errors.go,
   internal/render/route.go, internal/cli/route/, cmd/sonora/main.go, tests/); fix any findings
   (constitution Development Workflow).
-- [ ] T017 Execute every step in quickstart.md end-to-end (`go test ./...`, the manual
+- [X] T017 Execute every step in quickstart.md end-to-end (`go test ./...`, the manual
   single-output/group/collision/not-found/failure-path smoke tests against a fake hub) and
   confirm each mapped Success Criterion (SC-001…SC-005) holds, including that all exit codes in
   data-model.md's exit code table are mutually distinct (FR-010).
