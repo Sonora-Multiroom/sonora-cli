@@ -209,6 +209,48 @@ func TestErrorClass_AllExitCodesDistinct(t *testing.T) {
 	}
 }
 
+func TestErrorClass_RouteExitCodes(t *testing.T) {
+	cases := map[hub.ErrorClass]int{
+		hub.ClassInputNotFound:  11,
+		hub.ClassTargetNotFound: 12,
+	}
+	for class, want := range cases {
+		if got := class.ExitCode(); got != want {
+			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
+		}
+	}
+}
+
+func TestErrorClass_AllExitCodesDistinct_IncludingRoute(t *testing.T) {
+	all := []hub.ErrorClass{
+		hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound,
+		hub.ClassValidation, hub.ClassRouteFailed,
+		hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
+		hub.ClassInputNotFound, hub.ClassTargetNotFound,
+	}
+	codes := map[int]hub.ErrorClass{}
+	for _, c := range all {
+		if prev, ok := codes[c.ExitCode()]; ok {
+			t.Errorf("exit code %d reused: %v and %v", c.ExitCode(), prev, c)
+		}
+		codes[c.ExitCode()] = c
+	}
+}
+
+// TestClassifyError_NotFound_RegressionInputResourceStillClassNotFound
+// guards research.md §3's decision: hub.ClassifyError itself is NOT modified
+// to split on NotFoundError.Resource — a *hub.NotFoundError{Resource:
+// "input"} routed directly through ClassifyError (as every command other
+// than route does) must still classify as the existing generic
+// ClassNotFound (exit 5), not the new route-only ClassInputNotFound (11).
+// The input/target split is applied locally inside route.Run instead.
+func TestClassifyError_NotFound_RegressionInputResourceStillClassNotFound(t *testing.T) {
+	class, _ := hub.ClassifyError(&hub.NotFoundError{Resource: "input", ID: "x"})
+	if class != hub.ClassNotFound {
+		t.Errorf("got class %v, want ClassNotFound (regression: ClassifyError must not special-case Resource==\"input\")", class)
+	}
+}
+
 // opErrStub satisfies net.Error the way a *net.OpError does for the
 // purposes of classification testing, without depending on constructing a
 // real *net.OpError.

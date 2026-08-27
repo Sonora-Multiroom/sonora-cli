@@ -12,6 +12,7 @@ import (
 	"sonora-cli/internal/cli/outputs"
 	"sonora-cli/internal/cli/play"
 	"sonora-cli/internal/cli/respath"
+	"sonora-cli/internal/cli/route"
 	"sonora-cli/internal/cli/routes"
 	"sonora-cli/internal/version"
 )
@@ -23,6 +24,8 @@ Commands:
   list <resource>          Fetch a collection (synonym of 'get <resource>')
   play <uri> <outputs|groups>/<id>
                             Instant playback of an audio URI to an output or group
+  route inputs/<id> <outputs|groups>/<id>
+                            Connect an existing input to an existing output or group
   help                     Show this help
 
 Resources: inputs (in), outputs (out), groups (gr), routes (rt)
@@ -39,6 +42,7 @@ Examples:
   sonora get groups/<id> --json
   sonora list outputs
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
+  sonora route inputs/spotify-1 outputs/office-speaker
 
 Run 'sonora get <resource> --help' or 'sonora list <resource> --help' for the full flag
 reference of any command.
@@ -64,6 +68,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	if args[0] == "play" {
 		return play.Run(args[1:], stdout, stderr)
+	}
+	if args[0] == "route" {
+		return route.Run(args[1:], stdout, stderr)
 	}
 
 	switch args[0] {
