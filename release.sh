@@ -4,6 +4,21 @@ set -e
 
 semver_re='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
 
+git fetch origin --tags >/dev/null 2>&1 || true
+current_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+current_tag=${current_tag#v}
+
+if [ -n "$current_tag" ]; then
+    major=$(echo "$current_tag" | cut -d. -f1)
+    minor=$(echo "$current_tag" | cut -d. -f2)
+    patch=$(echo "$current_tag" | cut -d. -f3)
+    echo "Current version: v$current_tag"
+    echo "Suggested next patch: v$major.$minor.$((patch + 1))"
+    echo "Suggested next minor: v$major.$((minor + 1)).0"
+else
+    echo "Current version: none (no vX.Y.Z tags found)"
+fi
+
 printf 'Version to release (e.g. 0.1.0 or v0.1.0): '
 read -r input
 
