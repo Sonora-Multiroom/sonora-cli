@@ -55,7 +55,7 @@ Performance Standards); a full routing round trip (up to two pre-check lookups p
 single attempt with no automatic retry on network/timeout failure (FR-009); no unbounded waits
 (Principle IV); exit codes MUST distinguish at least: success, usage error, input not found,
 target not found, route creation failed, and a connectivity/network error (FR-010) — two new
-classes beyond the seven already established by `006-play-command`, see
+classes beyond the eight already established by `006-play-command`, see
 [research.md §3](research.md#3-two-new-exit-code-classes-applied-locally-in-routerun--hubclassifyerror-unchanged).
 
 **Scale/Scope**: One new command (`sonora route inputs/<id> <outputs|groups>/<id>`) under a new
