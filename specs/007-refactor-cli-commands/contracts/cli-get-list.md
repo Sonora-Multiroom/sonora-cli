@@ -48,7 +48,7 @@ unchanged filter semantics from today's equivalent `list` commands (FR-001).
 
 | Condition | Exit code |
 |---|---|
-| Missing `<resource>`/`<resource-path>` argument | `2` |
+| Missing `<resource>`/`<resource-path>` argument (`sonora get`, `sonora list`) | `2` — message MUST enumerate the valid resource names (FR-006a) |
 | Unrecognized resource name or alias | `2` |
 | Malformed resource path (extra `/`, id not matching `^[a-zA-Z0-9_-]{1,255}$`) | `2` |
 | `list` given a resource path that includes an id | `2` |

@@ -177,6 +177,12 @@ verifying the same playback result as today's `sonora play <uri> <id> --output` 
   resource name or alias, or a malformed resource path. The CLI is NOT required to
   specifically detect old-style syntax in order to name it or point to its new equivalent; a
   generic "unrecognized command"-style error is sufficient.
+- **FR-006a**: When `get` or `list` is given no resource argument at all (`sonora get`,
+  `sonora list`), the CLI MUST fail with a usage error whose message enumerates the valid
+  resource names. This is a deliberate exception to FR-006's "generic error is sufficient"
+  allowance: FR-006 concerns invocations where the user typed *something* wrong and the CLI
+  need not diagnose it, whereas here the user has typed a valid verb and supplied nothing,
+  so the set of valid completions is both unambiguous and the only useful thing to say.
 - **FR-007**: The CLI MUST change `play`'s target argument to a resource path
   (`outputs/<id>`, `groups/<id>`, or their aliases), removing the separate `--group` and
   `--output` disambiguation flags.

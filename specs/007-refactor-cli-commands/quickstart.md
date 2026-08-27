@@ -89,11 +89,23 @@ echo $?   # expect 2
 **Expected**: clear usage errors — an id with an extra `/`, and an unrecognized resource
 name, are both rejected before any hub request is made.
 
+## 7. Bare verb lists the valid resources
+
+```bash
+./sonora get
+echo $?   # expect 2
+./sonora list
+echo $?   # expect 2
+```
+
+**Expected**: a usage error whose message enumerates `inputs`, `outputs`, `groups`, and
+`routes` (FR-006a) — not the generic "unknown command" text used for a mistyped resource.
+
 ## Success criteria mapping
 
 | Success Criteria | Validated by |
 |---|---|
 | SC-001 (only new grammar reachable) | Steps 2–3 (works) and Step 4 (old form fails). |
 | SC-002 (aliases identical to full names) | Step 2 (`out`/`gr`/`in`/`rt` variants). |
-| SC-003 (pre-refactor forms fail clearly) | Steps 4–6. |
+| SC-003 (pre-refactor forms fail clearly) | Steps 4–7. |
 | SC-004 (displayed data unchanged) | Step 2, diffed against pre-refactor output for the same mock-hub fixture. |

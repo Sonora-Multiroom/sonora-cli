@@ -59,7 +59,7 @@ expected to remain largely untouched.
 | II. API Contract Fidelity | **Pass.** No HTTP request/response handling changes; the same `openapi.json`-derived types and endpoints are used. FR-010 explicitly requires unchanged displayed data. |
 | III. Minimal, Justified Dependencies | **Pass.** Implemented with `strings`/`regexp` from the standard library only; no new dependency. |
 | IV. Resilient, Transparent HTTP Client Behavior | **Pass.** Not touched by this refactor — timeouts, error translation, and exit-code classing for hub/network failures are reused as-is. |
-| V. CLI UX Consistency | **Flagged, not blocking.** This principle's illustrative example — "e.g. `sonora <noun> <verb> [args]`" — textually names the exact grammar this feature replaces. The *substantive* requirements (a consistent, predictable structure; no synonym flag/argument names across commands) are still met: the new verb-first grammar is applied uniformly across all four resources and matches the already-approved `route` command (spec 008), and `list`/`get` is a single, documented, collection-only verb synonym — not a set of divergent flag/argument names for the same concept. Recommend running `/speckit-constitution` after this feature ships to update Principle V's example to the new grammar; not required to unblock this plan. |
+| V. CLI UX Consistency | **Pass.** Previously flagged: the principle's illustrative example named `sonora <noun> <verb> [args]` — the exact grammar this feature replaces. That staleness was resolved by amending the constitution to v1.1.3 (2026-08-27), whose example now reads `sonora <verb> <resource>[/<id>] [args]`. The substantive requirements were met either way: the verb-first grammar is applied uniformly across all four resources and matches the already-approved `route` command (spec 008), and `list`/`get` is a single, documented, collection-only verb synonym — not a set of divergent flag/argument names for the same concept. |
 | VI. Test-First Development | **Pass, with a process note.** `/speckit-tasks` MUST sequence a failing test (updated `tests/unit`/`tests/contract`/`tests/integration` cases for the new invocation shape) before each corresponding implementation change, per the existing Red-Green-Refactor requirement. |
 
 No unjustified violations — Complexity Tracking is not needed.
@@ -107,10 +107,20 @@ internal/cli/
 └── clihelp/
     └── usage.go                # Updated help text for the new grammar
 
+internal/hub/
+├── play.go                     # ResolveTarget replaced by a per-type existence check —
+│                               #   forceGroup/forceOutput and the auto-detect branch die
+└── errors.go                   # ClassAmbiguous, AmbiguousTargetError, and their
+                                #   ExitCode()/ClassifyError branches removed (exit 7 gone)
+
 tests/
-├── unit/                       # Updated per refactored command + new respath_test.go
-├── contract/                   # Updated invocation-shape assertions; HTTP contracts unchanged
-└── integration/                # Updated per refactored command
+├── unit/                       # New respath_test.go; cli_*_test.go usage-line assertions;
+│                               #   hub_client_test.go drops its ClassAmbiguous cases
+├── contract/                   # Mostly UNCHANGED — these call internal/hub directly, not the
+│                               #   CLI, so the grammar change does not reach them. Only
+│                               #   play_resolve_test.go changes (ambiguous-target case removed)
+└── integration/                # Updated per refactored command — these invoke the built
+                                #   binary, so every one carries an invocation shape
 ```
 
 **Structure Decision**: Single-project Go CLI (existing layout retained). The refactor is
