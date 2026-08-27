@@ -9,6 +9,24 @@
 **Input**: User description: "need refactoring - adopt already implemented commands as
 specified in docs/cli-command-landscape.md"
 
+## Clarifications
+
+### Session 2026-08-27
+
+- Q: When an old-style command (`sonora inputs list`, `sonora outputs get <id>`, or `play`
+  with `--group`/`--output`/`--name`) is run after this refactor ships, should it be removed
+  outright with no transition period, or kept working (with a deprecation warning) for some
+  time before removal? → A: Hard cutover — old forms are removed immediately and fail with a
+  usage error; no deprecation/warning period.
+- Q: Can a resource identifier (input/output/group/route id) itself contain a `/`
+  character, or are ids guaranteed slash-free? → A: Ids are unique identifiers matching
+  `^[a-zA-Z0-9_-]{1,255}$` — slash-free by construction, so a resource path is parsed
+  unambiguously by splitting on the first `/`.
+- Q: When an old-style invocation fails, must the error message specifically explain what
+  changed (e.g. name the new equivalent command), or is a standard "unrecognized command"
+  usage error sufficient? → A: A standard usage error is sufficient — the CLI is not required
+  to specifically detect or explain old-style syntax.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Read commands follow the verb-first, path-style shape (Priority: P1)
@@ -121,8 +139,10 @@ verifying the same playback result as today's `sonora play <uri> <id> --output` 
 - What happens when the user runs a bare verb with nothing after it (e.g. `sonora get`)? The
   command must fail with a clear usage error listing the valid resources.
 - What happens when the user mixes an alias and a full name incorrectly, e.g. adds a stray
-  slash or extra segment (`sonora get out/foo/bar`)? The command must fail with a clear usage
-  error rather than guessing which segment is the id.
+  slash or extra segment (`sonora get out/foo/bar`)? Since ids match
+  `^[a-zA-Z0-9_-]{1,255}$` and never contain `/`, an extra slash unambiguously means the
+  argument is malformed; the command must fail with a clear usage error rather than guessing
+  which segment is the id.
 - What happens when existing collection filter flags (`--include-disabled`, `--status`,
   `--input-id`, `--target-id`) are combined with the new `get`/`list` verbs? They must
   continue to filter exactly as they do today — only the verb/resource-path shape changes.
@@ -145,12 +165,18 @@ verifying the same playback result as today's `sonora play <uri> <id> --output` 
 - **FR-004**: The CLI MUST accept the short aliases `in`, `out`, `gr`, and `rt` interchangeably
   with `inputs`, `outputs`, `groups`, and `routes` respectively, everywhere a resource name or
   resource path is accepted.
+- **FR-004a**: A resource path MUST be parsed by splitting on the first `/` into a
+  resource-name segment and an identifier segment; the CLI MUST treat identifiers as matching
+  `^[a-zA-Z0-9_-]{1,255}$` and MUST fail with a clear usage error if the identifier segment
+  contains an additional `/` or otherwise doesn't match that pattern.
 - **FR-005**: The CLI MUST remove the old `sonora <resource> list` and `sonora <resource> get
   <id>` command forms for inputs, outputs, groups, and routes, rather than keeping them as
   hidden or deprecated aliases.
-- **FR-006**: The CLI MUST fail with a clear, actionable usage error — not a silent
+- **FR-006**: The CLI MUST fail with a clear, standard usage error — not a silent
   misinterpretation or incorrect result — when given an old-style invocation, an unrecognized
-  resource name or alias, or a malformed resource path.
+  resource name or alias, or a malformed resource path. The CLI is NOT required to
+  specifically detect old-style syntax in order to name it or point to its new equivalent; a
+  generic "unrecognized command"-style error is sufficient.
 - **FR-007**: The CLI MUST change `play`'s target argument to a resource path
   (`outputs/<id>`, `groups/<id>`, or their aliases), removing the separate `--group` and
   `--output` disambiguation flags.
@@ -182,11 +208,6 @@ verifying the same playback result as today's `sonora play <uri> <id> --output` 
 
 ## Assumptions
 
-- This is a hard cutover, not a gradual migration: the old `sonora <resource> list` /
-  `sonora <resource> get <id>` forms, and `play`'s `--group`/`--output`/`--name` flags, are
-  removed outright rather than kept as deprecated aliases. The project has no stable public
-  command-line contract yet (sequential, pre-1.0 spec numbering; recent history includes other
-  breaking CLI convention changes), so consistency is prioritized over backward compatibility.
 - Only commands that are already implemented today are in scope: `inputs`/`outputs`/`groups`/
   `routes` `list`/`get`, and `play`. The `route` command itself is out of scope — it's
   already specified separately (`specs/008-route-command`) and not yet implemented.
