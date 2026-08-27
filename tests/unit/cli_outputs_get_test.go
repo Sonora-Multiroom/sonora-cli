@@ -21,6 +21,21 @@ func TestOutputsRunGet_Help(t *testing.T) {
 	}
 }
 
+func TestOutputsRunGet_HelpUsesNewGrammar(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunGet([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "sonora get outputs/<output-id>") {
+		t.Errorf("expected usage line to name the new get grammar, got stderr:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "sonora outputs get") {
+		t.Errorf("expected the removed old-grammar usage line to be gone, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestOutputsRunGet_MissingIdentifier(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := outputs.RunGet([]string{}, &stdout, &stderr)

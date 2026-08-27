@@ -4,7 +4,7 @@ A fast, scriptable command-line client for the [Multiroom Audio Hub API](api/ope
 control real-time audio routing, volume, and mute across your speakers from the terminal.
 
 ```
-sonora outputs list
+sonora get outputs
 ```
 
 ## Installation
@@ -29,36 +29,41 @@ No Go toolchain installed? Use `make docker-build` to build the Linux binary ins
 
 ## Commands
 
-Usage: `sonora <noun> <verb> [flags]`
+Usage: `sonora <verb> <resource>[/<id>] [flags]`
 
 Run `sonora help` (or `-h`/`--help`, or `sonora` with no arguments) to print this command
 table, global flags, and examples from the terminal.
 
-| Noun | Verbs |
-| --- | --- |
-| `outputs` | `list`, `get` |
-| `inputs` | `list`, `get` |
-| `routes` | `list`, `get` |
-| `groups` | `list`, `get` |
+| Verb | Resources | Aliases |
+| --- | --- | --- |
+| `get <resource>[/<id>]` | `inputs`, `outputs`, `groups`, `routes` | `in`, `out`, `gr`, `rt` |
+| `list <resource>` | same four, collection form only | same |
 
-`play` is verb-less — `sonora play <uri> <target-id>` — since it wraps a single hub
-operation: instant playback of an audio URI to an output or output group, creating the
-ephemeral input and route in one call. It returns as soon as the hub accepts the request
-(no polling for the route to become active). The target type is auto-detected by default;
-`--group`/`--output` force it explicitly when an identifier collides across both. `--volume N`
-(0-100) sets the starting volume, and `--name NAME` sets the ephemeral input's display name.
+`get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
+returns a single item by id. `list` is an exact synonym of `get` for the collection form —
+`list <resource>/<id>` is a usage error, since `list` never takes an id. Aliases are
+interchangeable with full resource names everywhere a resource path appears, e.g.
+`sonora get out/office-speaker` is identical to `sonora get outputs/office-speaker`.
+
+`play` wraps a single hub operation: instant playback of an audio URI to an output or output
+group, creating the ephemeral input and route in one call —
+`sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
+(no polling for the route to become active). The target's type is given directly by the
+`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume, and
+`--display-name NAME` sets the ephemeral input's display name.
 
 Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
 (override the hub base URL), and `--verbose` (print underlying error detail on failure).
-`list` commands additionally support `--include-disabled`; `routes list` also supports
-`--input-id`, `--target-id`, and `--status` filters. Run `sonora <noun> <verb> --help` for
-the full flag reference of any command.
+`get`/`list` additionally support `--include-disabled` for inputs/outputs/groups;
+`get`/`list routes` also supports `--input-id`, `--target-id`, and `--status` filters. Run
+`sonora get <resource> --help` or `sonora list <resource> --help` for the full flag
+reference of any command.
 
 ```
-sonora outputs list --include-disabled
-sonora routes list --status active
-sonora groups get <id> --json
-sonora play "https://stream.example.com/live.mp3" office-speaker --volume 40
+sonora get outputs --include-disabled
+sonora get routes --status active
+sonora get groups/<id> --json
+sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
 ```
 
 ## Configuration

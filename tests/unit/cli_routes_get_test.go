@@ -21,6 +21,21 @@ func TestRoutesRunGet_Help(t *testing.T) {
 	}
 }
 
+func TestRoutesRunGet_HelpUsesNewGrammar(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := routes.RunGet([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "sonora get routes/<route-id>") {
+		t.Errorf("expected usage line to name the new get grammar, got stderr:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "sonora routes get") {
+		t.Errorf("expected the removed old-grammar usage line to be gone, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestRoutesRunGet_MissingIdentifier(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := routes.RunGet([]string{}, &stdout, &stderr)

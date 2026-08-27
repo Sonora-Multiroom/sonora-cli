@@ -1,16 +1,32 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.1.1 → 1.1.2
-Modified principles: none
-Renamed: document title corrected from "Sonora CLI Constitution" to "Sonora Multiroom
-  CLI Constitution" — the product name is "Sonora Multiroom"; "Sonora CLI" was an
-  informal shorthand. The invoked binary/command name (`sonora`) is unaffected.
+Version change: 1.1.2 → 1.1.3
+Modified principles:
+  - V. CLI UX Consistency — the illustrative command-shape example was updated from
+    `sonora <noun> <verb> [args]` to `sonora <verb> <resource>[/<id>] [args]`, and the
+    "verb first, resource second" ordering is now stated explicitly. The principle's
+    normative content is unchanged: commands MUST still follow one consistent, predictable
+    structure across the tool. Only the example naming that structure was stale — it named
+    the noun-first grammar that feature 007-refactor-cli-commands removes and that the
+    already-specified `route` command (008-route-command) never used.
 Added principles: none
 Removed sections: none
+Other changes:
+  - Performance Standards, "No hidden I/O" bullet: the example invocation
+    `sonora route list` was corrected to `sonora get routes`. Same staleness class as the
+    Principle V example — an illustrative command in the removed grammar (and one that was
+    never valid even under it, which used `sonora routes list`). No normative change.
 Deferred / TODO items: none
-Templates requiring follow-up: none checked automatically by this command; downstream
-  templates (plan/spec/tasks) read this file at runtime and need no edits here.
+Rationale for PATCH bump: both edits replace illustrative examples only. No principle was
+  added, removed, or redefined, and no MUST/SHOULD obligation changed in scope or strength,
+  which is the definition of PATCH under this document's own versioning policy.
+Templates requiring follow-up: none. Downstream templates (plan/spec/tasks) read this file
+  at runtime and need no edits here.
+Follow-up for in-flight work: specs/007-refactor-cli-commands/plan.md's Constitution Check
+  row for Principle V (and research.md §6) describe this example as stale and defer the
+  amendment. That amendment is now made; those two notes may be simplified to a plain
+  "Pass" on the next edit of those files, but they are not incorrect as written.
 -->
 
 # Sonora Multiroom CLI Constitution
@@ -70,8 +86,8 @@ one that fails fast with a clear message — speed and clarity of failure matter
 speed of success.
 
 ### V. CLI UX Consistency
-Commands MUST follow a consistent, predictable structure (e.g. `sonora <noun> <verb>
-[args]`) across the tool.
+Commands MUST follow a consistent, predictable structure — verb first, resource second
+(e.g. `sonora <verb> <resource>[/<id>] [args]`) — across the tool.
 - Output MUST default to YAML for data-returning commands; a `--json` flag MUST be
   available to switch output to JSON for scripting and automation that requires it.
 - Exit codes MUST distinguish between classes of failure at minimum: success (0), user/usage
@@ -106,7 +122,7 @@ tool evolves.
   HTTP client MUST reuse the underlying transport/connection pool rather than creating a new
   client per call.
 - **No hidden I/O**: config/credential loading MUST be lazy and scoped to what the invoked
-  command actually needs — a `sonora --help` or `sonora route list` MUST NOT pay the cost of
+  command actually needs — a `sonora --help` or `sonora get routes` MUST NOT pay the cost of
   unrelated subsystems initializing.
 - Performance-sensitive changes (anything touching startup path, client construction, or
   request dispatch) SHOULD include a benchmark or measured before/after timing in the PR.
@@ -141,4 +157,4 @@ description or resolved by amending this constitution first. Use this file as th
 guidance for planning and implementation commands (`/speckit-plan`, `/speckit-tasks`,
 `/speckit-implement`).
 
-**Version**: 1.1.2 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-08-24
+**Version**: 1.1.3 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-08-27

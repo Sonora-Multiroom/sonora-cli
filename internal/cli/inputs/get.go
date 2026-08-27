@@ -12,9 +12,9 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const getUsage = "usage: sonora inputs get <input-id> [--json] [--verbose] [--hub-url URL]"
+const getUsage = "usage: sonora get inputs/<input-id> [--json] [--verbose] [--hub-url URL]"
 
-// RunGet implements `sonora inputs get <input-id>`: it defines and parses
+// RunGet implements `sonora get inputs/<input-id>`: it defines and parses
 // this command's flags, resolves the hub URL, fetches the single named
 // input from the hub, and renders it to stdout. Any failure is reported on
 // stderr, never stdout, so scripts piping stdout never see error text. It

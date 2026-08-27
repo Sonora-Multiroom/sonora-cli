@@ -35,11 +35,11 @@ func TestRoutesGet_SuccessYAML(t *testing.T) {
 
 	// Warm up the freshly built binary once, untimed (see
 	// TestOutputsGet_SuccessYAML's comment for why).
-	runCLI(t, "routes", "get", "route-abc-123", "--hub-url", srv.URL)
+	runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL)
 
 	for _, id := range []string{"route-abc-123", "route-def-456"} {
 		start := time.Now()
-		res := runCLI(t, "routes", "get", id, "--hub-url", srv.URL)
+		res := runCLI(t, "get", "routes/"+id, "--hub-url", srv.URL)
 		elapsed := time.Since(start)
 
 		if res.exitCode != 0 {
@@ -61,7 +61,7 @@ func TestRoutesGet_JSONOutput(t *testing.T) {
 		"route-abc-123": {"routeId": "route-abc-123", "inputId": "spotify-1", "targetId": "kitchen-speaker", "targetType": "SINGLE_OUTPUT", "status": "ACTIVE", "createdAt": "2026-06-22T14:30:00Z", "startedAt": "2026-06-22T14:30:01Z", "transferable": true, "pauseable": true, "paused": false},
 	})
 
-	res := runCLI(t, "routes", "get", "route-abc-123", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -89,7 +89,7 @@ func TestRoutesGet_JSONOutput(t *testing.T) {
 func TestRoutesGet_NotFound(t *testing.T) {
 	srv := mockRouteServer(t, map[string]map[string]any{})
 
-	res := runCLI(t, "routes", "get", "missing-route", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "routes/missing-route", "--hub-url", srv.URL)
 
 	if res.exitCode != 5 {
 		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
@@ -106,8 +106,8 @@ func TestRoutesGet_NotFound(t *testing.T) {
 	}
 }
 
-func TestRoutesGet_MissingIdentifier(t *testing.T) {
-	res := runCLI(t, "routes", "get")
+func TestRoutesGet_EmptyIdentifier_MalformedPath(t *testing.T) {
+	res := runCLI(t, "get", "routes/")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)

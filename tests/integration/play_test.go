@@ -102,7 +102,7 @@ func TestPlay_Success_SingleOutput_YAML(t *testing.T) {
 	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
 	start := time.Now()
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
 	elapsed := time.Since(start)
 
 	if res.exitCode != 0 {
@@ -121,7 +121,7 @@ func TestPlay_Success_SingleOutput_YAML(t *testing.T) {
 func TestPlay_Success_SingleOutput_JSON(t *testing.T) {
 	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -158,7 +158,7 @@ func TestPlay_HubErrorStatuses_MapToDistinctExitCodes(t *testing.T) {
 			m.playStatus = c.playStatus
 			m.playBody = map[string]any{"title": "Error", "detail": "something went wrong"}
 
-			res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", srv.URL)
+			res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
 
 			if res.exitCode != c.wantExit {
 				t.Fatalf("exit code = %d, want %d; stderr: %s", res.exitCode, c.wantExit, res.stderr)
@@ -193,7 +193,7 @@ func TestPlay_MalformedSuccessBody_ExitsHubError(t *testing.T) {
 	}))
 	t.Cleanup(malformedSrv.Close)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", malformedSrv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", malformedSrv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -206,51 +206,42 @@ func TestPlay_MalformedSuccessBody_ExitsHubError(t *testing.T) {
 func TestPlay_GroupTarget_Success(t *testing.T) {
 	srv, _ := newMockPlayHub(t, nil, []string{"whole-house"})
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "whole-house", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "groups/whole-house", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
 }
 
-func TestPlay_AmbiguousTarget_NoFlag_ExitsAmbiguous(t *testing.T) {
+// TestPlay_OutputsPath_PicksOutputEvenWhenGroupAlsoExists proves the path
+// prefix — not collision detection — picks the target when an id names both
+// an output and a group. This keeps the value of the old
+// --group/--output-forcing tests now that path-style addressing has removed
+// the ambiguous-target case (exit 7) entirely (data-model.md).
+func TestPlay_OutputsPath_PicksOutputEvenWhenGroupAlsoExists(t *testing.T) {
 	srv, _ := newMockPlayHub(t, []string{"shared-id"}, []string{"shared-id"})
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "shared-id", "--hub-url", srv.URL)
-
-	if res.exitCode != 7 {
-		t.Fatalf("exit code = %d, want 7; stderr: %s", res.exitCode, res.stderr)
-	}
-	lower := strings.ToLower(res.stderr)
-	if !strings.Contains(lower, "output") || !strings.Contains(lower, "group") {
-		t.Errorf("expected message naming both possibilities, got:\n%s", res.stderr)
-	}
-}
-
-func TestPlay_GroupFlag_ForcesGroupEvenWhenOutputAlsoExists(t *testing.T) {
-	srv, _ := newMockPlayHub(t, []string{"shared-id"}, []string{"shared-id"})
-
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "shared-id", "--group", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/shared-id", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
 }
 
-func TestPlay_OutputFlag_ForcesOutputEvenWhenGroupAlsoExists(t *testing.T) {
+func TestPlay_GroupsPath_PicksGroupEvenWhenOutputAlsoExists(t *testing.T) {
 	srv, _ := newMockPlayHub(t, []string{"shared-id"}, []string{"shared-id"})
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "shared-id", "--output", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "groups/shared-id", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
 }
 
-func TestPlay_GroupFlag_NotFoundWhenOnlyOutputExists(t *testing.T) {
+func TestPlay_GroupsPath_NotFoundWhenOnlyOutputExists(t *testing.T) {
 	srv, _ := newMockPlayHub(t, []string{"output-only"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "output-only", "--group", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "groups/output-only", "--hub-url", srv.URL)
 
 	if res.exitCode != 5 {
 		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
@@ -260,10 +251,10 @@ func TestPlay_GroupFlag_NotFoundWhenOnlyOutputExists(t *testing.T) {
 	}
 }
 
-func TestPlay_OutputFlag_NotFoundWhenOnlyGroupExists(t *testing.T) {
+func TestPlay_OutputsPath_NotFoundWhenOnlyGroupExists(t *testing.T) {
 	srv, _ := newMockPlayHub(t, nil, []string{"group-only"})
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "group-only", "--output", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/group-only", "--hub-url", srv.URL)
 
 	if res.exitCode != 5 {
 		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
@@ -273,30 +264,30 @@ func TestPlay_OutputFlag_NotFoundWhenOnlyGroupExists(t *testing.T) {
 	}
 }
 
-func TestPlay_GroupAndOutputTogether_UsageError(t *testing.T) {
-	srv, _ := newMockPlayHub(t, []string{"shared-id"}, []string{"shared-id"})
-
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "shared-id", "--group", "--output", "--hub-url", srv.URL)
-
-	if res.exitCode != 2 {
-		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
-	}
-}
-
 func TestPlay_TargetNotFound(t *testing.T) {
 	srv, _ := newMockPlayHub(t, nil, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "nonexistent-id", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/nonexistent-id", "--hub-url", srv.URL)
 
 	if res.exitCode != 5 {
 		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
 	}
 }
 
+func TestPlay_OldGroupOutputFlags_UsageError(t *testing.T) {
+	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--output", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
 func TestPlay_Volume_SetsRequestVolumeField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--volume", "50", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--volume", "50", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -309,7 +300,7 @@ func TestPlay_Volume_SetsRequestVolumeField(t *testing.T) {
 func TestPlay_NoVolume_OmitsRequestVolumeField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -322,7 +313,7 @@ func TestPlay_NoVolume_OmitsRequestVolumeField(t *testing.T) {
 func TestPlay_Name_SetsDisplayNameField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--name", "Kitchen Radio", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--display-name", "Kitchen Radio", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -338,12 +329,43 @@ func TestPlay_Name_SetsDisplayNameField(t *testing.T) {
 func TestPlay_NoName_OmitsDisplayNameField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "office-speaker", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
 	if _, ok := m.playRequest["displayName"]; ok {
 		t.Errorf("expected displayName omitted from request body, got: %+v", m.playRequest)
+	}
+}
+
+// TestPlay_TargetPathAliases_IdenticalToFullNames closes FR-004's
+// "everywhere a resource path is accepted" claim for play: play calls the
+// same respath.Parse the in/out/gr/rt aliases were added to (T014), so this
+// exercises contracts/cli-play.md's example #3 invocation shape, which
+// nothing else in this file covers.
+func TestPlay_TargetPathAliases_IdenticalToFullNames(t *testing.T) {
+	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, []string{"whole-house"})
+
+	outFull := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
+	outAlias := runCLI(t, "play", "https://stream.example.com/live.mp3", "out/office-speaker", "--hub-url", srv.URL)
+	if outAlias.exitCode != outFull.exitCode {
+		t.Fatalf("out/ alias exit code = %d, want %d; stderr: %s", outAlias.exitCode, outFull.exitCode, outAlias.stderr)
+	}
+
+	grFull := runCLI(t, "play", "https://stream.example.com/live.mp3", "groups/whole-house", "--hub-url", srv.URL)
+	grAlias := runCLI(t, "play", "https://stream.example.com/live.mp3", "gr/whole-house", "--hub-url", srv.URL)
+	if grAlias.exitCode != grFull.exitCode {
+		t.Fatalf("gr/ alias exit code = %d, want %d; stderr: %s", grAlias.exitCode, grFull.exitCode, grAlias.stderr)
+	}
+}
+
+func TestPlay_OldNameFlag_UsageError(t *testing.T) {
+	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--name", "Radio", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 }

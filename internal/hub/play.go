@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -88,51 +87,17 @@ func Playback(ctx context.Context, client *http.Client, baseURL string, req Play
 	return &playbackResp, nil
 }
 
-// ResolveTarget determines whether targetID names a single output or an
-// output group by calling the existing GetOutput/GetGroup (per
-// data-model.md's Target Resolution State table). forceGroup calls only
-// GetGroup; forceOutput calls only GetOutput; neither set calls GetOutput
-// then GetGroup and returns *AmbiguousTargetError if both succeed.
-func ResolveTarget(ctx context.Context, client *http.Client, baseURL, targetID string, forceGroup, forceOutput bool) (string, error) {
-	if forceGroup {
-		if _, err := GetGroup(ctx, client, baseURL, targetID); err != nil {
-			return "", err
-		}
-		return "OUTPUT_GROUP", nil
+// ResolveTarget verifies that a target of the given, already-known type
+// (targetType "SINGLE_OUTPUT" or "OUTPUT_GROUP") exists, by calling the
+// matching GetOutput/GetGroup. The CLI's resource-path parsing
+// (internal/cli/respath) determines targetType before this is ever called —
+// from a path like `outputs/<id>` or `groups/<id>` — so there is no
+// auto-detect/ambiguity branch: exactly one endpoint is called.
+func ResolveTarget(ctx context.Context, client *http.Client, baseURL, targetID, targetType string) error {
+	if targetType == "OUTPUT_GROUP" {
+		_, err := GetGroup(ctx, client, baseURL, targetID)
+		return err
 	}
-	if forceOutput {
-		if _, err := GetOutput(ctx, client, baseURL, targetID); err != nil {
-			return "", err
-		}
-		return "SINGLE_OUTPUT", nil
-	}
-
-	_, outputErr := GetOutput(ctx, client, baseURL, targetID)
-	outputFound := outputErr == nil
-	if outputErr != nil {
-		var notFoundErr *NotFoundError
-		if !errors.As(outputErr, &notFoundErr) {
-			return "", outputErr
-		}
-	}
-
-	_, groupErr := GetGroup(ctx, client, baseURL, targetID)
-	groupFound := groupErr == nil
-	if groupErr != nil {
-		var notFoundErr *NotFoundError
-		if !errors.As(groupErr, &notFoundErr) {
-			return "", groupErr
-		}
-	}
-
-	switch {
-	case outputFound && groupFound:
-		return "", &AmbiguousTargetError{ID: targetID}
-	case outputFound:
-		return "SINGLE_OUTPUT", nil
-	case groupFound:
-		return "OUTPUT_GROUP", nil
-	default:
-		return "", &NotFoundError{Resource: "target", ID: targetID}
-	}
+	_, err := GetOutput(ctx, client, baseURL, targetID)
+	return err
 }

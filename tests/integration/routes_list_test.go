@@ -69,10 +69,10 @@ func TestRoutesList_DefaultShowsAllStatusesYAML(t *testing.T) {
 
 	// Warm up the freshly built binary once, untimed (see
 	// TestOutputsGet_SuccessYAML's comment for why).
-	runCLI(t, "routes", "list", "--hub-url", srv.URL)
+	runCLI(t, "get", "routes", "--hub-url", srv.URL)
 
 	start := time.Now()
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL)
 	elapsed := time.Since(start)
 
 	if res.exitCode != 0 {
@@ -96,7 +96,7 @@ func TestRoutesList_DefaultShowsAllStatusesYAML(t *testing.T) {
 func TestRoutesList_ZeroRoutesIsUnambiguousSuccess(t *testing.T) {
 	srv := mockRoutesServer(t, `[]`)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -110,7 +110,7 @@ func TestRoutesList_ZeroRoutesIsUnambiguousSuccess(t *testing.T) {
 func TestRoutesList_StatusFilterNarrowsResults(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--status", "FAILED")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--status", "FAILED")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -126,7 +126,7 @@ func TestRoutesList_StatusFilterNarrowsResults(t *testing.T) {
 func TestRoutesList_InputIDFilterNarrowsResults(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--input-id", "line-in-1")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--input-id", "line-in-1")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -142,7 +142,7 @@ func TestRoutesList_InputIDFilterNarrowsResults(t *testing.T) {
 func TestRoutesList_TargetIDFilterNarrowsResults(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--target-id", "whole-house")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--target-id", "whole-house")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -158,7 +158,7 @@ func TestRoutesList_TargetIDFilterNarrowsResults(t *testing.T) {
 func TestRoutesList_CombinedFiltersUseANDLogic(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--status", "ACTIVE", "--target-id", "kitchen-speaker")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--status", "ACTIVE", "--target-id", "kitchen-speaker")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -174,7 +174,7 @@ func TestRoutesList_CombinedFiltersUseANDLogic(t *testing.T) {
 func TestRoutesList_InvalidStatusFilterExitsHubError(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--status", "NOT_A_REAL_STATUS")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--status", "NOT_A_REAL_STATUS")
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -187,7 +187,7 @@ func TestRoutesList_InvalidStatusFilterExitsHubError(t *testing.T) {
 func TestRoutesList_JSONOutput(t *testing.T) {
 	srv := mockRoutesServer(t, `[{"routeId":"route-abc-123","inputId":"spotify-1","targetId":"kitchen-speaker","targetType":"SINGLE_OUTPUT","status":"ACTIVE","createdAt":"2026-06-22T14:30:00Z","startedAt":"2026-06-22T14:30:01Z","transferable":true,"pauseable":true,"paused":false}]`)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -210,7 +210,7 @@ func TestRoutesList_JSONOutput(t *testing.T) {
 }
 
 func TestRoutesList_UnreachableHub(t *testing.T) {
-	res := runCLI(t, "routes", "list", "--hub-url", "http://127.0.0.1:1")
+	res := runCLI(t, "get", "routes", "--hub-url", "http://127.0.0.1:1")
 
 	if res.exitCode != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", res.exitCode, res.stderr)
@@ -226,7 +226,7 @@ func TestRoutesList_HubNon2xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	res := runCLI(t, "routes", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -234,7 +234,7 @@ func TestRoutesList_HubNon2xx(t *testing.T) {
 }
 
 func TestRoutesList_UnknownFlag(t *testing.T) {
-	res := runCLI(t, "routes", "list", "--unknown-flag")
+	res := runCLI(t, "get", "routes", "--unknown-flag")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)

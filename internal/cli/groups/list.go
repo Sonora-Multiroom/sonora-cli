@@ -13,9 +13,9 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const listUsage = "usage: sonora groups list [--include-disabled] [--json] [--verbose] [--hub-url URL]"
+const listUsage = "usage: sonora get|list groups [--include-disabled] [--json] [--verbose] [--hub-url URL]"
 
-// RunList implements `sonora groups list`: it defines and parses this
+// RunList implements `sonora get|list groups`: it defines and parses this
 // command's flags, resolves the hub URL, fetches groups from the hub
 // (enabled-only by default, or all groups with --include-disabled), and
 // renders them to stdout. Any failure is reported on stderr, never stdout,
