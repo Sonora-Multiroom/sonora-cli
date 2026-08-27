@@ -35,11 +35,11 @@ func TestGroupsGet_SuccessYAML(t *testing.T) {
 
 	// Warm up the freshly built binary once, untimed (see
 	// TestOutputsGet_SuccessYAML's comment for why).
-	runCLI(t, "groups", "get", "living-room", "--hub-url", srv.URL)
+	runCLI(t, "get", "groups/living-room", "--hub-url", srv.URL)
 
 	for _, id := range []string{"living-room", "unused-group"} {
 		start := time.Now()
-		res := runCLI(t, "groups", "get", id, "--hub-url", srv.URL)
+		res := runCLI(t, "get", "groups/"+id, "--hub-url", srv.URL)
 		elapsed := time.Since(start)
 
 		if res.exitCode != 0 {
@@ -61,7 +61,7 @@ func TestGroupsGet_JSONOutput(t *testing.T) {
 		"living-room": {"groupId": "living-room", "displayName": "Living Room Speakers", "outputIds": []string{"office-speaker", "bedroom-speaker"}, "muted": false, "enabled": true},
 	})
 
-	res := runCLI(t, "groups", "get", "living-room", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "groups/living-room", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -84,7 +84,7 @@ func TestGroupsGet_JSONOutput(t *testing.T) {
 func TestGroupsGet_NotFound(t *testing.T) {
 	srv := mockGroupServer(t, map[string]map[string]any{})
 
-	res := runCLI(t, "groups", "get", "missing-group", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "groups/missing-group", "--hub-url", srv.URL)
 
 	if res.exitCode != 5 {
 		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
@@ -101,8 +101,8 @@ func TestGroupsGet_NotFound(t *testing.T) {
 	}
 }
 
-func TestGroupsGet_MissingIdentifier(t *testing.T) {
-	res := runCLI(t, "groups", "get")
+func TestGroupsGet_EmptyIdentifier_MalformedPath(t *testing.T) {
+	res := runCLI(t, "get", "groups/")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)

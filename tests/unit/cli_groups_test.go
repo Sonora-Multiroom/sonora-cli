@@ -35,6 +35,21 @@ func TestGroupsRunList_UnreachableHubURL(t *testing.T) {
 	}
 }
 
+func TestGroupsRunList_HelpUsesNewGrammar(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := groups.RunList([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "sonora get|list groups") {
+		t.Errorf("expected usage line to name the new get/list grammar, got stderr:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "sonora groups list") {
+		t.Errorf("expected the removed old-grammar usage line to be gone, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestGroupsRunList_UnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := groups.RunList([]string{"--unknown-flag"}, &stdout, &stderr)

@@ -13,9 +13,9 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const listUsage = "usage: sonora outputs list [--include-disabled] [--json] [--verbose] [--hub-url URL]"
+const listUsage = "usage: sonora get|list outputs [--include-disabled] [--json] [--verbose] [--hub-url URL]"
 
-// RunList implements `sonora outputs list`: it defines and parses this
+// RunList implements `sonora get|list outputs`: it defines and parses this
 // command's flags, resolves the hub URL, fetches outputs from the hub, and
 // renders them to stdout. Any failure is reported on stderr, never stdout,
 // so scripts piping stdout never see error text. It returns the process

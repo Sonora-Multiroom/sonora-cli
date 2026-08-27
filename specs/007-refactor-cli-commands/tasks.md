@@ -33,7 +33,7 @@ internal packages live in `tests/unit`, not alongside the package).
 
 **Purpose**: Scaffold the one new package this feature adds.
 
-- [ ] T001 Create the `internal/cli/respath` package skeleton (package declaration only, no
+- [X] T001 Create the `internal/cli/respath` package skeleton (package declaration only, no
       logic yet) in `internal/cli/respath/respath.go`
 
 ---
@@ -46,12 +46,12 @@ target) depend on. Aliases are deliberately NOT included yet — canonical resou
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 [P] Write failing unit tests in `tests/unit/respath_test.go` for
+- [X] T002 [P] Write failing unit tests in `tests/unit/respath_test.go` for
       `internal/cli/respath`'s `ResourceKind`/`Path` parsing: canonical names only
       (`inputs`/`outputs`/`groups`/`routes`), splitting a resource-path argument on the first
       `/`, the id pattern `^[a-zA-Z0-9_-]{1,255}$` (FR-004a), and rejection of an unrecognized
       resource name or a malformed id (extra `/`, disallowed characters)
-- [ ] T003 Implement `ResourceKind`, `Path`, and a `Parse(arg string) (Path, error)` function
+- [X] T003 Implement `ResourceKind`, `Path`, and a `Parse(arg string) (Path, error)` function
       in `internal/cli/respath/respath.go` to make T002 pass (depends on T002)
 
 **Checkpoint**: `internal/cli/respath` parses and validates resource paths by canonical name.
@@ -72,7 +72,7 @@ fail with a usage error.
 
 ### Tests for User Story 1 (write first; confirm they fail before implementing)
 
-- [ ] T004 [P] [US1] Rewrite `cmd/sonora/main_test.go`: replace `TestRunUnknownNoun`,
+- [X] T004 [P] [US1] Rewrite `cmd/sonora/main_test.go`: replace `TestRunUnknownNoun`,
       `TestRunMissingVerb`, `TestRunUnknownVerb` with tests covering `get <resource>`,
       `get <resource>/<id>`, `list <resource>`, `list <resource>/<id>` (usage error, FR-003),
       an unrecognized resource name (usage error, FR-006), a bare `sonora get` and bare
@@ -80,17 +80,17 @@ fail with a usage error.
       asserted to enumerate the valid resource names (FR-006a) — and old-style
       `sonora outputs list` / `sonora outputs get <id>` now failing as an "unknown command"
       usage error, exit `2` (FR-005); update `TestRunHelp`'s expected help-text substrings
-- [ ] T005 [P] [US1] Update `tests/integration/outputs_list_test.go` and
+- [X] T005 [P] [US1] Update `tests/integration/outputs_list_test.go` and
       `tests/integration/outputs_get_test.go` to invoke `sonora get outputs` /
       `sonora get outputs/<id>` instead of `sonora outputs list` / `sonora outputs get <id>`
-- [ ] T006 [P] [US1] Update `tests/integration/inputs_list_test.go` and
+- [X] T006 [P] [US1] Update `tests/integration/inputs_list_test.go` and
       `tests/integration/inputs_get_test.go` to the new `sonora get inputs[/<id>]` invocation
-- [ ] T007 [P] [US1] Update `tests/integration/groups_list_test.go` and
+- [X] T007 [P] [US1] Update `tests/integration/groups_list_test.go` and
       `tests/integration/groups_get_test.go` to the new `sonora get groups[/<id>]` invocation
-- [ ] T008 [P] [US1] Update `tests/integration/routes_list_test.go` and
+- [X] T008 [P] [US1] Update `tests/integration/routes_list_test.go` and
       `tests/integration/routes_get_test.go` to the new `sonora get routes[/<id>]`
       invocation, preserving `--status`/`--input-id`/`--target-id` filter coverage
-- [ ] T008a [P] [US1] Add failing assertions to `tests/unit/cli_inputs_test.go`,
+- [X] T008a [P] [US1] Add failing assertions to `tests/unit/cli_inputs_test.go`,
       `cli_inputs_get_test.go`, `cli_outputs_test.go`, `cli_outputs_get_test.go`,
       `cli_groups_test.go`, `cli_groups_get_test.go`, `cli_routes_test.go`, and
       `cli_routes_get_test.go` that each package's `--help` usage line names the NEW
@@ -101,7 +101,7 @@ fail with a usage error.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Rewrite `run()` in `cmd/sonora/main.go`: recognize `get` and `list` as
+- [X] T009 [US1] Rewrite `run()` in `cmd/sonora/main.go`: recognize `get` and `list` as
       top-level verbs, resolve the resource-path argument via
       `internal/cli/respath.Parse`, and translate the result into the existing
       `inputs`/`outputs`/`groups`/`routes` `RunList`/`RunGet` calls (same `rest []string`
@@ -113,9 +113,9 @@ fail with a usage error.
       (FR-006a) — note today's `len(args) < 2` guard prints the old
       `usage: sonora <noun> <verb> [flags]` line and must be replaced, not just reworded
       (depends on T003; must be written after T004–T008a fail)
-- [ ] T010 [US1] Update the `helpText` constant in `cmd/sonora/main.go` to document
+- [X] T010 [US1] Update the `helpText` constant in `cmd/sonora/main.go` to document
       `get`/`list <resource>[/<id>]` instead of `<noun> <verb>`
-- [ ] T010a [US1] Rewrite the eight stale usage constants to the new grammar so no
+- [X] T010a [US1] Rewrite the eight stale usage constants to the new grammar so no
       user-facing string names a removed command form: `listUsage` and `getUsage` in
       `internal/cli/inputs/list.go`/`get.go`, `internal/cli/outputs/list.go`/`get.go`,
       `internal/cli/groups/list.go`/`get.go`, and `internal/cli/routes/list.go`/`get.go`
@@ -123,7 +123,7 @@ fail with a usage error.
       `usage: sonora get|list outputs [--include-disabled] …`, and
       `usage: sonora outputs get <output-id> …` → `usage: sonora get outputs/<output-id> …`),
       preserving each command's existing flag list verbatim (depends on T008a)
-- [ ] T011 [US1] Run `go test ./...` and fix any remaining regressions from the T004–T008a
+- [X] T011 [US1] Run `go test ./...` and fix any remaining regressions from the T004–T008a
       test rewrites (depends on T009, T010, T010a)
 
 **Checkpoint**: `get`/`list` work identically to today's output for all four resources; the
@@ -141,18 +141,18 @@ command and confirm identical output to using the full name.
 
 ### Tests for User Story 2 (write first; confirm they fail before implementing)
 
-- [ ] T012 [P] [US2] Add failing unit tests to `tests/unit/respath_test.go` asserting
+- [X] T012 [P] [US2] Add failing unit tests to `tests/unit/respath_test.go` asserting
       `in`/`out`/`gr`/`rt` resolve to the same `ResourceKind` as
       `inputs`/`outputs`/`groups`/`routes`, both bare and with a `/<id>` suffix
-- [ ] T013 [P] [US2] Extend `tests/integration/outputs_get_test.go` with a case asserting
+- [X] T013 [P] [US2] Extend `tests/integration/outputs_get_test.go` with a case asserting
       `sonora get out/<id>` returns output identical to `sonora get outputs/<id>`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Extend `internal/cli/respath`'s resource table in
+- [X] T014 [US2] Extend `internal/cli/respath`'s resource table in
       `internal/cli/respath/respath.go` with the `in`/`out`/`gr`/`rt` aliases (depends on
       T012, T013)
-- [ ] T015 [US2] Run `go test ./...` to confirm T012/T013 pass with no regression in US1
+- [X] T015 [US2] Run `go test ./...` to confirm T012/T013 pass with no regression in US1
       (depends on T014)
 
 **Checkpoint**: aliases work everywhere a resource path is accepted for `get`/`list`.
@@ -170,11 +170,11 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
 
 ### Tests for User Story 3 (write first; confirm they fail before implementing)
 
-- [ ] T016 [P] [US3] Rewrite `tests/unit/cli_play_test.go` for the new invocation: a
+- [X] T016 [P] [US3] Rewrite `tests/unit/cli_play_test.go` for the new invocation: a
       `<target-path>` positional replacing `<target-id>` + `--group`/`--output`, and
       `--display-name` replacing `--name`; assert the old `--group`, `--output`, and
       `--name` flags now fail as unrecognized flags (exit `2`)
-- [ ] T017 [P] [US3] Rework `tests/integration/play_test.go` for the new invocation. Every
+- [X] T017 [P] [US3] Rework `tests/integration/play_test.go` for the new invocation. Every
       test in this file passes a bare `<target-id>`, and four of them exercise behavior that
       no longer exists. Specifically:
       - **Delete** `TestPlay_AmbiguousTarget_NoFlag_ExitsAmbiguous` — it asserts exit `7`,
@@ -193,11 +193,11 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
         `TestPlay_MalformedSuccessBody_*`, `TestPlay_Volume_*`) to pass
         `outputs/<id>`/`groups/<id>`, and `TestPlay_Name_SetsDisplayNameField` /
         `TestPlay_NoName_OmitsDisplayNameField` to use `--display-name`
-- [ ] T018 [P] [US3] Update `tests/contract/play_resolve_test.go`: remove the "target
+- [X] T018 [P] [US3] Update `tests/contract/play_resolve_test.go`: remove the "target
       matches both an output and a group" ambiguous-case test (now structurally
       unreachable per data-model.md's exit-code-`7` removal), keeping/adjusting the
       per-type "not found" cases
-- [ ] T018a [P] [US3] Update `tests/unit/hub_client_test.go` for the removal of
+- [X] T018a [P] [US3] Update `tests/unit/hub_client_test.go` for the removal of
       `hub.ClassAmbiguous` (T020) — without this the `unit` package will not compile:
       delete `TestClassifyError_AmbiguousTarget` (it calls
       `hub.ClassifyError(&hub.AmbiguousTargetError{…})` and asserts `hub.ClassAmbiguous`),
@@ -206,13 +206,13 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Rewrite `internal/cli/play/play.go`: drop the `--group`, `--output`, and
+- [X] T019 [US3] Rewrite `internal/cli/play/play.go`: drop the `--group`, `--output`, and
       `--name` flag definitions; parse the second positional argument via
       `internal/cli/respath.Parse` restricted to `outputs`/`groups` (a resolved `inputs` or
       `routes` kind here is a usage error); add `--display-name`; pass the now-known target
       type straight into the playback request instead of calling the old auto-detect path
       (depends on T016, T017, T018, T018a)
-- [ ] T020 [US3] Replace `internal/hub/play.go`'s `ResolveTarget` with a narrower per-type
+- [X] T020 [US3] Replace `internal/hub/play.go`'s `ResolveTarget` with a narrower per-type
       existence check (the `forceGroup`/`forceOutput` parameters and the both-unset
       auto-detect/ambiguous branch all become dead once the CLI always supplies a known
       target type), and remove the now-unreachable ambiguity machinery from
@@ -224,11 +224,11 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
       `ExitCode()` switches on the constant *names*; exit codes `8`/`9`/`10` must stay
       unchanged (data-model.md), so verify them via `TestErrorClass_NewExitCodes` rather
       than assuming (depends on T019)
-- [ ] T021 [US3] Update the `usage` string in `internal/cli/play/play.go` and the `play`
+- [X] T021 [US3] Update the `usage` string in `internal/cli/play/play.go` and the `play`
       line in `cmd/sonora/main.go`'s `helpText` for the new target-path syntax
-- [ ] T022 [US3] Run `go test ./...` to confirm T016–T018a pass with no regression in
+- [X] T022 [US3] Run `go test ./...` to confirm T016–T018a pass with no regression in
       US1/US2 (depends on T019, T020, T021)
-- [ ] T022a [US2+US3] Close FR-004's "everywhere a resource path is accepted" claim for
+- [X] T022a [US2+US3] Close FR-004's "everywhere a resource path is accepted" claim for
       `play`: add a case to `tests/integration/play_test.go` asserting
       `sonora play <uri> out/<id>` and `sonora play <uri> gr/<id>` behave identically to
       their `outputs/`/`groups/` spellings — this is the invocation in
@@ -244,7 +244,7 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T023 [P] Update every old-grammar occurrence in README.md — this is a rewrite of the
+- [X] T023 [P] Update every old-grammar occurrence in README.md — this is a rewrite of the
       "Commands" section, not just the example block:
       - line 7: the banner example `sonora outputs list`
       - line 32: `Usage: `sonora <noun> <verb> [flags]`` → the verb-first usage line
@@ -256,19 +256,19 @@ as today's `--output`/`--group`/`--name` forms; confirm the old flags now fail.
         `sonora play <uri> <outputs|groups>/<id>` with `--display-name`
       - line 54: `Run `sonora <noun> <verb> --help`` and the `routes list` filter prose
       - lines 58–61: the four example commands
-- [ ] T024 [P] Update the `sonora outputs list` example in AGENTS.md line 9 to the new
+- [X] T024 [P] Update the `sonora outputs list` example in AGENTS.md line 9 to the new
       grammar (the only old-grammar occurrence in that file)
-- [ ] T025 [P] Fix the stale `` `sonora <noun> <verb>` `` doc comment at the top of
+- [X] T025 [P] Fix the stale `` `sonora <noun> <verb>` `` doc comment at the top of
       `internal/cli/clihelp/usage.go`
-- [ ] T025a [P] Add explicit FR-009 regression coverage: assert `--json`, `--hub-url`, and
+- [X] T025a [P] Add explicit FR-009 regression coverage: assert `--json`, `--hub-url`, and
       `--verbose` still behave identically on each refactored command. These flags are
       currently only exercised incidentally (integration tests pass `--hub-url` via
       `runCLI`; `--json` and `--verbose` are each asserted for a couple of commands), so
       nothing today would catch one of them being dropped from a rewritten flag set. One
       table-driven test over the `get`/`list` forms plus `play` is sufficient
-- [ ] T026 Run through `quickstart.md` end-to-end against a local mock hub and fix any
+- [X] T026 Run through `quickstart.md` end-to-end against a local mock hub and fix any
       discrepancy found
-- [ ] T027 Run `gofmt`, `go vet ./...`, and the project's configured linter per the
+- [X] T027 Run `gofmt`, `go vet ./...`, and the project's configured linter per the
       Constitution's Development Workflow, fixing any findings
 
 ---

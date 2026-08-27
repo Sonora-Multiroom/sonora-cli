@@ -18,13 +18,15 @@ const (
 	ClassNetwork
 	ClassNotFound
 	ClassValidation
-	ClassAmbiguous
 	ClassRouteFailed
 	ClassSourceUnreachable
 	ClassServiceUnavailable
 )
 
 // ExitCode returns the CLI exit code for this error class, per research.md §6.
+// Exit code 7 ("target matches both an output and a group") is retired —
+// path-style target addressing makes that case structurally unreachable
+// (data-model.md) — and is not reused by any other class.
 func (c ErrorClass) ExitCode() int {
 	switch c {
 	case ClassUsage:
@@ -37,8 +39,6 @@ func (c ErrorClass) ExitCode() int {
 		return 5
 	case ClassValidation:
 		return 6
-	case ClassAmbiguous:
-		return 7
 	case ClassRouteFailed:
 		return 8
 	case ClassSourceUnreachable:
@@ -99,17 +99,6 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("hub returned HTTP %d: %s", e.StatusCode, e.Title)
 }
 
-// AmbiguousTargetError indicates a target identifier matched both an output
-// and a group during resolution, with neither --group nor --output given to
-// disambiguate (FR-003a).
-type AmbiguousTargetError struct {
-	ID string
-}
-
-func (e *AmbiguousTargetError) Error() string {
-	return fmt.Sprintf("target %q matches both an output and a group; use --group or --output to disambiguate", e.ID)
-}
-
 // ClassifyError maps an error from a hub API call to its exit-code class
 // and a short, friendly, user-facing message. The underlying error remains
 // available to the caller for --verbose output.
@@ -121,11 +110,6 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	var notFoundErr *NotFoundError
 	if errors.As(err, &notFoundErr) {
 		return ClassNotFound, fmt.Sprintf("%s not found: %s", notFoundErr.Resource, notFoundErr.ID)
-	}
-
-	var ambiguousErr *AmbiguousTargetError
-	if errors.As(err, &ambiguousErr) {
-		return ClassAmbiguous, ambiguousErr.Error()
 	}
 
 	var apiErr *APIError

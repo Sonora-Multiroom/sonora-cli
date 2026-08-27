@@ -6,7 +6,7 @@
 - "Sonora CLI" is informal shorthand — do not use it in specs, docs, or headings; use
   "Sonora Multiroom CLI" (or "Sonora Multiroom" when referring to the product/hub as a
   whole) instead.
-- The invoked binary/command name is `sonora` (e.g. `sonora outputs list`) and is
+- The invoked binary/command name is `sonora` (e.g. `sonora get outputs`) and is
   unaffected by this — only prose naming changes.
 - The backend service this CLI talks to is the **Multiroom Audio Hub API**
   (`api/openapi.json`), a separate component from the CLI itself.

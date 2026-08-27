@@ -13,9 +13,9 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const listUsage = "usage: sonora routes list [--status STATUS] [--input-id ID] [--target-id ID] [--json] [--verbose] [--hub-url URL]"
+const listUsage = "usage: sonora get|list routes [--status STATUS] [--input-id ID] [--target-id ID] [--json] [--verbose] [--hub-url URL]"
 
-// RunList implements `sonora routes list`: it defines and parses this
+// RunList implements `sonora get|list routes`: it defines and parses this
 // command's flags, resolves the hub URL, fetches routes from the hub
 // (optionally narrowed by --status/--input-id/--target-id), and renders
 // them to stdout. Any failure is reported on stderr, never stdout, so

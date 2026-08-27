@@ -50,21 +50,21 @@ func TestPlayRun_MissingBothArguments(t *testing.T) {
 	}
 }
 
-func TestPlayRun_MissingTargetID(t *testing.T) {
+func TestPlayRun_MissingTargetPath(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := play.Run([]string{"https://stream.example.com/live.mp3"}, &stdout, &stderr)
 
 	if code != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "target-id") {
-		t.Errorf("expected stderr to name the missing <target-id> argument, got: %s", stderr.String())
+	if !strings.Contains(stderr.String(), "target") {
+		t.Errorf("expected stderr to name the missing target-path argument, got: %s", stderr.String())
 	}
 }
 
 func TestPlayRun_TooManyPositionalArguments(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := play.Run([]string{"uri", "target", "extra"}, &stdout, &stderr)
+	code := play.Run([]string{"uri", "outputs/target", "extra"}, &stdout, &stderr)
 
 	if code != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
@@ -73,7 +73,7 @@ func TestPlayRun_TooManyPositionalArguments(t *testing.T) {
 
 func TestPlayRun_UnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := play.Run([]string{"uri", "target", "--unknown-flag"}, &stdout, &stderr)
+	code := play.Run([]string{"uri", "outputs/target", "--unknown-flag"}, &stdout, &stderr)
 
 	if code != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
@@ -83,7 +83,7 @@ func TestPlayRun_UnknownFlag(t *testing.T) {
 func TestPlayRun_UnreachableHubURL(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	start := time.Now()
-	code := play.Run([]string{"https://stream.example.com/live.mp3", "office-speaker", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
+	code := play.Run([]string{"https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
 	elapsed := time.Since(start)
 
 	if code != 4 {
@@ -96,7 +96,7 @@ func TestPlayRun_UnreachableHubURL(t *testing.T) {
 
 func TestPlayRun_VerboseAppendsRawErrorDetail(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := play.Run([]string{"https://stream.example.com/live.mp3", "office-speaker", "--hub-url", "http://127.0.0.1:1", "--verbose"}, &stdout, &stderr)
+	code := play.Run([]string{"https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", "http://127.0.0.1:1", "--verbose"}, &stdout, &stderr)
 
 	if code != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
@@ -108,7 +108,7 @@ func TestPlayRun_VerboseAppendsRawErrorDetail(t *testing.T) {
 
 func TestPlayRun_NonVerboseOmitsRawErrorDetail(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := play.Run([]string{"https://stream.example.com/live.mp3", "office-speaker", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
+	code := play.Run([]string{"https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
 
 	if code != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
@@ -118,10 +118,66 @@ func TestPlayRun_NonVerboseOmitsRawErrorDetail(t *testing.T) {
 	}
 }
 
-func TestPlayRun_GroupAndOutputTogether_RejectedBeforeAnyRequest(t *testing.T) {
+func TestPlayRun_OldGroupFlag_UnrecognizedFlag(t *testing.T) {
 	srv, count := countingHub(t)
 	var stdout, stderr bytes.Buffer
-	code := play.Run([]string{"uri", "target", "--group", "--output", "--hub-url", srv.URL}, &stdout, &stderr)
+	code := play.Run([]string{"uri", "office-speaker", "--group", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_OldOutputFlag_UnrecognizedFlag(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "office-speaker", "--output", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_OldNameFlag_UnrecognizedFlag(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "outputs/office-speaker", "--name", "Radio", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_TargetKindRestrictedToOutputsGroups(t *testing.T) {
+	for _, target := range []string{"inputs/some-id", "routes/some-id"} {
+		t.Run(target, func(t *testing.T) {
+			srv, count := countingHub(t)
+			var stdout, stderr bytes.Buffer
+			code := play.Run([]string{"uri", target, "--hub-url", srv.URL}, &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests to the hub, got %d", got)
+			}
+		})
+	}
+}
+
+func TestPlayRun_MalformedTargetPath_RejectedBeforeAnyRequest(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "out/foo/bar", "--hub-url", srv.URL}, &stdout, &stderr)
 
 	if code != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
@@ -136,7 +192,7 @@ func TestPlayRun_VolumeOutOfRange_RejectedBeforeAnyRequest(t *testing.T) {
 		t.Run(volume, func(t *testing.T) {
 			srv, count := countingHub(t)
 			var stdout, stderr bytes.Buffer
-			code := play.Run([]string{"uri", "target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
+			code := play.Run([]string{"uri", "outputs/target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
 
 			if code != 6 {
 				t.Fatalf("exit code = %d, want 6; stderr: %s", code, stderr.String())
@@ -156,7 +212,7 @@ func TestPlayRun_VolumeBoundaryValues_ProceedToCallHub(t *testing.T) {
 		t.Run(volume, func(t *testing.T) {
 			srv, count := countingHub(t)
 			var stdout, stderr bytes.Buffer
-			code := play.Run([]string{"uri", "target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
+			code := play.Run([]string{"uri", "outputs/target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
 
 			// countingHub returns 404 for everything, so this resolves to a
 			// not-found target — the point is that a request was attempted.

@@ -57,10 +57,10 @@ func TestInputsList_DefaultEnabledOnlyYAML(t *testing.T) {
 	// cost unrelated to the command's actual latency (SC-001 measures the
 	// command, not first-process-launch overhead) — mirrors
 	// TestOutputsGet_SuccessYAML's warm-up.
-	runCLI(t, "inputs", "list", "--hub-url", srv.URL)
+	runCLI(t, "get", "inputs", "--hub-url", srv.URL)
 
 	start := time.Now()
-	res := runCLI(t, "inputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "inputs", "--hub-url", srv.URL)
 	elapsed := time.Since(start)
 
 	if res.exitCode != 0 {
@@ -85,7 +85,7 @@ func TestInputsList_DefaultEnabledOnlyYAML(t *testing.T) {
 func TestInputsList_ZeroInputsIsUnambiguousSuccess(t *testing.T) {
 	srv := mockInputsServer(t, `[]`)
 
-	res := runCLI(t, "inputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "inputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -99,7 +99,7 @@ func TestInputsList_ZeroInputsIsUnambiguousSuccess(t *testing.T) {
 func TestInputsList_IncludeDisabledShowsBothStates(t *testing.T) {
 	srv := mockInputsServerFilteringDisabled(t, twoEnabledOneDisabledInputs)
 
-	res := runCLI(t, "inputs", "list", "--hub-url", srv.URL, "--include-disabled")
+	res := runCLI(t, "get", "inputs", "--hub-url", srv.URL, "--include-disabled")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -115,7 +115,7 @@ func TestInputsList_IncludeDisabledShowsBothStates(t *testing.T) {
 func TestInputsList_JSONOutput(t *testing.T) {
 	srv := mockInputsServer(t, `[{"inputId":"spotify-1","displayName":"Spotify Stream","uri":"u1","enabled":true,"autoRemove":false,"source":"STATIC","createdAt":null,"pauseable":true}]`)
 
-	res := runCLI(t, "inputs", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "inputs", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -141,7 +141,7 @@ func TestInputsList_JSONOutput(t *testing.T) {
 }
 
 func TestInputsList_UnreachableHub(t *testing.T) {
-	res := runCLI(t, "inputs", "list", "--hub-url", "http://127.0.0.1:1")
+	res := runCLI(t, "get", "inputs", "--hub-url", "http://127.0.0.1:1")
 
 	if res.exitCode != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", res.exitCode, res.stderr)
@@ -157,7 +157,7 @@ func TestInputsList_HubNon2xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	res := runCLI(t, "inputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "inputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -165,7 +165,7 @@ func TestInputsList_HubNon2xx(t *testing.T) {
 }
 
 func TestInputsList_UnknownFlag(t *testing.T) {
-	res := runCLI(t, "inputs", "list", "--unknown-flag")
+	res := runCLI(t, "get", "inputs", "--unknown-flag")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)

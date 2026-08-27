@@ -124,7 +124,7 @@ var twoEnabledOneDisabled = []map[string]any{
 func TestOutputsList_DefaultEnabledOnlyYAML(t *testing.T) {
 	srv := mockOutputsServerFilteringDisabled(t, twoEnabledOneDisabled)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -145,7 +145,7 @@ func TestOutputsList_DefaultEnabledOnlyYAML(t *testing.T) {
 func TestOutputsList_ZeroOutputsIsUnambiguousSuccess(t *testing.T) {
 	srv := mockOutputsServer(t, `[]`)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -159,7 +159,7 @@ func TestOutputsList_ZeroOutputsIsUnambiguousSuccess(t *testing.T) {
 func TestOutputsList_UnreachableHub(t *testing.T) {
 	// Port 1 is a reserved/unassigned port; connections are refused
 	// immediately rather than hanging.
-	res := runCLI(t, "outputs", "list", "--hub-url", "http://127.0.0.1:1")
+	res := runCLI(t, "get", "outputs", "--hub-url", "http://127.0.0.1:1")
 
 	if res.exitCode != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", res.exitCode, res.stderr)
@@ -178,7 +178,7 @@ func TestOutputsList_HubNon2xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -191,7 +191,7 @@ func TestOutputsList_HubNon2xx(t *testing.T) {
 func TestOutputsList_MalformedResponse(t *testing.T) {
 	srv := mockOutputsServer(t, `{"not": "a list"}`)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -202,7 +202,7 @@ func TestOutputsList_MalformedResponse(t *testing.T) {
 }
 
 func TestOutputsList_UnknownFlag(t *testing.T) {
-	res := runCLI(t, "outputs", "list", "--unknown-flag")
+	res := runCLI(t, "get", "outputs", "--unknown-flag")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
@@ -218,7 +218,7 @@ func TestOutputsList_IncludeDisabledShowsBothStates(t *testing.T) {
 		{"outputId": "garage-speaker", "displayName": "Garage Speaker", "volume": 0, "muted": false, "available": false, "enabled": false},
 	})
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL, "--include-disabled")
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL, "--include-disabled")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -234,7 +234,7 @@ func TestOutputsList_IncludeDisabledShowsBothStates(t *testing.T) {
 func TestOutputsList_JSONOutput(t *testing.T) {
 	srv := mockOutputsServer(t, `[{"outputId":"office-speaker","displayName":"Office Speaker","volume":75,"muted":false,"available":true,"enabled":true}]`)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -270,7 +270,7 @@ func TestOutputsList_AllFlagCombinations(t *testing.T) {
 			for _, verbose := range []bool{false, true} {
 				name := fmt.Sprintf("include-disabled=%v,json=%v,verbose=%v", includeDisabled, jsonOut, verbose)
 				t.Run(name, func(t *testing.T) {
-					args := []string{"outputs", "list", "--hub-url", srv.URL}
+					args := []string{"get", "outputs", "--hub-url", srv.URL}
 					if includeDisabled {
 						args = append(args, "--include-disabled")
 					}
@@ -310,7 +310,7 @@ func TestOutputsList_AllFlagCombinations(t *testing.T) {
 func TestOutputsList_JSONZeroOutputs(t *testing.T) {
 	srv := mockOutputsServer(t, `[]`)
 
-	res := runCLI(t, "outputs", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "outputs", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)

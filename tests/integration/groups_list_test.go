@@ -53,10 +53,10 @@ func TestGroupsList_DefaultEnabledOnlyYAML(t *testing.T) {
 
 	// Warm up the freshly built binary once, untimed (see
 	// TestOutputsGet_SuccessYAML's comment for why).
-	runCLI(t, "groups", "list", "--hub-url", srv.URL)
+	runCLI(t, "get", "groups", "--hub-url", srv.URL)
 
 	start := time.Now()
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL)
 	elapsed := time.Since(start)
 
 	if res.exitCode != 0 {
@@ -81,7 +81,7 @@ func TestGroupsList_DefaultEnabledOnlyYAML(t *testing.T) {
 func TestGroupsList_ZeroGroupsIsUnambiguousSuccess(t *testing.T) {
 	srv := mockGroupsServer(t, `[]`)
 
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -95,7 +95,7 @@ func TestGroupsList_ZeroGroupsIsUnambiguousSuccess(t *testing.T) {
 func TestGroupsList_UnreachableHub(t *testing.T) {
 	// Port 1 is a reserved/unassigned port; connections are refused
 	// immediately rather than hanging.
-	res := runCLI(t, "groups", "list", "--hub-url", "http://127.0.0.1:1")
+	res := runCLI(t, "get", "groups", "--hub-url", "http://127.0.0.1:1")
 
 	if res.exitCode != 4 {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", res.exitCode, res.stderr)
@@ -111,7 +111,7 @@ func TestGroupsList_HubNon2xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL)
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL)
 
 	if res.exitCode != 3 {
 		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
@@ -122,7 +122,7 @@ func TestGroupsList_HubNon2xx(t *testing.T) {
 }
 
 func TestGroupsList_UnknownFlag(t *testing.T) {
-	res := runCLI(t, "groups", "list", "--unknown-flag")
+	res := runCLI(t, "get", "groups", "--unknown-flag")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
@@ -135,7 +135,7 @@ func TestGroupsList_UnknownFlag(t *testing.T) {
 func TestGroupsList_IncludeDisabledShowsBothStates(t *testing.T) {
 	srv := mockGroupsServerFilteringDisabled(t, oneEnabledOneDisabledGroup)
 
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL, "--include-disabled")
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL, "--include-disabled")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -151,7 +151,7 @@ func TestGroupsList_IncludeDisabledShowsBothStates(t *testing.T) {
 func TestGroupsList_JSONOutput(t *testing.T) {
 	srv := mockGroupsServer(t, `[{"groupId":"living-room","displayName":"Living Room Speakers","outputIds":["office-speaker","bedroom-speaker"],"muted":false,"enabled":true}]`)
 
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -176,7 +176,7 @@ func TestGroupsList_JSONOutput(t *testing.T) {
 func TestGroupsList_JSONZeroGroups(t *testing.T) {
 	srv := mockGroupsServer(t, `[]`)
 
-	res := runCLI(t, "groups", "list", "--hub-url", srv.URL, "--json")
+	res := runCLI(t, "get", "groups", "--hub-url", srv.URL, "--json")
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)

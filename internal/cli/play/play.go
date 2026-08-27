@@ -1,4 +1,4 @@
-// Package play implements `sonora play <uri> <target-id>`.
+// Package play implements `sonora play <uri> <outputs|groups>/<id>`.
 package play
 
 import (
@@ -8,20 +8,21 @@ import (
 	"io"
 
 	"sonora-cli/internal/cli/clihelp"
+	"sonora-cli/internal/cli/respath"
 	"sonora-cli/internal/config"
 	"sonora-cli/internal/hub"
 	"sonora-cli/internal/render"
 )
 
-const usage = "usage: sonora play <uri> <target-id> [--group | --output] [--volume N] [--name NAME] [--json] [--verbose] [--hub-url URL]"
+const usage = "usage: sonora play <uri> <outputs|groups>/<id> [--volume N] [--display-name NAME] [--json] [--verbose] [--hub-url URL]"
 
-// Run implements `sonora play <uri> <target-id>`: it defines and parses this
-// command's flags, validates a client-side volume range, resolves the
-// target's type (single output or group), calls the hub's playback
-// endpoint, and renders the result to stdout. Any failure is reported on
-// stderr, never stdout, so scripts piping stdout never see error text. It
-// returns the process exit code per the exit code classes in
-// data-model.md's exit code table.
+// Run implements `sonora play <uri> <outputs|groups>/<id>`: it defines and
+// parses this command's flags, validates a client-side volume range,
+// resolves the target path (its type is already known from the path prefix,
+// per internal/cli/respath), calls the hub's playback endpoint, and renders
+// the result to stdout. Any failure is reported on stderr, never stdout, so
+// scripts piping stdout never see error text. It returns the process exit
+// code per the exit code classes in data-model.md's exit code table.
 func Run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("play", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -30,12 +31,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base URL override")
-	groupFlag := fs.Bool("group", false, "force the target to be resolved as an output group")
-	outputFlag := fs.Bool("output", false, "force the target to be resolved as a single output")
 	volumeFlag := fs.Int("volume", -1, "starting volume (0-100) to set before playback starts")
-	nameFlag := fs.String("name", "", "display name for the created ephemeral input")
+	displayNameFlag := fs.String("display-name", "", "display name for the created ephemeral input")
 
-	// flag.Parse stops at the first non-flag argument, so <uri>/<target-id>
+	// flag.Parse stops at the first non-flag argument, so <uri>/<target-path>
 	// preceding a flag (per the documented invocation shape) would otherwise
 	// be mistaken for the end of flags. Re-parse in a loop, peeling off one
 	// positional argument at a time, so flags can appear before, between, or
@@ -59,19 +58,37 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		case len(positional) == 0:
 			fmt.Fprintln(stderr, "error: missing required argument: <uri>")
 		case len(positional) == 1:
-			fmt.Fprintln(stderr, "error: missing required argument: <target-id>")
+			fmt.Fprintln(stderr, "error: missing required argument: <target-path>")
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[2:])
 		}
 		return hub.ClassUsage.ExitCode()
 	}
-	uri, targetID := positional[0], positional[1]
+	uri, targetArg := positional[0], positional[1]
 
-	if *groupFlag && *outputFlag {
+	targetPath, err := respath.Parse(targetArg)
+	if err != nil {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintln(stderr, "error: --group and --output are mutually exclusive")
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return hub.ClassUsage.ExitCode()
 	}
+	if targetPath.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
+		return hub.ClassUsage.ExitCode()
+	}
+	var targetType string
+	switch targetPath.Kind {
+	case respath.Outputs:
+		targetType = "SINGLE_OUTPUT"
+	case respath.Groups:
+		targetType = "OUTPUT_GROUP"
+	default:
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: play target must be outputs/<id> or groups/<id>, got %q\n", targetArg)
+		return hub.ClassUsage.ExitCode()
+	}
+	targetID := targetPath.ID
 
 	volumeProvided := false
 	fs.Visit(func(f *flag.Flag) {
@@ -93,8 +110,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	ctx := context.Background()
 	client := hub.NewClient()
 
-	targetType, err := hub.ResolveTarget(ctx, client, baseURL, targetID, *groupFlag, *outputFlag)
-	if err != nil {
+	if err := hub.ResolveTarget(ctx, client, baseURL, targetID, targetType); err != nil {
 		return reportError(stderr, err, baseURL, *verbose)
 	}
 
@@ -102,8 +118,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if volumeProvided {
 		req.Volume = volumeFlag
 	}
-	if *nameFlag != "" {
-		req.DisplayName = nameFlag
+	if *displayNameFlag != "" {
+		req.DisplayName = displayNameFlag
 	}
 
 	resp, err := hub.Playback(ctx, client, baseURL, req)

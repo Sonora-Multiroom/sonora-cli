@@ -180,20 +180,9 @@ func TestClassifyError_APIError_StatusMappings(t *testing.T) {
 	}
 }
 
-func TestClassifyError_AmbiguousTarget(t *testing.T) {
-	class, msg := hub.ClassifyError(&hub.AmbiguousTargetError{ID: "shared-id"})
-	if class != hub.ClassAmbiguous {
-		t.Errorf("got class %v, want ClassAmbiguous", class)
-	}
-	if !strings.Contains(msg, "shared-id") {
-		t.Errorf("expected friendly message to name the identifier, got: %q", msg)
-	}
-}
-
 func TestErrorClass_NewExitCodes(t *testing.T) {
 	cases := map[hub.ErrorClass]int{
 		hub.ClassValidation:         6,
-		hub.ClassAmbiguous:          7,
 		hub.ClassRouteFailed:        8,
 		hub.ClassSourceUnreachable:  9,
 		hub.ClassServiceUnavailable: 10,
@@ -208,7 +197,7 @@ func TestErrorClass_NewExitCodes(t *testing.T) {
 func TestErrorClass_AllExitCodesDistinct(t *testing.T) {
 	all := []hub.ErrorClass{
 		hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound,
-		hub.ClassValidation, hub.ClassAmbiguous, hub.ClassRouteFailed,
+		hub.ClassValidation, hub.ClassRouteFailed,
 		hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
 	}
 	codes := map[int]hub.ErrorClass{}

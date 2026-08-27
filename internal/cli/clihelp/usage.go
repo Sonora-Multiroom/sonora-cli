@@ -1,6 +1,6 @@
-// Package clihelp gives every `sonora <noun> <verb>` command the same
-// formatted --help output: its usage line, then an aligned list of flags,
-// in place of the flag package's default "Usage of <name>:" dump.
+// Package clihelp gives every `sonora <verb> <resource>[/<id>]` command the
+// same formatted --help output: its usage line, then an aligned list of
+// flags, in place of the flag package's default "Usage of <name>:" dump.
 package clihelp
 
 import (

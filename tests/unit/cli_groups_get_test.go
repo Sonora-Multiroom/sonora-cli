@@ -21,6 +21,21 @@ func TestGroupsRunGet_Help(t *testing.T) {
 	}
 }
 
+func TestGroupsRunGet_HelpUsesNewGrammar(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := groups.RunGet([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "sonora get groups/<group-id>") {
+		t.Errorf("expected usage line to name the new get grammar, got stderr:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "sonora groups get") {
+		t.Errorf("expected the removed old-grammar usage line to be gone, got stderr:\n%s", stderr.String())
+	}
+}
+
 func TestGroupsRunGet_MissingIdentifier(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := groups.RunGet([]string{}, &stdout, &stderr)
