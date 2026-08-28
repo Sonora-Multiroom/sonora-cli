@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/cli/groups"
 	"sonora-cli/internal/cli/inputs"
 	"sonora-cli/internal/cli/outputs"
@@ -20,45 +21,45 @@ import (
 const helpText = `Usage: sonora <verb> <resource>[/<id>] [flags]
 
 Commands:
-  get <resource>[/<id>]    Fetch a collection, or a single item by id
-  list <resource>          Fetch a collection (synonym of 'get <resource>')
-  play <uri> <outputs|groups>/<id>
-                            Instant playback of an audio URI to an output or group
-  route inputs/<id> <outputs|groups>/<id>
-                            Connect an existing input to an existing output or group
-  transfer routes/<id> <outputs|groups>/<id>
-                            Move an active route's playback to a new output or group
-  delete routes/<id>       Stop and remove a route
-  stop routes/<id>         Alias of 'delete routes/<id>'
-  enable inputs/<id>       Enable a disabled input
-  disable inputs/<id>      Disable an input
-  set outputs/<id> volume <0-100>
-                            Set an output's volume level
-  help                     Show this help
+  get <resource>[/<id>]            Fetch a collection, or a single item by id
+  list <resource>                  Fetch a collection (synonym of 'get')
+  play <uri> <target>              Play an audio URI on an output or group
+  route inputs/<id> <target>       Connect an existing input to a target
+  transfer routes/<id> <target>    Move an active route's playback to a target
+  delete routes/<id>               Stop and remove a route
+  stop routes/<id>                 Alias of 'delete routes/<id>'
+  enable inputs/<id>               Enable a disabled input
+  disable inputs/<id>              Disable an input
+  set outputs/<id> volume <0-100>  Set an output's volume level
+  help                             Show this help
 
-Resources: inputs (in), outputs (out), groups (gr), routes (rt)
+  <resource>  inputs (in), outputs (out), groups (gr), routes (rt)
+  <target>    outputs/<id> or groups/<id>
 
-Global flags:
-  --json               Output strict JSON instead of the default YAML
-  --hub-url URL        Override the hub base URL
-  --verbose            Print underlying error detail on failure
-  --version, -v        Print the CLI version
+Flags:
+  --json         Output strict JSON instead of the default YAML
+  --hub-url URL  Override the hub base URL
+  --verbose      Print underlying error detail on failure
+  --version, -v  Print the CLI version
+  --help, -h     Show this help
+
+Flags follow the command, they do not precede it:
+'sonora get outputs --json', not 'sonora --json get outputs'.
+--version and --help may also be used alone, with no command.
 
 Examples:
   sonora get outputs --include-disabled
   sonora get routes --status active
-  sonora get groups/<id> --json
-  sonora list outputs
-  sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
+  sonora get groups/living-room --json
+  sonora play "https://stream.example.com/live.mp3" outputs/office-speaker
   sonora route inputs/spotify-1 outputs/office-speaker
-  sonora transfer routes/<route-id> outputs/bedroom-speaker
-  sonora delete routes/<route-id>
-  sonora enable inputs/<input-id>
-  sonora disable inputs/<input-id>
-  sonora set outputs/<output-id> volume 40
+  sonora transfer routes/route-abc-123 groups/living-room
+  sonora set outputs/office-speaker volume 40
+  sonora delete routes/route-abc-123
+  sonora enable inputs/spotify-1
 
-Run 'sonora get <resource> --help' or 'sonora list <resource> --help' for the full flag
-reference of any command.
+Run 'sonora <verb> <resource> --help' for a command's own flag reference,
+e.g. 'sonora get routes --help'.
 `
 
 func main() {
@@ -104,12 +105,28 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
+// startsWithResource reports whether args begins with a parseable resource
+// path. When it does, an accompanying --help belongs to that resource's own
+// command (which prints its flags) rather than to the verb, so the verb-level
+// help in each dispatcher stands down.
+func startsWithResource(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+	_, err := respath.Parse(args[0])
+	return err == nil
+}
+
 // dispatchDelete resolves the resource-path argument following `delete`/
 // `stop` via respath and calls routes.RunDelete — the only resource `delete`
 // currently supports is `routes` (`stop` is an exact alias of `delete`, per
 // docs/cli-command-landscape.md). Any other resource is a usage error.
 func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: missing resource argument")
@@ -142,6 +159,10 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 // resource is a usage error.
 func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id> [flags]", verb)
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: missing resource argument")
@@ -178,6 +199,10 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 // itself). Any other resource is a usage error.
 func dispatchSet(args []string, stdout, stderr io.Writer) int {
 	usage := "usage: sonora set outputs/<output-id> volume <0-100> [flags]"
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: missing resource argument")
@@ -212,12 +237,17 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 // resource names rather than the generic unrecognized-resource error
 // (FR-006a).
 func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora get <resource>[/<id>] [flags]"
+	if verb == "list" {
+		usage = "usage: sonora list <resource> [flags]"
+	}
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+
 	if len(args) == 0 {
-		if verb == "list" {
-			fmt.Fprintln(stderr, "usage: sonora list <resource> [flags]")
-		} else {
-			fmt.Fprintln(stderr, "usage: sonora get <resource>[/<id>] [flags]")
-		}
+		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "error: missing resource argument; valid resources: %s\n", strings.Join(respath.Names(), ", "))
 		return 2
 	}
@@ -228,7 +258,7 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if verb == "list" && path.ID != "" {
-		fmt.Fprintln(stderr, "usage: sonora list <resource> [flags]")
+		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: list does not accept an id; use 'sonora get <resource>/<id>' instead")
 		return 2
 	}

@@ -29,7 +29,7 @@ func RunDisable(args []string, stdout, stderr io.Writer) int {
 // piping stdout never see error text. It returns the process exit code per
 // the exit code classes in data-model.md's exit code table.
 func runSetEnabled(verb string, enabled bool, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id> [--json] [--verbose] [--hub-url URL]", verb)
+	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id> [flags]", verb)
 
 	fs := flag.NewFlagSet(verb+" inputs", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -37,7 +37,15 @@ func runSetEnabled(verb string, enabled bool, args []string, stdout, stderr io.W
 
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
-	hubURLFlag := fs.String("hub-url", "", "hub base URL override")
+	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+
+	// An explicit --help is a request, not a failure: serve it on stdout
+	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
+	// printing to stderr and exiting 2.
+	if clihelp.Requested(args) {
+		clihelp.PrintUsage(fs, stdout, usage)
+		return 0
+	}
 
 	// flag.Parse stops at the first non-flag argument, so a positional
 	// <input-id> preceding a flag (per the documented invocation shape)

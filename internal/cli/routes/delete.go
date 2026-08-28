@@ -12,7 +12,7 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const deleteUsage = "usage: sonora delete routes/<route-id> [--json] [--verbose] [--hub-url URL]"
+const deleteUsage = "usage: sonora delete routes/<route-id> [flags]"
 
 // RunDelete implements `sonora delete routes/<route-id>` (and its `sonora
 // stop routes/<route-id>` alias): it defines and parses this command's
@@ -28,7 +28,15 @@ func RunDelete(args []string, stdout, stderr io.Writer) int {
 
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
-	hubURLFlag := fs.String("hub-url", "", "hub base URL override")
+	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+
+	// An explicit --help is a request, not a failure: serve it on stdout
+	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
+	// printing to stderr and exiting 2.
+	if clihelp.Requested(args) {
+		clihelp.PrintUsage(fs, stdout, deleteUsage)
+		return 0
+	}
 
 	// flag.Parse stops at the first non-flag argument, so a positional
 	// <route-id> preceding a flag (per the documented invocation shape)
