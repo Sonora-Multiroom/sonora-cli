@@ -40,6 +40,8 @@ table, global flags, and examples from the terminal.
 | `list <resource>` | same four, collection form only | same |
 | `delete routes/<id>` | `routes` only | `rt` |
 | `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
+| `enable inputs/<id>` | `inputs` only | `in` |
+| `disable inputs/<id>` | `inputs` only | `in` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -49,6 +51,10 @@ interchangeable with full resource names everywhere a resource path appears, e.g
 
 `delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
 alias. Only `routes` supports deletion today.
+
+`enable inputs/<id>` and `disable inputs/<id>` set the input's enabled state; a disabled
+input remains registered but is unavailable for new route creation. Only `inputs` supports
+enable/disable today.
 
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —
