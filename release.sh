@@ -4,6 +4,18 @@ set -e
 
 semver_re='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
 
+bump=""
+for arg in "$@"; do
+    case "$arg" in
+        --patch|-p) bump="patch" ;;
+        --minor|-m) bump="minor" ;;
+        *)
+            echo "Error: unknown option '$arg' (expected --patch/-p or --minor/-m)." >&2
+            exit 1
+            ;;
+    esac
+done
+
 git fetch origin --tags >/dev/null 2>&1 || true
 current_tag=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
 current_tag=${current_tag#v}
@@ -19,13 +31,25 @@ else
     echo "Current version: none (no vX.Y.Z tags found)"
 fi
 
-printf 'Version to release (e.g. 0.1.0 or v0.1.0): '
-read -r input
-
-version=${input#v}
+if [ -n "$bump" ]; then
+    if [ -z "$current_tag" ]; then
+        echo "Error: --$bump requires an existing vX.Y.Z tag to compute the next version." >&2
+        exit 1
+    fi
+    if [ "$bump" = "patch" ]; then
+        version="$major.$minor.$((patch + 1))"
+    else
+        version="$major.$((minor + 1)).0"
+    fi
+    echo "Using suggested next $bump: v$version"
+else
+    printf 'Version to release (e.g. 0.1.0 or v0.1.0): '
+    read -r input
+    version=${input#v}
+fi
 
 if ! printf '%s' "$version" | grep -Eq "$semver_re"; then
-    echo "Error: '$input' is not a valid semantic version (expected X.Y.Z)." >&2
+    echo "Error: '$version' is not a valid semantic version (expected X.Y.Z)." >&2
     exit 1
 fi
 
