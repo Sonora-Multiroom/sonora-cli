@@ -2,6 +2,7 @@ package unit
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -46,12 +47,39 @@ func TestOutputsRunSetVolume_NonNumericValue(t *testing.T) {
 }
 
 func TestOutputsRunSetVolume_OutOfRangeValue(t *testing.T) {
-	for _, v := range []string{"-1", "101"} {
+	// A negative value must reach the range check rather than flag parsing,
+	// which would otherwise report "flag provided but not defined: -1" —
+	// also exit 2, so the message is what distinguishes the two paths.
+	for _, v := range []string{"-1", "-5", "101", "99999999999999999999"} {
 		var stdout, stderr bytes.Buffer
 		code := outputs.RunSetVolume([]string{"office-speaker", "volume", v}, &stdout, &stderr)
 
 		if code != 2 {
 			t.Fatalf("value=%s: exit code = %d, want 2; stderr: %s", v, code, stderr.String())
+		}
+		want := fmt.Sprintf("error: volume must be an integer between 0 and 100, got %q", v)
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("value=%s: expected stderr to contain %q, got:\n%s", v, want, stderr.String())
+		}
+	}
+}
+
+func TestOutputsRunSetVolume_NegativeValueWithFlags(t *testing.T) {
+	// Flags on either side of the positionals must not change how the
+	// negative value is read.
+	argSets := [][]string{
+		{"office-speaker", "volume", "-5", "--json"},
+		{"office-speaker", "volume", "-5", "--hub-url", "http://127.0.0.1:1"},
+	}
+	for _, args := range argSets {
+		var stdout, stderr bytes.Buffer
+		code := outputs.RunSetVolume(args, &stdout, &stderr)
+
+		if code != 2 {
+			t.Fatalf("args=%v: exit code = %d, want 2; stderr: %s", args, code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "volume must be an integer between 0 and 100") {
+			t.Errorf("args=%v: expected the range error, got stderr:\n%s", args, stderr.String())
 		}
 	}
 }

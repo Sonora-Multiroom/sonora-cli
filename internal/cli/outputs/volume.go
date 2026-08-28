@@ -2,6 +2,7 @@ package outputs
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -38,6 +39,15 @@ func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 	var positional []string
 	remaining := args
 	for {
+		// The <0-100> value is the one positional that can legitimately
+		// start with '-'. flag.Parse would read a negative value as an
+		// undefined flag and fail with "flag provided but not defined: -5",
+		// hiding the range error below, so peel it off before parsing.
+		if len(positional) == 2 && len(remaining) > 0 && looksNumeric(remaining[0]) {
+			positional = append(positional, remaining[0])
+			remaining = remaining[1:]
+			continue
+		}
 		if err := fs.Parse(remaining); err != nil {
 			return hub.ClassUsage.ExitCode()
 		}
@@ -96,4 +106,12 @@ func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, render.RenderOutputVolumeYAML(*ov))
 	}
 	return 0
+}
+
+// looksNumeric reports whether s is a decimal integer literal, including one
+// too large to fit an int64 — such a value still belongs to the volume slot,
+// where Atoi rejects it with the range error, rather than to flag parsing.
+func looksNumeric(s string) bool {
+	_, err := strconv.ParseInt(s, 10, 64)
+	return err == nil || errors.Is(err, strconv.ErrRange)
 }
