@@ -32,7 +32,7 @@ No Go toolchain installed? Use `make docker-build` to build the Linux binary ins
 Usage: `sonora <verb> <resource>[/<id>] [flags]`
 
 Run `sonora help` (or `-h`/`--help`, or `sonora` with no arguments) to print this command
-table, global flags, and examples from the terminal.
+table, common flags, and examples from the terminal.
 
 | Verb | Resources | Aliases |
 | --- | --- | --- |
@@ -74,10 +74,15 @@ group, creating the ephemeral input and route in one call —
 
 Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
 (override the hub base URL), and `--verbose` (print underlying error detail on failure).
+These are per-command flags, so write them **after** the resource path — `sonora get outputs
+--json`, not `sonora --json get outputs`. Only `--version`/`-v` and `--help`/`-h` are
+accepted bare, with no verb.
+
 `get`/`list` additionally support `--include-disabled` for inputs/outputs/groups;
-`get`/`list routes` also supports `--input-id`, `--target-id`, and `--status` filters. Run
-`sonora get <resource> --help` or `sonora list <resource> --help` for the full flag
-reference of any command.
+`get`/`list routes` also supports `--input-id`, `--target-id`, and `--status` filters
+(`--status` takes one of `STARTING`, `ACTIVE`, `STOPPING`, `STOPPED`, `FAILED`, matched
+case-insensitively). Run `sonora get <resource> --help` or `sonora list <resource> --help`
+for the full flag reference of any command.
 
 ```
 sonora get outputs --include-disabled

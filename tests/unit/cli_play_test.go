@@ -30,11 +30,14 @@ func TestPlayRun_Help(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := play.Run([]string{"--help"}, &stdout, &stderr)
 
-	if code != 2 {
-		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stdout: %s", code, stdout.String())
 	}
-	if !strings.Contains(stderr.String(), "Flags:") {
-		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	if !strings.Contains(stdout.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stdout:\n%s", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("expected help on stdout only, got stderr:\n%s", stderr.String())
 	}
 }
 

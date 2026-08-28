@@ -61,10 +61,18 @@ type groupsJSONPayload struct {
 // RenderGroupsJSON renders groups as strict, parseable JSON:
 // {"groups": [...]} (FR-011), with the same fields as RenderGroupsYAML.
 func RenderGroupsJSON(groups []hub.Group) string {
-	if groups == nil {
-		groups = []hub.Group{}
+	// A group with no member outputs decodes to a nil OutputIDs, which
+	// Marshal would render as null. Normalize to [] so every group in the
+	// list matches what RenderGroupsYAML and RenderGroupJSON emit, and so
+	// consumers can index/len outputIds without a null check.
+	normalized := make([]hub.Group, len(groups))
+	for i, g := range groups {
+		if g.OutputIDs == nil {
+			g.OutputIDs = []string{}
+		}
+		normalized[i] = g
 	}
-	data, err := json.Marshal(groupsJSONPayload{Groups: groups})
+	data, err := json.Marshal(groupsJSONPayload{Groups: normalized})
 	if err != nil {
 		// groupsJSONPayload's fields are all plain scalars/slices — Marshal
 		// cannot fail for this input shape.

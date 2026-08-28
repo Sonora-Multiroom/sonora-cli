@@ -195,3 +195,130 @@ func TestRunUnknownCommand(t *testing.T) {
 		t.Errorf("stderr = %q, want mention of unknown command", stderr.String())
 	}
 }
+
+// A verb with no usable resource path still answers --help on stdout with a
+// zero exit, rather than reporting "--help" as an unrecognized resource.
+func TestRunVerbHelp(t *testing.T) {
+	cases := map[string][]string{
+		"get":     {"get", "--help"},
+		"list":    {"list", "--help"},
+		"delete":  {"delete", "--help"},
+		"stop":    {"stop", "-h"},
+		"enable":  {"enable", "--help"},
+		"disable": {"disable", "--help"},
+		"set":     {"set", "--help"},
+	}
+
+	for name, args := range cases {
+		var stdout, stderr bytes.Buffer
+		code := run(args, &stdout, &stderr)
+
+		if code != 0 {
+			t.Errorf("run(%v) exit code = %d, want 0; stderr: %s", args, code, stderr.String())
+		}
+		if stderr.Len() != 0 {
+			t.Errorf("run(%v) stderr = %q, want empty", args, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "usage: sonora "+name) {
+			t.Errorf("run(%v) stdout missing the %s usage line, got:\n%s", args, name, stdout.String())
+		}
+	}
+}
+
+// A resource path present alongside --help means the resource's own command
+// answers, so the reply carries that command's flag reference.
+func TestRunResourceHelpBeatsVerbHelp(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"get", "outputs", "--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "Flags:") || !strings.Contains(out, "--include-disabled") {
+		t.Errorf("expected the outputs command's own flag reference, got stdout:\n%s", out)
+	}
+}
+
+// helpSection returns the lines of helpText under the given header, up to the
+// next blank line.
+func helpSection(t *testing.T, header string) []string {
+	t.Helper()
+
+	lines := strings.Split(helpText, "\n")
+	start := -1
+	for i, l := range lines {
+		if l == header {
+			start = i + 1
+			break
+		}
+	}
+	if start == -1 {
+		t.Fatalf("help text has no %q section:\n%s", header, helpText)
+	}
+
+	var section []string
+	for _, l := range lines[start:] {
+		if strings.TrimSpace(l) == "" {
+			break
+		}
+		section = append(section, l)
+	}
+	if len(section) == 0 {
+		t.Fatalf("section %q is empty", header)
+	}
+	return section
+}
+
+// Descriptions used to be misaligned: single-line commands landed in one
+// column while the wrapped ones (play, route, transfer, set) landed one
+// column further right. Every row must share a description column.
+func TestHelpTextColumnsAlign(t *testing.T) {
+	for _, header := range []string{"Commands:", "Flags:"} {
+		var want int
+		for i, line := range helpSection(t, header) {
+			gap := strings.Index(line[2:], "  ")
+			if gap == -1 {
+				t.Errorf("%s row %q has no description", header, line)
+				continue
+			}
+			col := 2 + gap
+			for col < len(line) && line[col] == ' ' {
+				col++
+			}
+
+			if i == 0 {
+				want = col
+				continue
+			}
+			if col != want {
+				t.Errorf("%s: description of %q starts at column %d, want %d (aligned with the first row)", header, line, col, want)
+			}
+		}
+	}
+}
+
+// Help is read in a terminal; nothing may rely on the reader's window being
+// wider than the classic 80 columns.
+func TestHelpTextFitsEightyColumns(t *testing.T) {
+	for _, line := range strings.Split(helpText, "\n") {
+		if len(line) > 80 {
+			t.Errorf("help line is %d chars, want <= 80:\n%s", len(line), line)
+		}
+	}
+}
+
+// Every command the help advertises must actually dispatch, and every verb
+// run() dispatches must be advertised.
+func TestHelpTextListsEveryDispatchedVerb(t *testing.T) {
+	listed := map[string]bool{}
+	for _, line := range helpSection(t, "Commands:") {
+		listed[strings.Fields(line)[0]] = true
+	}
+
+	for _, verb := range []string{"get", "list", "play", "route", "transfer", "delete", "stop", "enable", "disable", "set", "help"} {
+		if !listed[verb] {
+			t.Errorf("help text does not list the %q command", verb)
+		}
+	}
+}

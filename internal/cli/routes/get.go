@@ -12,7 +12,7 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const getUsage = "usage: sonora get routes/<route-id> [--json] [--verbose] [--hub-url URL]"
+const getUsage = "usage: sonora get routes/<route-id> [flags]"
 
 // RunGet implements `sonora get routes/<route-id>`: it defines and parses
 // this command's flags, resolves the hub URL, fetches the single named
@@ -27,7 +27,15 @@ func RunGet(args []string, stdout, stderr io.Writer) int {
 
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
-	hubURLFlag := fs.String("hub-url", "", "hub base URL override")
+	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+
+	// An explicit --help is a request, not a failure: serve it on stdout
+	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
+	// printing to stderr and exiting 2.
+	if clihelp.Requested(args) {
+		clihelp.PrintUsage(fs, stdout, getUsage)
+		return 0
+	}
 
 	// flag.Parse stops at the first non-flag argument, so a positional
 	// <route-id> preceding a flag (per the documented invocation shape)

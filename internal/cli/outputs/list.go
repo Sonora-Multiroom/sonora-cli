@@ -13,7 +13,7 @@ import (
 	"sonora-cli/internal/render"
 )
 
-const listUsage = "usage: sonora get|list outputs [--include-disabled] [--json] [--verbose] [--hub-url URL]"
+const listUsage = "usage: sonora get|list outputs [flags]"
 
 // RunList implements `sonora get|list outputs`: it defines and parses this
 // command's flags, resolves the hub URL, fetches outputs from the hub, and
@@ -28,7 +28,15 @@ func RunList(args []string, stdout, stderr io.Writer) int {
 	includeDisabled := fs.Bool("include-disabled", false, "include disabled outputs in the results")
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
-	hubURLFlag := fs.String("hub-url", "", "hub base URL override")
+	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+
+	// An explicit --help is a request, not a failure: serve it on stdout
+	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
+	// printing to stderr and exiting 2.
+	if clihelp.Requested(args) {
+		clihelp.PrintUsage(fs, stdout, listUsage)
+		return 0
+	}
 
 	if err := fs.Parse(args); err != nil {
 		return hub.ClassUsage.ExitCode()

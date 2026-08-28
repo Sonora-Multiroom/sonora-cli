@@ -171,16 +171,43 @@ func TestRoutesList_CombinedFiltersUseANDLogic(t *testing.T) {
 	}
 }
 
-func TestRoutesList_InvalidStatusFilterExitsHubError(t *testing.T) {
+// An unknown --status is a usage error (exit 2), caught before any request
+// is made, rather than a hub error (exit 3) from a forwarded bad value: the
+// CLI knows the RouteResponse.status enum from api/openapi.json, so it can
+// name the valid values instead of relaying an opaque HTTP 400.
+func TestRoutesList_InvalidStatusFilterIsAUsageError(t *testing.T) {
 	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
 
 	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--status", "NOT_A_REAL_STATUS")
 
-	if res.exitCode != 3 {
-		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 	if res.stdout != "" {
 		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+	if !strings.Contains(res.stderr, `unknown status "NOT_A_REAL_STATUS"`) {
+		t.Errorf("expected the rejected value to be named, got stderr:\n%s", res.stderr)
+	}
+	for _, want := range []string{"STARTING", "ACTIVE", "STOPPING", "STOPPED", "FAILED"} {
+		if !strings.Contains(res.stderr, want) {
+			t.Errorf("expected %s among the listed valid statuses, got stderr:\n%s", want, res.stderr)
+		}
+	}
+}
+
+// A lower-case status is upper-cased on the wire, so the documented
+// `sonora get routes --status active` reaches the hub as ACTIVE.
+func TestRoutesList_StatusFilterIsCaseInsensitive(t *testing.T) {
+	srv := mockRoutesServerFiltering(t, mixedStatusRoutes)
+
+	res := runCLI(t, "get", "routes", "--hub-url", srv.URL, "--status", "active")
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stdout, "route-abc-123") {
+		t.Errorf("expected the ACTIVE route in stdout, got:\n%s", res.stdout)
 	}
 }
 
