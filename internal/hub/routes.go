@@ -35,6 +35,13 @@ type CreateRouteRequest struct {
 	TargetType string `json:"targetType"`
 }
 
+// TransferRequest mirrors #/components/schemas/TransferRequest in
+// api/openapi.json field-for-field (constitution Principle II).
+type TransferRequest struct {
+	TargetID   string `json:"targetId"`
+	TargetType string `json:"targetType"`
+}
+
 func validateRoute(r Route) error {
 	if r.RouteID == "" || r.InputID == "" || r.TargetID == "" {
 		return fmt.Errorf("route missing required routeId/inputId/targetId")
@@ -208,6 +215,59 @@ func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req C
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, &NotFoundError{Resource: "target", ID: req.TargetID}
+	}
+	switch resp.StatusCode {
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var route Route
+	if err := json.NewDecoder(resp.Body).Decode(&route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateRoute(route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &route, nil
+}
+
+// TransferRoute calls POST {baseURL}/api/v2/routes/{routeId}/transfer
+// (operationId "transferRoute"), seamlessly moving an active route's
+// playback to a new target. The hub replaces the old route with a new one,
+// so on success (200) the decoded and validated *new* Route is returned,
+// mirroring CreateRoute's success handling. A 404 is returned as a
+// *NotFoundError naming the route. A 400/422 attempts to decode the body as
+// an errorResponse into an *APIError, falling back to a *StatusError if
+// that decode fails (mirroring CreateRoute's 400/422 handling); any other
+// non-2xx status is a *StatusError.
+func TransferRoute(ctx context.Context, client *http.Client, baseURL, routeID string, req TransferRequest) (*Route, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/routes/" + url.PathEscape(routeID) + "/transfer"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "route", ID: routeID}
 	}
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:

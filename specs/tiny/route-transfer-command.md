@@ -2,7 +2,7 @@
 
 **Branch**: feature/route-transfer-command
 **Date**: 2026-08-28
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -67,17 +67,17 @@ the existing two-positional-arg dispatch pattern already used by `sonora route`.
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.TransferRoute` in `tests/contract/route_test.go`
-- [ ] Implement `hub.TransferRequest`/`hub.TransferRoute` in `internal/hub/routes.go`
-- [ ] Write unit tests + implement `route.RunTransfer` in `internal/cli/route/transfer.go`
-- [ ] Write integration test + wire `transfer` dispatch in `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Write contract tests for `hub.TransferRoute` in `tests/contract/route_test.go`
+- [x] Implement `hub.TransferRequest`/`hub.TransferRoute` in `internal/hub/routes.go`
+- [x] Write unit tests + implement `route.RunTransfer` in `internal/cli/route/transfer.go`
+- [x] Write integration test + wire `transfer` dispatch in `cmd/sonora/main.go`, update `helpText`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora transfer routes/<id> outputs/<id>` and `.../groups/<id>` verified end-to-end
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora transfer routes/<id> outputs/<id>` and `.../groups/<id>` verified end-to-end
       against a mock hub, including target-not-found and route-not-found error paths

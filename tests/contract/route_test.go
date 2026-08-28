@@ -328,3 +328,174 @@ func TestDeleteRoute_OtherErrorStatus_IsStatusError(t *testing.T) {
 		t.Errorf("got StatusCode %d, want 500", statusErr.StatusCode)
 	}
 }
+
+// Request/response shapes here mirror #/components/schemas/TransferRequest,
+// RouteResponse, and ErrorResponse, and the transferRoute operation, in
+// api/openapi.json (constitution Principle II): POST
+// /api/v2/routes/{routeId}/transfer returns 200 with the new route on
+// success, 404 if the route doesn't exist, 400 if it isn't transferable,
+// 422 if the transfer fails.
+
+func TestTransferRoute_Success_Decodes(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"routeId": "route_new456", "inputId": "spotify-1", "targetId": "bedroom-speaker",
+			"targetType": "SINGLE_OUTPUT", "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
+			"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	resp, err := hub.TransferRoute(context.Background(), client, srv.URL, "route_abc123", req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotMethod != http.MethodPost {
+		t.Errorf("got method %q, want POST", gotMethod)
+	}
+	if gotPath != "/api/v2/routes/route_abc123/transfer" {
+		t.Errorf("got path %q, want /api/v2/routes/route_abc123/transfer", gotPath)
+	}
+	if gotBody["targetId"] != req.TargetID || gotBody["targetType"] != req.TargetType {
+		t.Errorf("expected targetId/targetType in request body, got: %+v", gotBody)
+	}
+	if resp.RouteID != "route_new456" || resp.TargetID != "bedroom-speaker" {
+		t.Errorf("unexpected decoded route: %+v", resp)
+	}
+}
+
+func TestTransferRoute_404_NotFoundNamesRoute(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), client, srv.URL, "missing-route", req)
+	if err == nil {
+		t.Fatal("expected an error for a 404 response, got nil")
+	}
+	var notFoundErr *hub.NotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expected a *hub.NotFoundError, got %T: %v", err, err)
+	}
+	if notFoundErr.Resource != "route" || notFoundErr.ID != "missing-route" {
+		t.Errorf("unexpected NotFoundError: %+v", notFoundErr)
+	}
+}
+
+func testTransferRouteErrorStatus(t *testing.T, status int) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"type": "urn:multiroom:error:transfer-error", "title": "Transfer Error", "detail": "route is not transferable",
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), client, srv.URL, "route_abc123", req)
+	if err == nil {
+		t.Fatalf("expected an error for status %d, got nil", status)
+	}
+	var apiErr *hub.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected a *hub.APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != status || apiErr.Title != "Transfer Error" || apiErr.Detail != "route is not transferable" {
+		t.Errorf("unexpected APIError: %+v", apiErr)
+	}
+}
+
+func TestTransferRoute_400_DecodesAsAPIError(t *testing.T) {
+	testTransferRouteErrorStatus(t, http.StatusBadRequest)
+}
+func TestTransferRoute_422_DecodesAsAPIError(t *testing.T) {
+	testTransferRouteErrorStatus(t, http.StatusUnprocessableEntity)
+}
+
+func TestTransferRoute_ErrorStatus_NonJSONBodyFallsBackToStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), client, srv.URL, "route_abc123", req)
+	if err == nil {
+		t.Fatal("expected an error for a non-JSON error body, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError fallback, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("got StatusCode %d, want 422", statusErr.StatusCode)
+	}
+}
+
+func TestTransferRoute_OtherErrorStatus_IsStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), client, srv.URL, "route_abc123", req)
+	if err == nil {
+		t.Fatal("expected an error for a 500 response, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusInternalServerError {
+		t.Errorf("got StatusCode %d, want 500", statusErr.StatusCode)
+	}
+}
+
+func testTransferRouteMalformedBody(t *testing.T, body string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), client, srv.URL, "route_abc123", req)
+	if err == nil {
+		t.Fatal("expected an error for a malformed 200 body, got nil")
+	}
+	var decodeErr *hub.DecodeError
+	if !errors.As(err, &decodeErr) {
+		t.Fatalf("expected a *hub.DecodeError, got %T: %v", err, err)
+	}
+}
+
+func TestTransferRoute_MalformedBody_MissingRouteID(t *testing.T) {
+	testTransferRouteMalformedBody(t, `{"routeId":"","inputId":"spotify-1","targetId":"bedroom-speaker","targetType":"SINGLE_OUTPUT","status":"STARTING"}`)
+}
+
+func TestTransferRoute_MalformedBody_UnrecognizedTargetType(t *testing.T) {
+	testTransferRouteMalformedBody(t, `{"routeId":"route_new456","inputId":"spotify-1","targetId":"bedroom-speaker","targetType":"BOGUS","status":"STARTING"}`)
+}
