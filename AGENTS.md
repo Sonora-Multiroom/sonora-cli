@@ -18,6 +18,14 @@
   Single-dash multi-letter forms (`-version`, `-help`) are invalid and must not be
   added.
 
+## Git / PR conventions
+
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+  — see [CONTRIBUTING.md](CONTRIBUTING.md) for the types this repo uses.
+- Never add a `Co-Authored-By` trailer (or similar attribution) to git commit messages.
+- Never add "Generated with Claude Code" (or similar attribution) to pull request
+  descriptions.
+
 ## Project context
 
 - Governance and non-negotiable engineering principles live in
