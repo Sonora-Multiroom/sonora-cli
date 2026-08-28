@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -99,6 +100,59 @@ func GetInput(ctx context.Context, client *http.Client, baseURL, inputID string)
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, &NotFoundError{Resource: "input", ID: inputID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var input Input
+	if err := json.NewDecoder(resp.Body).Decode(&input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateInput(input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &input, nil
+}
+
+// SetInputEnabled calls PUT {baseURL}/api/v2/inputs/{inputId}/enabled
+// (operationId "setInputEnabled") with {"enabled": enabled}. On success
+// (200), the decoded, updated Input is returned, validated via the existing
+// validateInput helper (malformed body → *DecodeError). A 404 is returned
+// as a *NotFoundError naming the input. A 400 attempts to decode the body
+// as an errorResponse into an *APIError, falling back to a *StatusError if
+// that decode fails (mirroring CreateRoute's 400/422 handling); any other
+// non-2xx status is a *StatusError.
+func SetInputEnabled(ctx context.Context, client *http.Client, baseURL, inputID string, enabled bool) (*Input, error) {
+	body, err := json.Marshal(struct {
+		Enabled bool `json:"enabled"`
+	}{Enabled: enabled})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/inputs/" + url.PathEscape(inputID) + "/enabled"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "input", ID: inputID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}

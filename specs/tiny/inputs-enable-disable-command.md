@@ -2,7 +2,7 @@
 
 **Branch**: feature/inputs-enable-disable-command
 **Date**: 2026-08-28
-**Status**: accepted
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -63,19 +63,19 @@ is rendered with the existing `RenderInputYAML`/`RenderInputJSON`. Only `inputs`
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetInputEnabled` in `tests/contract/inputs_enabled_test.go`
-- [ ] Implement `hub.SetInputEnabled` in `internal/hub/inputs.go`
-- [ ] Write unit tests + implement `inputs.RunEnable`/`RunDisable` in
+- [x] Write contract tests for `hub.SetInputEnabled` in `tests/contract/inputs_enabled_test.go`
+- [x] Implement `hub.SetInputEnabled` in `internal/hub/inputs.go`
+- [x] Write unit tests + implement `inputs.RunEnable`/`RunDisable` in
       `internal/cli/inputs/enabled.go`
-- [ ] Write integration test + wire `enable`/`disable` dispatch (incl. non-inputs rejection)
+- [x] Write integration test + wire `enable`/`disable` dispatch (incl. non-inputs rejection)
       in `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora enable inputs/<id>` and `sonora disable inputs/<id>` verified end-to-end against
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora enable inputs/<id>` and `sonora disable inputs/<id>` verified end-to-end against
       a mock hub, including the 404/400 error paths

@@ -28,6 +28,8 @@ Commands:
                             Connect an existing input to an existing output or group
   delete routes/<id>       Stop and remove a route
   stop routes/<id>         Alias of 'delete routes/<id>'
+  enable inputs/<id>       Enable a disabled input
+  disable inputs/<id>      Disable an input
   help                     Show this help
 
 Resources: inputs (in), outputs (out), groups (gr), routes (rt)
@@ -46,6 +48,8 @@ Examples:
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
   sonora route inputs/spotify-1 outputs/office-speaker
   sonora delete routes/<route-id>
+  sonora enable inputs/<input-id>
+  sonora disable inputs/<input-id>
 
 Run 'sonora get <resource> --help' or 'sonora list <resource> --help' for the full flag
 reference of any command.
@@ -81,6 +85,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchGetList(args[0], args[1:], stdout, stderr)
 	case "delete", "stop":
 		return dispatchDelete(args[0], args[1:], stdout, stderr)
+	case "enable", "disable":
+		return dispatchEnabled(args[0], args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "sonora: unknown command %q\n", args[0])
 		return 2
@@ -117,6 +123,41 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 
 	callArgs := append([]string{path.ID}, args[1:]...)
 	return routes.RunDelete(callArgs, stdout, stderr)
+}
+
+// dispatchEnabled resolves the resource-path argument following `enable`/
+// `disable` via respath and calls inputs.RunEnable/RunDisable — the only
+// resource `enable`/`disable` currently support is `inputs`. Any other
+// resource is a usage error.
+func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
+	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id> [flags]", verb)
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Inputs {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only inputs/<input-id> is supported\n", verb, path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <input-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	if verb == "enable" {
+		return inputs.RunEnable(callArgs, stdout, stderr)
+	}
+	return inputs.RunDisable(callArgs, stdout, stderr)
 }
 
 // dispatchGetList resolves the resource-path argument following `get`/`list`
