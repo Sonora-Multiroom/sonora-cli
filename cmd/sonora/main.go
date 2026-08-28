@@ -32,6 +32,8 @@ Commands:
   stop routes/<id>         Alias of 'delete routes/<id>'
   enable inputs/<id>       Enable a disabled input
   disable inputs/<id>      Disable an input
+  set outputs/<id> volume <0-100>
+                            Set an output's volume level
   help                     Show this help
 
 Resources: inputs (in), outputs (out), groups (gr), routes (rt)
@@ -53,6 +55,7 @@ Examples:
   sonora delete routes/<route-id>
   sonora enable inputs/<input-id>
   sonora disable inputs/<input-id>
+  sonora set outputs/<output-id> volume 40
 
 Run 'sonora get <resource> --help' or 'sonora list <resource> --help' for the full flag
 reference of any command.
@@ -93,6 +96,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchDelete(args[0], args[1:], stdout, stderr)
 	case "enable", "disable":
 		return dispatchEnabled(args[0], args[1:], stdout, stderr)
+	case "set":
+		return dispatchSet(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "sonora: unknown command %q\n", args[0])
 		return 2
@@ -164,6 +169,39 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 		return inputs.RunEnable(callArgs, stdout, stderr)
 	}
 	return inputs.RunDisable(callArgs, stdout, stderr)
+}
+
+// dispatchSet resolves the resource-path argument following `set` via
+// respath and calls outputs.RunSetVolume — the only resource/attribute
+// combination `set` currently supports is `outputs`/`volume` (the literal
+// `volume` word and its `<0-100>` value are validated by RunSetVolume
+// itself). Any other resource is a usage error.
+func dispatchSet(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora set outputs/<output-id> volume <0-100> [flags]"
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Outputs {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: set does not support %s; only outputs/<output-id> volume <0-100> is supported\n", path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <output-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	return outputs.RunSetVolume(callArgs, stdout, stderr)
 }
 
 // dispatchGetList resolves the resource-path argument following `get`/`list`

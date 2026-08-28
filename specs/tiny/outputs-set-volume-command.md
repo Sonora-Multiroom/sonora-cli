@@ -2,7 +2,7 @@
 
 **Branch**: feature/outputs-set-volume-command
 **Date**: 2026-08-29
-**Status**: accepted
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -72,20 +72,20 @@ attribute are follow-up work, matching how `enable`/`disable` shipped
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetOutputVolume` in `tests/contract/outputs_volume_test.go`
-- [ ] Implement `hub.OutputVolume` + `hub.SetOutputVolume` in `internal/hub/outputs.go`
-- [ ] Write render tests + implement `RenderOutputVolumeYAML`/`RenderOutputVolumeJSON` in
+- [x] Write contract tests for `hub.SetOutputVolume` in `tests/contract/outputs_volume_test.go`
+- [x] Implement `hub.OutputVolume` + `hub.SetOutputVolume` in `internal/hub/outputs.go`
+- [x] Write render tests + implement `RenderOutputVolumeYAML`/`RenderOutputVolumeJSON` in
       `internal/render/outputs.go`
-- [ ] Write unit tests + implement `outputs.RunSetVolume` in `internal/cli/outputs/volume.go`
-- [ ] Write integration test + wire `set` dispatch (incl. non-outputs/non-volume rejection) in
+- [x] Write unit tests + implement `outputs.RunSetVolume` in `internal/cli/outputs/volume.go`
+- [x] Write integration test + wire `set` dispatch (incl. non-outputs/non-volume rejection) in
       `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora set outputs/<id> volume <n>` verified end-to-end against a mock hub, including the
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora set outputs/<id> volume <n>` verified end-to-end against a mock hub, including the
       404/400/out-of-range error paths

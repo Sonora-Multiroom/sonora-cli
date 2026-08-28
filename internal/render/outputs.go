@@ -47,6 +47,28 @@ func RenderOutputYAML(o hub.Output) string {
 	return b.String()
 }
 
+// RenderOutputVolumeYAML renders a single output-volume confirmation as a
+// bare YAML record, used by `set outputs/<id> volume <n>`.
+func RenderOutputVolumeYAML(ov hub.OutputVolume) string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "outputId: %q\n", ov.OutputID)
+	fmt.Fprintf(&b, "volume: %d\n", ov.Volume)
+	fmt.Fprintf(&b, "updatedAt: %q\n", ov.UpdatedAt)
+	return b.String()
+}
+
+// RenderOutputVolumeJSON renders a single output-volume confirmation as a
+// strict JSON object, used by `set outputs/<id> volume <n> --json`.
+func RenderOutputVolumeJSON(ov hub.OutputVolume) string {
+	data, err := json.Marshal(ov)
+	if err != nil {
+		// hub.OutputVolume's fields are all plain scalars — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
+
 type jsonPayload struct {
 	Outputs []hub.Output `json:"outputs"`
 }
