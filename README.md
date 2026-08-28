@@ -38,12 +38,17 @@ table, global flags, and examples from the terminal.
 | --- | --- | --- |
 | `get <resource>[/<id>]` | `inputs`, `outputs`, `groups`, `routes` | `in`, `out`, `gr`, `rt` |
 | `list <resource>` | same four, collection form only | same |
+| `delete routes/<id>` | `routes` only | `rt` |
+| `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
 `list <resource>/<id>` is a usage error, since `list` never takes an id. Aliases are
 interchangeable with full resource names everywhere a resource path appears, e.g.
 `sonora get out/office-speaker` is identical to `sonora get outputs/office-speaker`.
+
+`delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
+alias. Only `routes` supports deletion today.
 
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —

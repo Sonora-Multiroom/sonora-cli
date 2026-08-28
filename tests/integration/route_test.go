@@ -22,21 +22,26 @@ type mockRouteHub struct {
 	inputIDs  map[string]bool
 	outputIDs map[string]bool
 	groupIDs  map[string]bool
+	routeIDs  map[string]bool
 
 	routesStatus  int
 	routesBody    map[string]any
 	rawRoutesBody *string
+
+	deleteStatus int
+	deleteBody   map[string]any
 
 	inputRequests  int32
 	outputRequests int32
 	groupRequests  int32
 	routesRequests int32
 	routesRequest  map[string]any
+	deleteRequests int32
 }
 
 func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*httptest.Server, *mockRouteHub) {
 	t.Helper()
-	m := &mockRouteHub{inputIDs: map[string]bool{}, outputIDs: map[string]bool{}, groupIDs: map[string]bool{}}
+	m := &mockRouteHub{inputIDs: map[string]bool{}, outputIDs: map[string]bool{}, groupIDs: map[string]bool{}, routeIDs: map[string]bool{}}
 	for _, id := range inputIDs {
 		m.inputIDs[id] = true
 	}
@@ -72,6 +77,24 @@ func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*htt
 				"targetType": body["targetType"], "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
 				"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
 			})
+		case strings.HasPrefix(r.URL.Path, "/api/v2/routes/") && r.Method == http.MethodDelete:
+			atomic.AddInt32(&m.deleteRequests, 1)
+			id := strings.TrimPrefix(r.URL.Path, "/api/v2/routes/")
+			if !m.routeIDs[id] {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+				return
+			}
+			if m.deleteStatus != 0 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(m.deleteStatus)
+				if m.deleteBody != nil {
+					_ = json.NewEncoder(w).Encode(m.deleteBody)
+				}
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
 		case strings.HasPrefix(r.URL.Path, "/api/v2/inputs/"):
 			atomic.AddInt32(&m.inputRequests, 1)
 			id := strings.TrimPrefix(r.URL.Path, "/api/v2/inputs/")
@@ -326,6 +349,81 @@ func TestRoute_InputKindRestrictedToInputs(t *testing.T) {
 
 func TestRoute_MissingArguments(t *testing.T) {
 	res := runCLI(t, "route")
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
+func TestRouteDelete_Success_YAML(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "delete", "routes/route_abc123", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	for _, field := range []string{"routeId", "status", "message"} {
+		if !strings.Contains(res.stdout, field) {
+			t.Errorf("expected field %q in stdout, got:\n%s", field, res.stdout)
+		}
+	}
+	if got := atomic.LoadInt32(&m.deleteRequests); got != 1 {
+		t.Errorf("expected exactly 1 DELETE request, got %d", got)
+	}
+}
+
+func TestRouteStop_IsIdenticalAliasOfDelete(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	deleteRes := runCLI(t, "delete", "routes/route_abc123", "--hub-url", srv.URL)
+	if deleteRes.exitCode != 0 {
+		t.Fatalf("delete: exit code = %d, want 0; stderr: %s", deleteRes.exitCode, deleteRes.stderr)
+	}
+
+	srv2, m2 := newMockRouteHub(t, nil, nil, nil)
+	m2.routeIDs["route_abc123"] = true
+	stopRes := runCLI(t, "stop", "routes/route_abc123", "--hub-url", srv2.URL)
+	if stopRes.exitCode != deleteRes.exitCode {
+		t.Fatalf("stop: exit code = %d, want %d; stderr: %s", stopRes.exitCode, deleteRes.exitCode, stopRes.stderr)
+	}
+	if stopRes.stdout != deleteRes.stdout {
+		t.Errorf("expected stop and delete to render identical output; stop:\n%s\ndelete:\n%s", stopRes.stdout, deleteRes.stdout)
+	}
+}
+
+func TestRouteDelete_NotFound(t *testing.T) {
+	srv, _ := newMockRouteHub(t, nil, nil, nil)
+
+	res := runCLI(t, "delete", "routes/nonexistent", "--hub-url", srv.URL)
+
+	if res.exitCode != 5 {
+		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestRouteDelete_422_StopFailed(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+	m.deleteStatus = http.StatusUnprocessableEntity
+	m.deleteBody = map[string]any{"title": "Route Stop Error", "detail": "route could not be stopped"}
+
+	res := runCLI(t, "delete", "routes/route_abc123", "--hub-url", srv.URL)
+
+	if res.exitCode != 8 {
+		t.Fatalf("exit code = %d, want 8; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "route could not be stopped") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+}
+
+func TestRouteDelete_NonRoutesResource_IsUsageError(t *testing.T) {
+	res := runCLI(t, "delete", "inputs/spotify-1")
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}

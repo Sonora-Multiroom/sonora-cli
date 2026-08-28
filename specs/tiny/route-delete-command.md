@@ -2,7 +2,7 @@
 
 **Branch**: main
 **Date**: 2026-08-28
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -59,19 +59,20 @@ removes the route. Follows the existing verb-dispatch pattern already used by `g
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.DeleteRoute` in `tests/contract/route_test.go`
-- [ ] Implement `hub.DeleteRoute` in `internal/hub/routes.go`
-- [ ] Write + implement `RenderRouteDeletedYAML`/`JSON` in `internal/render/route.go`
-- [ ] Write unit tests + implement `routes.RunDelete` in `internal/cli/routes/delete.go`
-- [ ] Write integration test + wire `delete`/`stop` dispatch (incl. non-routes rejection) in
+- [x] Write contract tests for `hub.DeleteRoute` in `tests/contract/route_test.go`
+- [x] Implement `hub.DeleteRoute` in `internal/hub/routes.go`
+- [x] Write + implement `RenderRouteDeletedYAML`/`JSON` in `internal/render/route.go`
+- [x] Write unit tests + implement `routes.RunDelete` in `internal/cli/routes/delete.go`
+- [x] Write integration test + wire `delete`/`stop` dispatch (incl. non-routes rejection) in
       `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora delete routes/<id>` and `sonora stop routes/<id>` manually verified against a
-      mock/local hub to behave identically
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora delete routes/<id>` and `sonora stop routes/<id>` verified identical via
+      `TestRouteStop_IsIdenticalAliasOfDelete`, which runs the compiled binary end-to-end
+      against a mock hub (`tests/integration/route_test.go`)

@@ -215,3 +215,116 @@ func TestCreateRoute_MalformedBody_UnrecognizedTargetType(t *testing.T) {
 func TestCreateRoute_MalformedBody_UnrecognizedStatus(t *testing.T) {
 	testCreateRouteMalformedBody(t, `{"routeId":"route_1","inputId":"spotify-1","targetId":"office-speaker","targetType":"SINGLE_OUTPUT","status":"BOGUS"}`)
 }
+
+// Request/response shapes here mirror the deleteRoute operation in
+// api/openapi.json (constitution Principle II): DELETE /api/v2/routes/{routeId}
+// returns 204 on success, 404 if the route doesn't exist, 422 if the stop
+// fails.
+
+func TestDeleteRoute_Success_204(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	err := hub.DeleteRoute(context.Background(), client, srv.URL, "route_abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("got method %q, want DELETE", gotMethod)
+	}
+	if gotPath != "/api/v2/routes/route_abc123" {
+		t.Errorf("got path %q, want /api/v2/routes/route_abc123", gotPath)
+	}
+}
+
+func TestDeleteRoute_404_NotFoundNamesRoute(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	err := hub.DeleteRoute(context.Background(), client, srv.URL, "missing-route")
+	if err == nil {
+		t.Fatal("expected an error for a 404 response, got nil")
+	}
+	var notFoundErr *hub.NotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expected a *hub.NotFoundError, got %T: %v", err, err)
+	}
+	if notFoundErr.Resource != "route" || notFoundErr.ID != "missing-route" {
+		t.Errorf("unexpected NotFoundError: %+v", notFoundErr)
+	}
+}
+
+func TestDeleteRoute_422_DecodesAsAPIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"type": "urn:multiroom:error:route-stop-error", "title": "Route Stop Error", "detail": "route could not be stopped",
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	err := hub.DeleteRoute(context.Background(), client, srv.URL, "route_abc123")
+	if err == nil {
+		t.Fatal("expected an error for a 422 response, got nil")
+	}
+	var apiErr *hub.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected a *hub.APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != http.StatusUnprocessableEntity || apiErr.Title != "Route Stop Error" || apiErr.Detail != "route could not be stopped" {
+		t.Errorf("unexpected APIError: %+v", apiErr)
+	}
+}
+
+func TestDeleteRoute_422_NonJSONBodyFallsBackToStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	err := hub.DeleteRoute(context.Background(), client, srv.URL, "route_abc123")
+	if err == nil {
+		t.Fatal("expected an error for a non-JSON error body, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError fallback, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("got StatusCode %d, want 422", statusErr.StatusCode)
+	}
+}
+
+func TestDeleteRoute_OtherErrorStatus_IsStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	err := hub.DeleteRoute(context.Background(), client, srv.URL, "route_abc123")
+	if err == nil {
+		t.Fatal("expected an error for a 500 response, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusInternalServerError {
+		t.Errorf("got StatusCode %d, want 500", statusErr.StatusCode)
+	}
+}

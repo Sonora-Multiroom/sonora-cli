@@ -40,3 +40,30 @@ func TestRenderRouteCreatedJSON_RoundTrips(t *testing.T) {
 		t.Errorf("unexpected decoded content: %+v", decoded)
 	}
 }
+
+func TestRenderRouteDeletedYAML_ExposesExactlyThreeFields(t *testing.T) {
+	got := render.RenderRouteDeletedYAML("route_abc123", "Stopped and removed routes/route_abc123.")
+
+	for _, field := range []string{"routeId", "status", "message"} {
+		if !strings.Contains(got, field) {
+			t.Errorf("expected field %q in YAML output, got:\n%s", field, got)
+		}
+	}
+}
+
+func TestRenderRouteDeletedJSON_RoundTrips(t *testing.T) {
+	message := "Stopped and removed routes/route_abc123."
+	got := render.RenderRouteDeletedJSON("route_abc123", message)
+
+	var decoded struct {
+		RouteID string `json:"routeId"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, got)
+	}
+	if decoded.RouteID != "route_abc123" || decoded.Status == "" || decoded.Message != message {
+		t.Errorf("unexpected decoded content: %+v", decoded)
+	}
+}

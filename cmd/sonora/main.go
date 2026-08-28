@@ -26,6 +26,8 @@ Commands:
                             Instant playback of an audio URI to an output or group
   route inputs/<id> <outputs|groups>/<id>
                             Connect an existing input to an existing output or group
+  delete routes/<id>       Stop and remove a route
+  stop routes/<id>         Alias of 'delete routes/<id>'
   help                     Show this help
 
 Resources: inputs (in), outputs (out), groups (gr), routes (rt)
@@ -43,6 +45,7 @@ Examples:
   sonora list outputs
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
   sonora route inputs/spotify-1 outputs/office-speaker
+  sonora delete routes/<route-id>
 
 Run 'sonora get <resource> --help' or 'sonora list <resource> --help' for the full flag
 reference of any command.
@@ -76,10 +79,44 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "get", "list":
 		return dispatchGetList(args[0], args[1:], stdout, stderr)
+	case "delete", "stop":
+		return dispatchDelete(args[0], args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "sonora: unknown command %q\n", args[0])
 		return 2
 	}
+}
+
+// dispatchDelete resolves the resource-path argument following `delete`/
+// `stop` via respath and calls routes.RunDelete — the only resource `delete`
+// currently supports is `routes` (`stop` is an exact alias of `delete`, per
+// docs/cli-command-landscape.md). Any other resource is a usage error.
+func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
+	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Routes {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only routes/<route-id> is supported\n", verb, path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <route-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	return routes.RunDelete(callArgs, stdout, stderr)
 }
 
 // dispatchGetList resolves the resource-path argument following `get`/`list`
