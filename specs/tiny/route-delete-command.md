@@ -1,6 +1,6 @@
 # TinySpec: `delete routes` / `stop routes` command
 
-**Branch**: main
+**Branch**: feature/route-delete-command
 **Date**: 2026-08-28
 **Status**: done
 **Complexity**: small
