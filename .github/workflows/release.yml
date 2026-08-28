@@ -31,3 +31,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCOOP_TAP_GITHUB_TOKEN: ${{ secrets.SCOOP_TAP_GITHUB_TOKEN }}
+
+      - name: Add multiroom alias to Scoop manifest
+        env:
+          GH_TOKEN: ${{ secrets.SCOOP_TAP_GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+          gh repo clone Sonora-Multiroom/scoop-bucket bucket
+          cd bucket
+          jq '.architecture[].bin |= (if any(.[]?; type == "array") then . else . + [["sonora.exe", "multiroom"]] end)' sonora.json > sonora.json.tmp
+          mv sonora.json.tmp sonora.json
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add sonora.json
+            git commit -m "chore: add multiroom alias to sonora scoop manifest"
+            git push
+          fi
