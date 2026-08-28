@@ -26,6 +26,8 @@ Commands:
                             Instant playback of an audio URI to an output or group
   route inputs/<id> <outputs|groups>/<id>
                             Connect an existing input to an existing output or group
+  transfer routes/<id> <outputs|groups>/<id>
+                            Move an active route's playback to a new output or group
   delete routes/<id>       Stop and remove a route
   stop routes/<id>         Alias of 'delete routes/<id>'
   enable inputs/<id>       Enable a disabled input
@@ -47,6 +49,7 @@ Examples:
   sonora list outputs
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
   sonora route inputs/spotify-1 outputs/office-speaker
+  sonora transfer routes/<route-id> outputs/bedroom-speaker
   sonora delete routes/<route-id>
   sonora enable inputs/<input-id>
   sonora disable inputs/<input-id>
@@ -78,6 +81,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	if args[0] == "route" {
 		return route.Run(args[1:], stdout, stderr)
+	}
+	if args[0] == "transfer" {
+		return route.RunTransfer(args[1:], stdout, stderr)
 	}
 
 	switch args[0] {

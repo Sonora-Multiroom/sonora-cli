@@ -56,6 +56,11 @@ alias. Only `routes` supports deletion today.
 input remains registered but is unavailable for new route creation. Only `inputs` supports
 enable/disable today.
 
+`transfer routes/<route-id> <outputs|groups>/<target-id>` seamlessly moves an active route's
+playback to a new output or group without interruption. The hub replaces the old route with a
+new one, so the printed `routeId` is the *new* route's id — update any stored references
+accordingly.
+
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —
 `sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
@@ -75,6 +80,7 @@ sonora get outputs --include-disabled
 sonora get routes --status active
 sonora get groups/<id> --json
 sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
+sonora transfer routes/<route-id> outputs/bedroom-speaker
 ```
 
 ## Configuration

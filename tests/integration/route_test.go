@@ -31,12 +31,18 @@ type mockRouteHub struct {
 	deleteStatus int
 	deleteBody   map[string]any
 
-	inputRequests  int32
-	outputRequests int32
-	groupRequests  int32
-	routesRequests int32
-	routesRequest  map[string]any
-	deleteRequests int32
+	transferStatus  int
+	transferBody    map[string]any
+	rawTransferBody *string
+
+	inputRequests    int32
+	outputRequests   int32
+	groupRequests    int32
+	routesRequests   int32
+	routesRequest    map[string]any
+	deleteRequests   int32
+	transferRequests int32
+	transferRequest  map[string]any
 }
 
 func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*httptest.Server, *mockRouteHub) {
@@ -74,6 +80,37 @@ func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*htt
 			w.WriteHeader(http.StatusCreated)
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"routeId": "route_abc123", "inputId": body["inputId"], "targetId": body["targetId"],
+				"targetType": body["targetType"], "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
+				"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			})
+		case strings.HasPrefix(r.URL.Path, "/api/v2/routes/") && strings.HasSuffix(r.URL.Path, "/transfer") && r.Method == http.MethodPost:
+			atomic.AddInt32(&m.transferRequests, 1)
+			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v2/routes/"), "/transfer")
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			m.transferRequest = body
+			if !m.routeIDs[id] {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if m.transferStatus != 0 {
+				w.WriteHeader(m.transferStatus)
+				if m.transferBody != nil {
+					_ = json.NewEncoder(w).Encode(m.transferBody)
+				}
+				return
+			}
+			if m.rawTransferBody != nil {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(*m.rawTransferBody))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"routeId": "route_new456", "inputId": "spotify-1", "targetId": body["targetId"],
 				"targetType": body["targetType"], "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
 				"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
 			})
@@ -442,5 +479,151 @@ func TestRoute_TargetPathAliases_IdenticalToFullNames(t *testing.T) {
 	grAlias := runCLI(t, "route", "in/spotify-1", "gr/whole-house", "--hub-url", srv.URL)
 	if grAlias.exitCode != grFull.exitCode {
 		t.Fatalf("gr/ alias exit code = %d, want %d; stderr: %s", grAlias.exitCode, grFull.exitCode, grAlias.stderr)
+	}
+}
+
+func TestRouteTransfer_Success_Output_YAML(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	for _, field := range []string{"routeId", "status", "message"} {
+		if !strings.Contains(res.stdout, field) {
+			t.Errorf("expected field %q in stdout, got:\n%s", field, res.stdout)
+		}
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 1 {
+		t.Errorf("expected exactly 1 transfer request, got %d", got)
+	}
+	if m.transferRequest["targetId"] != "bedroom-speaker" || m.transferRequest["targetType"] != "SINGLE_OUTPUT" {
+		t.Errorf("unexpected transfer request body: %+v", m.transferRequest)
+	}
+}
+
+func TestRouteTransfer_Success_Group_JSON(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, []string{"whole-house"})
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "groups/whole-house", "--hub-url", srv.URL, "--json")
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	var decoded struct {
+		RouteID string `json:"routeId"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(res.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, res.stdout)
+	}
+	if decoded.RouteID != "route_new456" || decoded.Status == "" || decoded.Message == "" {
+		t.Errorf("unexpected decoded content: %+v", decoded)
+	}
+	if m.transferRequest["targetType"] != "OUTPUT_GROUP" {
+		t.Errorf("unexpected transfer request body: %+v", m.transferRequest)
+	}
+}
+
+func TestRouteTransfer_TargetNotFound(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/nonexistent", "--hub-url", srv.URL)
+
+	if res.exitCode != 12 {
+		t.Fatalf("exit code = %d, want 12; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(strings.ToLower(res.stderr), "output") {
+		t.Errorf("expected an 'output not found' message, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 0 {
+		t.Errorf("expected zero requests to the transfer endpoint, got %d", got)
+	}
+}
+
+func TestRouteTransfer_RouteNotFound(t *testing.T) {
+	srv, _ := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+
+	res := runCLI(t, "transfer", "routes/nonexistent", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 5 {
+		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestRouteTransfer_400_NotTransferable(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+	m.transferStatus = http.StatusBadRequest
+	m.transferBody = map[string]any{"title": "Not Transferable", "detail": "route is not transferable"}
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 6 {
+		t.Fatalf("exit code = %d, want 6; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "route is not transferable") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+}
+
+func TestRouteTransfer_422_TransferFailed(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+	m.transferStatus = http.StatusUnprocessableEntity
+	m.transferBody = map[string]any{"title": "Transfer Error", "detail": "route transfer failed"}
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 8 {
+		t.Fatalf("exit code = %d, want 8; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "route transfer failed") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+}
+
+func TestRouteTransfer_MalformedSuccessBody_ExitsHubError(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+	raw := `{"routeId":"","inputId":"spotify-1","targetId":"bedroom-speaker","targetType":"SINGLE_OUTPUT","status":"STARTING"}`
+	m.rawTransferBody = &raw
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 3 {
+		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestRouteTransfer_MissingArguments(t *testing.T) {
+	res := runCLI(t, "transfer")
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
+func TestRouteTransfer_TargetKindRestrictedToOutputsGroups(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "inputs/spotify-1", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 0 {
+		t.Errorf("expected zero requests to the transfer endpoint, got %d", got)
 	}
 }

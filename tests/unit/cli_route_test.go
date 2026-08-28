@@ -195,3 +195,150 @@ func TestRouteRun_TargetPathAliases_MapToExpectedTargetType(t *testing.T) {
 		}
 	}
 }
+
+func TestRouteRunTransfer_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"--help"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Flags:") {
+		t.Errorf("expected a Flags: section, got stderr:\n%s", stderr.String())
+	}
+}
+
+func TestRouteRunTransfer_MissingBothArguments(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "route") {
+		t.Errorf("expected stderr to name the missing <route-path> argument, got: %s", stderr.String())
+	}
+}
+
+func TestRouteRunTransfer_MissingTargetPath(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes/route_abc123"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "target") {
+		t.Errorf("expected stderr to name the missing target-path argument, got: %s", stderr.String())
+	}
+}
+
+func TestRouteRunTransfer_TooManyPositionalArguments(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes/route_abc123", "outputs/target", "extra"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRouteRunTransfer_UnknownFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes/route_abc123", "outputs/target", "--unknown-flag"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRouteRunTransfer_RoutePathInvalidPrefix(t *testing.T) {
+	srv, count := countingRouteHub(t)
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"outputs/x", "outputs/office-speaker", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestRouteRunTransfer_TargetPathInvalidPrefix(t *testing.T) {
+	srv, count := countingRouteHub(t)
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes/route_abc123", "inputs/x", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestRouteRunTransfer_BareRouteNoID(t *testing.T) {
+	srv, count := countingRouteHub(t)
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes", "outputs/office-speaker", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestRouteRunTransfer_BareTargetNoID(t *testing.T) {
+	srv, count := countingRouteHub(t)
+	var stdout, stderr bytes.Buffer
+	code := route.RunTransfer([]string{"routes/route_abc123", "outputs", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestRouteRunTransfer_UnreachableHubURL(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	start := time.Now()
+	code := route.RunTransfer([]string{"routes/route_abc123", "outputs/office-speaker", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
+	elapsed := time.Since(start)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
+	}
+	if elapsed >= 5*time.Second {
+		t.Errorf("expected the failure to return well under 5s, took %v", elapsed)
+	}
+}
+
+// TestRouteRunTransfer_TargetPathAliases_MapToExpectedTargetType exercises
+// both the routes/rt aliases for the route path and the outputs/out,
+// groups/gr aliases for the target path.
+func TestRouteRunTransfer_TargetPathAliases_MapToExpectedTargetType(t *testing.T) {
+	for _, routeArg := range []string{"routes/route_abc123", "rt/route_abc123"} {
+		for _, targetArg := range []string{"outputs/x", "out/x", "groups/x", "gr/x"} {
+			t.Run(routeArg+"_"+targetArg, func(t *testing.T) {
+				srv, count := countingRouteHub(t)
+				var stdout, stderr bytes.Buffer
+				code := route.RunTransfer([]string{routeArg, targetArg, "--hub-url", srv.URL}, &stdout, &stderr)
+
+				// countingRouteHub returns 404 for everything, so a
+				// well-formed path resolves to a target-not-found error
+				// (12) from the ResolveTarget pre-check — the point is
+				// that parsing succeeded and a request was attempted, not
+				// a usage error (2).
+				if code != 12 {
+					t.Fatalf("exit code = %d, want 12; stderr: %s", code, stderr.String())
+				}
+				if got := atomic.LoadInt32(count); got == 0 {
+					t.Error("expected at least one request to the hub for a well-formed path")
+				}
+			})
+		}
+	}
+}
