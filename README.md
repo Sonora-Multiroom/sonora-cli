@@ -42,7 +42,7 @@ table, common flags, and examples from the terminal.
 | `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
 | `enable inputs/<id>` | `inputs` only | `in` |
 | `disable inputs/<id>` | `inputs` only | `in` |
-| `set outputs/<id> volume <0-100>` | `outputs` only | `out` |
+| `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -57,8 +57,9 @@ alias. Only `routes` supports deletion today.
 input remains registered but is unavailable for new route creation. Only `inputs` supports
 enable/disable today.
 
-`set outputs/<id> volume <0-100>` sets the output's volume level and prints the applied
-`outputId`/`volume`/`updatedAt` confirmation. Only `outputs`/`volume` supports `set` today.
+`set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
+group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
+confirmation. Only `outputs`/`volume` and `groups`/`volume` support `set` today.
 
 `transfer routes/<route-id> <outputs|groups>/<target-id>` seamlessly moves an active route's
 playback to a new output or group without interruption. The hub replaces the old route with a
