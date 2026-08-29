@@ -42,6 +42,12 @@ type TransferRequest struct {
 	TargetType string `json:"targetType"`
 }
 
+// PauseRequest mirrors #/components/schemas/PauseRequest in
+// api/openapi.json field-for-field (constitution Principle II).
+type PauseRequest struct {
+	Paused bool `json:"paused"`
+}
+
 func validateRoute(r Route) error {
 	if r.RouteID == "" || r.InputID == "" || r.TargetID == "" {
 		return fmt.Errorf("route missing required routeId/inputId/targetId")
@@ -218,6 +224,59 @@ func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req C
 	}
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var route Route
+	if err := json.NewDecoder(resp.Body).Decode(&route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateRoute(route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &route, nil
+}
+
+// SetPauseState calls PUT {baseURL}/api/v2/routes/{routeId}/pause
+// (operationId "setPauseState") to pause or resume playback on an active
+// route. The call is idempotent — setting the same state twice still
+// returns 200 with the current state. On success (200) the decoded and
+// validated Route is returned, mirroring TransferRoute's success handling.
+// A 404 is returned as a *NotFoundError naming the route. A 400 (route not
+// active, input not pauseable, or other validation failure) attempts to
+// decode the body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails; any other non-2xx status is a
+// *StatusError.
+func SetPauseState(ctx context.Context, client *http.Client, baseURL, routeID string, paused bool) (*Route, error) {
+	body, err := json.Marshal(PauseRequest{Paused: paused})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/routes/" + url.PathEscape(routeID) + "/pause"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "route", ID: routeID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
 		var errBody errorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
 			return nil, &StatusError{StatusCode: resp.StatusCode}

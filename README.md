@@ -40,6 +40,8 @@ table, common flags, and examples from the terminal.
 | `list <resource>` | same four, collection form only | same |
 | `delete routes/<id>` | `routes` only | `rt` |
 | `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
+| `pause routes/<id>` | `routes` only | `rt` |
+| `resume routes/<id>` | `routes` only | `rt` |
 | `enable inputs/<id>` | `inputs` only | `in` |
 | `disable inputs/<id>` | `inputs` only | `in` |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
@@ -52,6 +54,11 @@ interchangeable with full resource names everywhere a resource path appears, e.g
 
 `delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
 alias. Only `routes` supports deletion today.
+
+`pause routes/<id>` and `resume routes/<id>` pause or resume an active route's playback and
+print the updated `routeId`/`paused`/`status` confirmation. Both are idempotent — pausing an
+already-paused route (or resuming an already-active one) still succeeds. Only `routes`
+supports pause/resume today.
 
 `enable inputs/<id>` and `disable inputs/<id>` set the input's enabled state; a disabled
 input remains registered but is unavailable for new route creation. Only `inputs` supports

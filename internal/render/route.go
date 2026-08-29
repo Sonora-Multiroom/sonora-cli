@@ -80,3 +80,41 @@ func RenderRouteDeletedJSON(routeID, message string) string {
 	}
 	return string(data) + "\n"
 }
+
+// routePausePayload is the flat rendered view of a pause/resume result:
+// routeId, paused, status, message — unlike routeCreatedPayload, paused is
+// included since it's the whole point of the command.
+type routePausePayload struct {
+	RouteID string `json:"routeId"`
+	Paused  bool   `json:"paused"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+func toRoutePausePayload(r hub.Route, message string) routePausePayload {
+	return routePausePayload{RouteID: r.RouteID, Paused: r.Paused, Status: r.Status, Message: message}
+}
+
+// RenderRoutePauseYAML renders a pause/resume result as a bare YAML record,
+// exposing exactly routeId, paused, status, message in that order.
+func RenderRoutePauseYAML(r hub.Route, message string) string {
+	payload := toRoutePausePayload(r, message)
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "routeId: %q\n", payload.RouteID)
+	fmt.Fprintf(&b, "paused: %t\n", payload.Paused)
+	fmt.Fprintf(&b, "status: %q\n", payload.Status)
+	fmt.Fprintf(&b, "message: %q\n", payload.Message)
+	return b.String()
+}
+
+// RenderRoutePauseJSON renders a pause/resume result as a strict JSON
+// object, exposing exactly routeId, paused, status, message.
+func RenderRoutePauseJSON(r hub.Route, message string) string {
+	data, err := json.Marshal(toRoutePausePayload(r, message))
+	if err != nil {
+		// routePausePayload's fields are plain strings/bool — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
