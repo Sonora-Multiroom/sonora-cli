@@ -2,7 +2,7 @@
 
 **Branch**: feature/route-pause-resume-command
 **Date**: 2026-08-29
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -62,21 +62,22 @@ needed. Follows the existing single-resource-path dispatch pattern already used 
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetPauseState` in `tests/contract/route_test.go`
-- [ ] Implement `hub.PauseRequest`/`hub.SetPauseState` in `internal/hub/routes.go`
-- [ ] Write render tests + implement `RenderRoutePauseYAML`/`RenderRoutePauseJSON` in
+- [x] Write contract tests for `hub.SetPauseState` in `tests/contract/route_test.go`
+- [x] Implement `hub.PauseRequest`/`hub.SetPauseState` in `internal/hub/routes.go`
+- [x] Write render tests + implement `RenderRoutePauseYAML`/`RenderRoutePauseJSON` in
       `internal/render/route.go`
-- [ ] Write unit tests + implement `RunPause`/`RunResume`/`runSetPause` in
+- [x] Write unit tests (in a new `tests/unit/cli_route_pause_test.go`, kept separate from
+      `cli_route_test.go` for clarity) + implement `RunPause`/`RunResume`/`runSetPause` in
       `internal/cli/route/pause.go`
-- [ ] Write/extend integration tests + add `dispatchPause` + wire `pause`/`resume` dispatch in
+- [x] Write/extend integration tests + add `dispatchPause` + wire `pause`/`resume` dispatch in
       `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora pause routes/<id>` and `sonora resume routes/<id>` verified end-to-end against a
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora pause routes/<id>` and `sonora resume routes/<id>` verified end-to-end against a
       mock hub, including not-found/validation error paths and the idempotent-repeat case

@@ -67,3 +67,36 @@ func TestRenderRouteDeletedJSON_RoundTrips(t *testing.T) {
 		t.Errorf("unexpected decoded content: %+v", decoded)
 	}
 }
+
+func TestRenderRoutePauseYAML_ExposesExactlyFourFields(t *testing.T) {
+	r := hub.Route{RouteID: "route_abc123", InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT", Status: "ACTIVE", Paused: true}
+	got := render.RenderRoutePauseYAML(r, "Route route_abc123 paused.")
+
+	for _, field := range []string{"routeId", "paused", "status", "message"} {
+		if !strings.Contains(got, field) {
+			t.Errorf("expected field %q in YAML output, got:\n%s", field, got)
+		}
+	}
+	if strings.Contains(got, "inputId") || strings.Contains(got, "targetId") || strings.Contains(got, "targetType") {
+		t.Errorf("expected only routeId/paused/status/message, got:\n%s", got)
+	}
+}
+
+func TestRenderRoutePauseJSON_RoundTrips(t *testing.T) {
+	r := hub.Route{RouteID: "route_abc123", InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT", Status: "ACTIVE", Paused: true}
+	message := "Route route_abc123 paused."
+	got := render.RenderRoutePauseJSON(r, message)
+
+	var decoded struct {
+		RouteID string `json:"routeId"`
+		Paused  bool   `json:"paused"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, got)
+	}
+	if decoded.RouteID != r.RouteID || decoded.Paused != true || decoded.Status != r.Status || decoded.Message != message {
+		t.Errorf("unexpected decoded content: %+v", decoded)
+	}
+}

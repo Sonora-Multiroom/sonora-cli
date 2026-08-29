@@ -35,6 +35,10 @@ type mockRouteHub struct {
 	transferBody    map[string]any
 	rawTransferBody *string
 
+	pauseStatus  int
+	pauseBody    map[string]any
+	rawPauseBody *string
+
 	inputRequests    int32
 	outputRequests   int32
 	groupRequests    int32
@@ -43,6 +47,8 @@ type mockRouteHub struct {
 	deleteRequests   int32
 	transferRequests int32
 	transferRequest  map[string]any
+	pauseRequests    int32
+	pauseRequest     map[string]any
 }
 
 func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*httptest.Server, *mockRouteHub) {
@@ -82,6 +88,38 @@ func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*htt
 				"routeId": "route_abc123", "inputId": body["inputId"], "targetId": body["targetId"],
 				"targetType": body["targetType"], "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
 				"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			})
+		case strings.HasPrefix(r.URL.Path, "/api/v2/routes/") && strings.HasSuffix(r.URL.Path, "/pause") && r.Method == http.MethodPut:
+			atomic.AddInt32(&m.pauseRequests, 1)
+			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v2/routes/"), "/pause")
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			m.pauseRequest = body
+			if !m.routeIDs[id] {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if m.pauseStatus != 0 {
+				w.WriteHeader(m.pauseStatus)
+				if m.pauseBody != nil {
+					_ = json.NewEncoder(w).Encode(m.pauseBody)
+				}
+				return
+			}
+			if m.rawPauseBody != nil {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(*m.rawPauseBody))
+				return
+			}
+			paused, _ := body["paused"].(bool)
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"routeId": id, "inputId": "spotify-1", "targetId": "office-speaker",
+				"targetType": "SINGLE_OUTPUT", "status": "ACTIVE", "createdAt": "2026-01-01T00:00:00Z",
+				"startedAt": "2026-01-01T00:00:01Z", "transferable": true, "pauseable": true, "paused": paused,
 			})
 		case strings.HasPrefix(r.URL.Path, "/api/v2/routes/") && strings.HasSuffix(r.URL.Path, "/transfer") && r.Method == http.MethodPost:
 			atomic.AddInt32(&m.transferRequests, 1)
@@ -625,5 +663,138 @@ func TestRouteTransfer_TargetKindRestrictedToOutputsGroups(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&m.transferRequests); got != 0 {
 		t.Errorf("expected zero requests to the transfer endpoint, got %d", got)
+	}
+}
+
+func TestRoutePause_Success_YAML(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "pause", "routes/route_abc123", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	for _, field := range []string{"routeId", "paused", "status", "message"} {
+		if !strings.Contains(res.stdout, field) {
+			t.Errorf("expected field %q in stdout, got:\n%s", field, res.stdout)
+		}
+	}
+	if got := atomic.LoadInt32(&m.pauseRequests); got != 1 {
+		t.Errorf("expected exactly 1 pause request, got %d", got)
+	}
+	if m.pauseRequest["paused"] != true {
+		t.Errorf("expected paused=true in request body, got: %+v", m.pauseRequest)
+	}
+}
+
+func TestRouteResume_Success_JSON(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+
+	res := runCLI(t, "resume", "routes/route_abc123", "--hub-url", srv.URL, "--json")
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	var decoded struct {
+		RouteID string `json:"routeId"`
+		Paused  bool   `json:"paused"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(res.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, res.stdout)
+	}
+	if decoded.RouteID != "route_abc123" || decoded.Paused != false || decoded.Status == "" || decoded.Message == "" {
+		t.Errorf("unexpected decoded content: %+v", decoded)
+	}
+	if m.pauseRequest["paused"] != false {
+		t.Errorf("expected paused=false in request body, got: %+v", m.pauseRequest)
+	}
+}
+
+func TestRoutePause_RouteNotFound(t *testing.T) {
+	srv, _ := newMockRouteHub(t, nil, nil, nil)
+
+	res := runCLI(t, "pause", "routes/nonexistent", "--hub-url", srv.URL)
+
+	if res.exitCode != 5 {
+		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestRoutePause_400_NotActive(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+	m.pauseStatus = http.StatusBadRequest
+	m.pauseBody = map[string]any{"title": "Validation Error", "detail": "route is not active"}
+
+	res := runCLI(t, "pause", "routes/route_abc123", "--hub-url", srv.URL)
+
+	if res.exitCode != 6 {
+		t.Fatalf("exit code = %d, want 6; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "route is not active") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+}
+
+func TestRoutePause_MalformedSuccessBody_ExitsHubError(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, nil, nil)
+	m.routeIDs["route_abc123"] = true
+	raw := `{"routeId":"","inputId":"spotify-1","targetId":"office-speaker","targetType":"SINGLE_OUTPUT","status":"ACTIVE"}`
+	m.rawPauseBody = &raw
+
+	res := runCLI(t, "pause", "routes/route_abc123", "--hub-url", srv.URL)
+
+	if res.exitCode != 3 {
+		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestRoutePause_MissingArguments(t *testing.T) {
+	res := runCLI(t, "pause")
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
+func TestRouteResume_MissingArguments(t *testing.T) {
+	res := runCLI(t, "resume")
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
+func TestRoutePause_NonRoutesResource_IsUsageError(t *testing.T) {
+	srv, m := newMockRouteHub(t, []string{"spotify-1"}, nil, nil)
+
+	res := runCLI(t, "pause", "inputs/spotify-1", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.pauseRequests); got != 0 {
+		t.Errorf("expected zero requests to the pause endpoint, got %d", got)
+	}
+}
+
+func TestRouteResume_NonRoutesResource_IsUsageError(t *testing.T) {
+	srv, m := newMockRouteHub(t, []string{"spotify-1"}, nil, nil)
+
+	res := runCLI(t, "resume", "inputs/spotify-1", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.pauseRequests); got != 0 {
+		t.Errorf("expected zero requests to the pause endpoint, got %d", got)
 	}
 }

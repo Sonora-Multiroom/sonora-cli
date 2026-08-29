@@ -28,6 +28,8 @@ Commands:
   transfer routes/<id> <target>    Move an active route's playback to a target
   delete routes/<id>               Stop and remove a route
   stop routes/<id>                 Alias of 'delete routes/<id>'
+  pause routes/<id>                Pause an active route's playback
+  resume routes/<id>               Resume a paused route's playback
   enable inputs/<id>               Enable a disabled input
   disable inputs/<id>              Disable an input
   set outputs/<id> volume <0-100>  Set an output's volume level
@@ -58,6 +60,8 @@ Examples:
   sonora set outputs/office-speaker volume 40
   sonora set groups/living-room volume 40
   sonora delete routes/route-abc-123
+  sonora pause routes/route-abc-123
+  sonora resume routes/route-abc-123
   sonora enable inputs/spotify-1
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
@@ -99,6 +103,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchDelete(args[0], args[1:], stdout, stderr)
 	case "enable", "disable":
 		return dispatchEnabled(args[0], args[1:], stdout, stderr)
+	case "pause", "resume":
+		return dispatchPause(args[0], args[1:], stdout, stderr)
 	case "set":
 		return dispatchSet(args[1:], stdout, stderr)
 	default:
@@ -192,6 +198,45 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 		return inputs.RunEnable(callArgs, stdout, stderr)
 	}
 	return inputs.RunDisable(callArgs, stdout, stderr)
+}
+
+// dispatchPause resolves the resource-path argument following `pause`/
+// `resume` via respath and calls route.RunPause/route.RunResume — the only
+// resource `pause`/`resume` currently support is `routes`. Any other
+// resource is a usage error.
+func dispatchPause(verb string, args []string, stdout, stderr io.Writer) int {
+	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Routes {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only routes/<route-id> is supported\n", verb, path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <route-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	if verb == "pause" {
+		return route.RunPause(callArgs, stdout, stderr)
+	}
+	return route.RunResume(callArgs, stdout, stderr)
 }
 
 // dispatchSet resolves the resource-path argument following `set` via

@@ -499,3 +499,156 @@ func TestTransferRoute_MalformedBody_MissingRouteID(t *testing.T) {
 func TestTransferRoute_MalformedBody_UnrecognizedTargetType(t *testing.T) {
 	testTransferRouteMalformedBody(t, `{"routeId":"route_new456","inputId":"spotify-1","targetId":"bedroom-speaker","targetType":"BOGUS","status":"STARTING"}`)
 }
+
+// Request/response shapes here mirror #/components/schemas/PauseRequest and
+// RouteResponse, and the setPauseState operation, in api/openapi.json
+// (constitution Principle II).
+
+func testSetPauseState_Success(t *testing.T, paused bool) {
+	t.Helper()
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"routeId": "route_abc123", "inputId": "spotify-1", "targetId": "office-speaker",
+			"targetType": "SINGLE_OUTPUT", "status": "ACTIVE", "createdAt": "2026-01-01T00:00:00Z",
+			"startedAt": "2026-01-01T00:00:01Z", "transferable": true, "pauseable": true, "paused": paused,
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	resp, err := hub.SetPauseState(context.Background(), client, srv.URL, "route_abc123", paused)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotMethod != http.MethodPut {
+		t.Errorf("got method %q, want PUT", gotMethod)
+	}
+	if gotPath != "/api/v2/routes/route_abc123/pause" {
+		t.Errorf("got path %q, want /api/v2/routes/route_abc123/pause", gotPath)
+	}
+	if gotBody["paused"] != paused {
+		t.Errorf("expected paused=%v in request body, got: %+v", paused, gotBody)
+	}
+	if resp.RouteID != "route_abc123" || resp.Paused != paused {
+		t.Errorf("unexpected decoded route: %+v", resp)
+	}
+}
+
+func TestSetPauseState_Pause_Success(t *testing.T) {
+	testSetPauseState_Success(t, true)
+}
+func TestSetPauseState_Resume_Success(t *testing.T) {
+	testSetPauseState_Success(t, false)
+}
+
+func TestSetPauseState_404_NotFoundNamesRoute(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	_, err := hub.SetPauseState(context.Background(), client, srv.URL, "missing-route", true)
+	if err == nil {
+		t.Fatal("expected an error for a 404 response, got nil")
+	}
+	var notFoundErr *hub.NotFoundError
+	if !errors.As(err, &notFoundErr) {
+		t.Fatalf("expected a *hub.NotFoundError, got %T: %v", err, err)
+	}
+	if notFoundErr.Resource != "route" || notFoundErr.ID != "missing-route" {
+		t.Errorf("unexpected NotFoundError: %+v", notFoundErr)
+	}
+}
+
+func TestSetPauseState_400_DecodesAsAPIError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"type": "urn:multiroom:error:validation-error", "title": "Validation Error", "detail": "route is not active",
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	_, err := hub.SetPauseState(context.Background(), client, srv.URL, "route_abc123", true)
+	if err == nil {
+		t.Fatal("expected an error for a 400 response, got nil")
+	}
+	var apiErr *hub.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected a *hub.APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != http.StatusBadRequest || apiErr.Title != "Validation Error" || apiErr.Detail != "route is not active" {
+		t.Errorf("unexpected APIError: %+v", apiErr)
+	}
+}
+
+func TestSetPauseState_400_NonJSONBodyFallsBackToStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	_, err := hub.SetPauseState(context.Background(), client, srv.URL, "route_abc123", true)
+	if err == nil {
+		t.Fatal("expected an error for a non-JSON error body, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError fallback, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("got StatusCode %d, want 400", statusErr.StatusCode)
+	}
+}
+
+func TestSetPauseState_OtherErrorStatus_IsStatusError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	_, err := hub.SetPauseState(context.Background(), client, srv.URL, "route_abc123", true)
+	if err == nil {
+		t.Fatal("expected an error for a 500 response, got nil")
+	}
+	var statusErr *hub.StatusError
+	if !errors.As(err, &statusErr) {
+		t.Fatalf("expected a *hub.StatusError, got %T: %v", err, err)
+	}
+	if statusErr.StatusCode != http.StatusInternalServerError {
+		t.Errorf("got StatusCode %d, want 500", statusErr.StatusCode)
+	}
+}
+
+func TestSetPauseState_MalformedSuccessBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"routeId":"","inputId":"spotify-1","targetId":"office-speaker","targetType":"SINGLE_OUTPUT","status":"ACTIVE"}`))
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	_, err := hub.SetPauseState(context.Background(), client, srv.URL, "route_abc123", true)
+	if err == nil {
+		t.Fatal("expected an error for a malformed 200 body, got nil")
+	}
+	var decodeErr *hub.DecodeError
+	if !errors.As(err, &decodeErr) {
+		t.Fatalf("expected a *hub.DecodeError, got %T: %v", err, err)
+	}
+}
