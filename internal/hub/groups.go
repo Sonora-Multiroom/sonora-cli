@@ -156,6 +156,58 @@ func SetGroupEnabled(ctx context.Context, client *http.Client, baseURL, groupID 
 	return &group, nil
 }
 
+// SetGroupMuted calls PUT {baseURL}/api/v2/groups/{groupId}/mute
+// (operationId "setGroupMuted") with {"muted": muted}. On success (200), the
+// decoded, updated Group is returned (malformed body → *DecodeError). A 404
+// is returned as a *NotFoundError naming the group. A 400 attempts to decode
+// the body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails (mirroring SetGroupEnabled's 400
+// handling); any other non-2xx status is a *StatusError.
+func SetGroupMuted(ctx context.Context, client *http.Client, baseURL, groupID string, muted bool) (*Group, error) {
+	body, err := json.Marshal(struct {
+		Muted bool `json:"muted"`
+	}{Muted: muted})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/groups/" + url.PathEscape(groupID) + "/mute"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "group", ID: groupID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var group Group
+	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if group.GroupID == "" || group.DisplayName == "" {
+		return nil, &DecodeError{Err: fmt.Errorf("group missing required groupId/displayName")}
+	}
+	return &group, nil
+}
+
 // GroupVolume mirrors #/components/schemas/GroupVolumeResponse in
 // api/openapi.json field-for-field (constitution Principle II).
 type GroupVolume struct {

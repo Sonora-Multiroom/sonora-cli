@@ -44,6 +44,8 @@ table, common flags, and examples from the terminal.
 | `resume routes/<id>` | `routes` only | `rt` |
 | `enable <resource>/<id>` | `inputs`, `outputs`, `groups` | `in`, `out`, `gr` |
 | `disable <resource>/<id>` | `inputs`, `outputs`, `groups` | `in`, `out`, `gr` |
+| `mute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
+| `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
@@ -63,6 +65,9 @@ supports pause/resume today.
 `enable <resource>/<id>` and `disable <resource>/<id>` set the input's, output's, or group's
 enabled state; a disabled input remains registered but is unavailable for new route creation.
 `inputs`, `outputs`, and `groups` support enable/disable today.
+
+`mute <resource>/<id>` and `unmute <resource>/<id>` set the output's or group's muted state.
+Only `outputs` and `groups` support mute/unmute today.
 
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`

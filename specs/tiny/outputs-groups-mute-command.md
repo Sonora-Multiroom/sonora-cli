@@ -2,7 +2,7 @@
 
 **Branch**: feature/outputs-groups-mute-command
 **Date**: 2026-08-29
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -80,20 +80,20 @@ all` (`master-mute`) and `inputs` are explicitly out of scope per
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetOutputMuted`/`SetGroupMuted`
-- [ ] Implement `hub.SetOutputMuted` and `hub.SetGroupMuted`
-- [ ] Write unit tests + implement `outputs.RunMute`/`RunUnmute` and
+- [x] Write contract tests for `hub.SetOutputMuted`/`SetGroupMuted`
+- [x] Implement `hub.SetOutputMuted` and `hub.SetGroupMuted`
+- [x] Write unit tests + implement `outputs.RunMute`/`RunUnmute` and
       `groups.RunMute`/`RunUnmute`
-- [ ] Write integration test + add `dispatchMuted` and wire it into `run` in
+- [x] Write integration test + add `dispatchMuted` and wire it into `run` in
       `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora mute outputs/<id>`, `unmute outputs/<id>`, `mute groups/<id>`,
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora mute outputs/<id>`, `unmute outputs/<id>`, `mute groups/<id>`,
       `unmute groups/<id>` verified end-to-end against a mock hub, including the
       404/400 error paths and the inputs/routes/`all` rejection cases

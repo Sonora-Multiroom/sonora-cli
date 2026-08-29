@@ -156,6 +156,58 @@ func SetOutputEnabled(ctx context.Context, client *http.Client, baseURL, outputI
 	return &output, nil
 }
 
+// SetOutputMuted calls PUT {baseURL}/api/v2/outputs/{outputId}/mute
+// (operationId "setOutputMuted") with {"muted": muted}. On success (200),
+// the decoded, updated Output is returned (malformed body → *DecodeError). A
+// 404 is returned as a *NotFoundError naming the output. A 400 attempts to
+// decode the body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails (mirroring SetOutputEnabled's 400
+// handling); any other non-2xx status is a *StatusError.
+func SetOutputMuted(ctx context.Context, client *http.Client, baseURL, outputID string, muted bool) (*Output, error) {
+	body, err := json.Marshal(struct {
+		Muted bool `json:"muted"`
+	}{Muted: muted})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/outputs/" + url.PathEscape(outputID) + "/mute"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "output", ID: outputID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var output Output
+	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if output.OutputID == "" || output.DisplayName == "" {
+		return nil, &DecodeError{Err: fmt.Errorf("output missing required outputId/displayName")}
+	}
+	return &output, nil
+}
+
 // OutputVolume mirrors #/components/schemas/OutputVolumeResponse in
 // api/openapi.json field-for-field (constitution Principle II).
 type OutputVolume struct {
