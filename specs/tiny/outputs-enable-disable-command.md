@@ -2,7 +2,7 @@
 
 **Branch**: feature/outputs-enable-disable-command
 **Date**: 2026-08-29
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -69,20 +69,20 @@ one resource kind later — `groups` enable/disable is still follow-up work.
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetOutputEnabled` in `tests/contract/outputs_enabled_test.go`
-- [ ] Implement `hub.SetOutputEnabled` in `internal/hub/outputs.go`
-- [ ] Write unit tests + implement `outputs.RunEnable`/`RunDisable` in
+- [x] Write contract tests for `hub.SetOutputEnabled` in `tests/contract/outputs_enabled_test.go`
+- [x] Implement `hub.SetOutputEnabled` in `internal/hub/outputs.go`
+- [x] Write unit tests + implement `outputs.RunEnable`/`RunDisable` in
       `internal/cli/outputs/enabled.go`
-- [ ] Write integration test + extend `dispatchEnabled` (incl. inputs regression and
+- [x] Write integration test + extend `dispatchEnabled` (incl. inputs regression and
       non-inputs/non-outputs rejection) in `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora enable outputs/<id>` and `sonora disable outputs/<id>` verified
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora enable outputs/<id>` and `sonora disable outputs/<id>` verified
       end-to-end against a mock hub, including the 404/400 error paths, with
       `enable inputs/<id>` still working unchanged

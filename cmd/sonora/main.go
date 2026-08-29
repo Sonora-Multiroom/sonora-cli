@@ -30,8 +30,8 @@ Commands:
   stop routes/<id>                 Alias of 'delete routes/<id>'
   pause routes/<id>                Pause an active route's playback
   resume routes/<id>               Resume a paused route's playback
-  enable inputs/<id>               Enable a disabled input
-  disable inputs/<id>              Disable an input
+  enable inputs|outputs/<id>       Enable a disabled input or output
+  disable inputs|outputs/<id>      Disable an input or output
   set outputs/<id> volume <0-100>  Set an output's volume level
   set groups/<id> volume <0-100>   Set a group's volume level
   help                             Show this help
@@ -63,6 +63,7 @@ Examples:
   sonora pause routes/route-abc-123
   sonora resume routes/route-abc-123
   sonora enable inputs/spotify-1
+  sonora disable outputs/office-speaker
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
 e.g. 'sonora get routes --help'.
@@ -166,7 +167,7 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 // resource `enable`/`disable` currently support is `inputs`. Any other
 // resource is a usage error.
 func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id> [flags]", verb)
+	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id>|outputs/<output-id> [flags]", verb)
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -182,18 +183,24 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Inputs {
+	if path.Kind != respath.Inputs && path.Kind != respath.Outputs {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: %s does not support %s; only inputs/<input-id> is supported\n", verb, path.Kind)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only inputs/<input-id> and outputs/<output-id> are supported\n", verb, path.Kind)
 		return 2
 	}
 	if path.ID == "" {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintln(stderr, "error: missing required argument: <input-id>")
+		fmt.Fprintf(stderr, "error: missing required argument: <%s-id>\n", strings.TrimSuffix(path.Kind.String(), "s"))
 		return 2
 	}
 
 	callArgs := append([]string{path.ID}, args[1:]...)
+	if path.Kind == respath.Outputs {
+		if verb == "enable" {
+			return outputs.RunEnable(callArgs, stdout, stderr)
+		}
+		return outputs.RunDisable(callArgs, stdout, stderr)
+	}
 	if verb == "enable" {
 		return inputs.RunEnable(callArgs, stdout, stderr)
 	}

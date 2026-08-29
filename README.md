@@ -42,8 +42,8 @@ table, common flags, and examples from the terminal.
 | `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
 | `pause routes/<id>` | `routes` only | `rt` |
 | `resume routes/<id>` | `routes` only | `rt` |
-| `enable inputs/<id>` | `inputs` only | `in` |
-| `disable inputs/<id>` | `inputs` only | `in` |
+| `enable <resource>/<id>` | `inputs`, `outputs` | `in`, `out` |
+| `disable <resource>/<id>` | `inputs`, `outputs` | `in`, `out` |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
@@ -60,9 +60,9 @@ print the updated `routeId`/`paused`/`status` confirmation. Both are idempotent 
 already-paused route (or resuming an already-active one) still succeeds. Only `routes`
 supports pause/resume today.
 
-`enable inputs/<id>` and `disable inputs/<id>` set the input's enabled state; a disabled
-input remains registered but is unavailable for new route creation. Only `inputs` supports
-enable/disable today.
+`enable <resource>/<id>` and `disable <resource>/<id>` set the input's or output's enabled
+state; a disabled input remains registered but is unavailable for new route creation. Only
+`inputs` and `outputs` support enable/disable today.
 
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
