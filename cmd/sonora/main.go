@@ -10,6 +10,7 @@ import (
 	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/cli/groups"
 	"sonora-cli/internal/cli/inputs"
+	"sonora-cli/internal/cli/mastermute"
 	"sonora-cli/internal/cli/outputs"
 	"sonora-cli/internal/cli/play"
 	"sonora-cli/internal/cli/respath"
@@ -36,6 +37,9 @@ Commands:
   disable inputs|outputs|groups/<id>  Disable an input, output, or group
   mute outputs|groups/<id>            Mute an output or group
   unmute outputs|groups/<id>          Unmute an output or group
+  get master-mute                     Fetch the system-wide master-mute state
+  mute all                            Mute all outputs system-wide
+  unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
   set groups/<id> volume <0-100>      Set a group's volume level
   help                                Show this help
@@ -73,6 +77,9 @@ Examples:
   sonora enable groups/living-room
   sonora mute outputs/office-speaker
   sonora unmute groups/living-room
+  sonora get master-mute
+  sonora mute all
+  sonora unmute all
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
 e.g. 'sonora get routes --help'.
@@ -281,10 +288,18 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 // dispatchMuted resolves the resource-path argument following `mute`/
 // `unmute` via respath and calls outputs.RunMute/RunUnmute or
 // groups.RunMute/RunUnmute — the only resources `mute`/`unmute` currently
-// support are `outputs` and `groups` (`inputs` and the master-mute `all`
-// singleton are not supported). Any other resource is a usage error.
+// support are `outputs`, `groups`, and the literal keyword `all`, which
+// addresses the master-mute singleton (mastermute.RunMute/RunUnmute) rather
+// than a respath-addressable, id-bearing resource; `inputs` is not
+// supported. Any other resource is a usage error.
 func dispatchMuted(verb string, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s outputs/<output-id>|groups/<group-id> [flags]", verb)
+	usage := fmt.Sprintf("usage: sonora %s outputs/<output-id>|groups/<group-id>|all [flags]", verb)
+	if len(args) > 0 && args[0] == "all" {
+		if verb == "mute" {
+			return mastermute.RunMute(args[1:], stdout, stderr)
+		}
+		return mastermute.RunUnmute(args[1:], stdout, stderr)
+	}
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -302,7 +317,7 @@ func dispatchMuted(verb string, args []string, stdout, stderr io.Writer) int {
 	}
 	if path.Kind != respath.Outputs && path.Kind != respath.Groups {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: %s does not support %s; only outputs/<output-id> and groups/<group-id> are supported\n", verb, path.Kind)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only outputs/<output-id>, groups/<group-id>, and all are supported\n", verb, path.Kind)
 		return 2
 	}
 	if path.ID == "" {
@@ -417,6 +432,14 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 	usage := "usage: sonora get <resource>[/<id>] [flags]"
 	if verb == "list" {
 		usage = "usage: sonora list <resource> [flags]"
+	}
+	if len(args) > 0 && args[0] == "master-mute" {
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not support master-mute; use 'sonora get master-mute' instead")
+			return 2
+		}
+		return mastermute.RunGet(args[1:], stdout, stderr)
 	}
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)

@@ -239,11 +239,3 @@ func TestMute_RoutesRejected(t *testing.T) {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 }
-
-func TestUnmute_AllRejected(t *testing.T) {
-	res := runCLI(t, "unmute", "all")
-
-	if res.exitCode != 2 {
-		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
-	}
-}

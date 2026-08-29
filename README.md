@@ -47,6 +47,8 @@ table, common flags, and examples from the terminal.
 | `disable <resource>/<id>` | `inputs`, `outputs`, `groups` | `in`, `out`, `gr` |
 | `mute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
+| `get master-mute` | system-wide singleton, no id | — |
+| `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
@@ -76,6 +78,10 @@ enabled state; a disabled input remains registered but is unavailable for new ro
 
 `mute <resource>/<id>` and `unmute <resource>/<id>` set the output's or group's muted state.
 Only `outputs` and `groups` support mute/unmute today.
+
+`get master-mute` fetches the system-wide master-mute state; `mute all` and `unmute all` set
+it. All three print a bare `{muted: bool}` record. `master-mute` and `all` are singleton
+keywords, not `<resource>/<id>` paths — `master-mute` never takes an id and has no `list` form.
 
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
