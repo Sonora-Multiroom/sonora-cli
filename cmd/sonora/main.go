@@ -26,7 +26,9 @@ Commands:
   play <uri> <target>                 Play an audio URI on an output or group
   route inputs/<id> <target>          Connect an existing input to a target
   transfer routes/<id> <target>       Move playback to a new target
+  create inputs/<id> <uri>            Register a new ephemeral input
   delete routes/<id>                  Stop and remove a route
+  delete inputs/<id>                  Remove an ephemeral input
   stop routes/<id>                    Alias of 'delete routes/<id>'
   pause routes/<id>                   Pause an active route's playback
   resume routes/<id>                  Resume a paused route's playback
@@ -61,7 +63,9 @@ Examples:
   sonora transfer routes/route-abc-123 groups/living-room
   sonora set outputs/office-speaker volume 40
   sonora set groups/living-room volume 40
+  sonora create inputs/spotify-1 "https://stream.mp3" --display-name Spotify
   sonora delete routes/route-abc-123
+  sonora delete inputs/spotify-1
   sonora pause routes/route-abc-123
   sonora resume routes/route-abc-123
   sonora enable inputs/spotify-1
@@ -105,6 +109,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "get", "list":
 		return dispatchGetList(args[0], args[1:], stdout, stderr)
+	case "create":
+		return dispatchCreate(args[1:], stdout, stderr)
 	case "delete", "stop":
 		return dispatchDelete(args[0], args[1:], stdout, stderr)
 	case "enable", "disable":
@@ -133,12 +139,11 @@ func startsWithResource(args []string) bool {
 	return err == nil
 }
 
-// dispatchDelete resolves the resource-path argument following `delete`/
-// `stop` via respath and calls routes.RunDelete — the only resource `delete`
-// currently supports is `routes` (`stop` is an exact alias of `delete`, per
-// docs/cli-command-landscape.md). Any other resource is a usage error.
-func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
+// dispatchCreate resolves the resource-path argument following `create` via
+// respath and calls inputs.RunCreate — the only resource `create` currently
+// supports is `inputs`. Any other resource is a usage error.
+func dispatchCreate(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora create inputs/<input-id> <uri> --display-name <name> [flags]"
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -154,18 +159,69 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Routes {
+	if path.Kind != respath.Inputs {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: %s does not support %s; only routes/<route-id> is supported\n", verb, path.Kind)
+		fmt.Fprintf(stderr, "error: create does not support %s; only inputs/<input-id> is supported\n", path.Kind)
 		return 2
 	}
 	if path.ID == "" {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintln(stderr, "error: missing required argument: <route-id>")
+		fmt.Fprintln(stderr, "error: missing required argument: <input-id>")
 		return 2
 	}
 
 	callArgs := append([]string{path.ID}, args[1:]...)
+	return inputs.RunCreate(callArgs, stdout, stderr)
+}
+
+// dispatchDelete resolves the resource-path argument following `delete`/
+// `stop` via respath and calls routes.RunDelete or inputs.RunDelete —
+// `delete` supports `routes` and `inputs`; `stop` is an exact alias of
+// `delete` for `routes` only, per docs/cli-command-landscape.md. Any other
+// resource, or `stop` given `inputs`, is a usage error.
+func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
+	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
+	if verb == "delete" {
+		usage = "usage: sonora delete routes/<route-id>|inputs/<input-id> [flags]"
+	}
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Routes && (verb != "delete" || path.Kind != respath.Inputs) {
+		fmt.Fprintln(stderr, usage)
+		if verb == "delete" {
+			fmt.Fprintf(stderr, "error: delete does not support %s; only routes/<route-id> and inputs/<input-id> are supported\n", path.Kind)
+		} else {
+			fmt.Fprintf(stderr, "error: %s does not support %s; only routes/<route-id> is supported\n", verb, path.Kind)
+		}
+		return 2
+	}
+	idArgName := "<route-id>"
+	if path.Kind == respath.Inputs {
+		idArgName = "<input-id>"
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: missing required argument: %s\n", idArgName)
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	if path.Kind == respath.Inputs {
+		return inputs.RunDelete(callArgs, stdout, stderr)
+	}
 	return routes.RunDelete(callArgs, stdout, stderr)
 }
 

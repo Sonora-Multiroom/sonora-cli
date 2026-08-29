@@ -38,7 +38,8 @@ table, common flags, and examples from the terminal.
 | --- | --- | --- |
 | `get <resource>[/<id>]` | `inputs`, `outputs`, `groups`, `routes` | `in`, `out`, `gr`, `rt` |
 | `list <resource>` | same four, collection form only | same |
-| `delete routes/<id>` | `routes` only | `rt` |
+| `create inputs/<id> <uri>` | `inputs` only | `in` |
+| `delete <resource>/<id>` | `routes`, `inputs` | `rt`, `in` |
 | `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
 | `pause routes/<id>` | `routes` only | `rt` |
 | `resume routes/<id>` | `routes` only | `rt` |
@@ -54,8 +55,15 @@ returns a single item by id. `list` is an exact synonym of `get` for the collect
 interchangeable with full resource names everywhere a resource path appears, e.g.
 `sonora get out/office-speaker` is identical to `sonora get outputs/office-speaker`.
 
+`create inputs/<input-id> <uri> --display-name <name> [--auto-remove] [--disabled]` registers
+a new ephemeral input and prints the created input record. `--display-name` is required;
+`--auto-remove` removes the input once its route stops, and `--disabled` creates it disabled
+(enabled by default). Only `inputs` supports creation today.
+
 `delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
-alias. Only `routes` supports deletion today.
+alias. `delete inputs/<id>` removes a previously created ephemeral input (static,
+YAML-configured inputs cannot be deleted). `routes` and `inputs` support deletion today;
+`stop` remains a `routes`-only alias.
 
 `pause routes/<id>` and `resume routes/<id>` pause or resume an active route's playback and
 print the updated `routeId`/`paused`/`status` confirmation. Both are idempotent — pausing an

@@ -95,3 +95,41 @@ func RenderInputJSON(i hub.Input) string {
 	}
 	return string(data) + "\n"
 }
+
+// inputDeletedPayload is the flat rendered view of an input-deletion result:
+// deleteInput's 204 response has no body, so this is built directly from the
+// inputID the caller acted on rather than a decoded hub.Input (mirroring
+// routeDeletedPayload in internal/render/route.go).
+type inputDeletedPayload struct {
+	InputID string `json:"inputId"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+func toInputDeletedPayload(inputID, message string) inputDeletedPayload {
+	return inputDeletedPayload{InputID: inputID, Status: "removed", Message: message}
+}
+
+// RenderInputDeletedYAML renders an input-deletion result as a bare YAML
+// record, exposing exactly inputId, status, message in that order (mirroring
+// RenderRouteDeletedYAML).
+func RenderInputDeletedYAML(inputID, message string) string {
+	payload := toInputDeletedPayload(inputID, message)
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "inputId: %q\n", payload.InputID)
+	fmt.Fprintf(&b, "status: %q\n", payload.Status)
+	fmt.Fprintf(&b, "message: %q\n", payload.Message)
+	return b.String()
+}
+
+// RenderInputDeletedJSON renders an input-deletion result as a strict JSON
+// object, exposing exactly inputId, status, message.
+func RenderInputDeletedJSON(inputID, message string) string {
+	data, err := json.Marshal(toInputDeletedPayload(inputID, message))
+	if err != nil {
+		// inputDeletedPayload's fields are all plain strings — Marshal
+		// cannot fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
