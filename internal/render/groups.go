@@ -96,3 +96,25 @@ func RenderGroupJSON(g hub.Group) string {
 	}
 	return string(data) + "\n"
 }
+
+// RenderGroupVolumeYAML renders a single group-volume confirmation as a
+// bare YAML record, used by `set groups/<id> volume <n>`.
+func RenderGroupVolumeYAML(gv hub.GroupVolume) string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "groupId: %q\n", gv.GroupID)
+	fmt.Fprintf(&b, "volume: %d\n", gv.Volume)
+	fmt.Fprintf(&b, "updatedAt: %q\n", gv.UpdatedAt)
+	return b.String()
+}
+
+// RenderGroupVolumeJSON renders a single group-volume confirmation as a
+// strict JSON object, used by `set groups/<id> volume <n> --json`.
+func RenderGroupVolumeJSON(gv hub.GroupVolume) string {
+	data, err := json.Marshal(gv)
+	if err != nil {
+		// hub.GroupVolume's fields are all plain scalars — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}

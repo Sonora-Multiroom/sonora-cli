@@ -2,7 +2,7 @@
 
 **Branch**: feature/groups-set-volume-command
 **Date**: 2026-08-29
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -69,20 +69,20 @@ hard-rejects every resource kind except `Outputs`; this widens it to accept
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.SetGroupVolume` in `tests/contract/groups_volume_test.go`
-- [ ] Implement `hub.GroupVolume` + `hub.SetGroupVolume` in `internal/hub/groups.go`
-- [ ] Write render tests + implement `RenderGroupVolumeYAML`/`RenderGroupVolumeJSON` in
+- [x] Write contract tests for `hub.SetGroupVolume` in `tests/contract/groups_volume_test.go`
+- [x] Implement `hub.GroupVolume` + `hub.SetGroupVolume` in `internal/hub/groups.go`
+- [x] Write render tests + implement `RenderGroupVolumeYAML`/`RenderGroupVolumeJSON` in
       `internal/render/groups.go`
-- [ ] Write unit tests + implement `groups.RunSetVolume` in `internal/cli/groups/volume.go`
-- [ ] Write/extend integration tests + widen `dispatchSet` to accept `groups` (incl. confirming
+- [x] Write unit tests + implement `groups.RunSetVolume` in `internal/cli/groups/volume.go`
+- [x] Write/extend integration tests + widen `dispatchSet` to accept `groups` (incl. confirming
       `inputs`/`routes` still rejected) in `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora set groups/<id> volume <n>` verified end-to-end against a mock hub, including the
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora set groups/<id> volume <n>` verified end-to-end against a mock hub, including the
       404/400/out-of-range error paths, and `set outputs/<id> volume <n>` still works

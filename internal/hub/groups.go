@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -100,4 +101,64 @@ func GetGroup(ctx context.Context, client *http.Client, baseURL, groupID string)
 		return nil, &DecodeError{Err: fmt.Errorf("group missing required groupId/displayName")}
 	}
 	return &group, nil
+}
+
+// GroupVolume mirrors #/components/schemas/GroupVolumeResponse in
+// api/openapi.json field-for-field (constitution Principle II).
+type GroupVolume struct {
+	GroupID   string `json:"groupId"`
+	Volume    int    `json:"volume"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// SetGroupVolume calls PUT {baseURL}/api/v2/groups/{groupId}/volume
+// (operationId "setGroupVolume") with {"volume": volume}. On success (200),
+// the decoded GroupVolume is returned (malformed body → *DecodeError). A
+// 404 is returned as a *NotFoundError naming the group. A 400 attempts to
+// decode the body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails (mirroring SetOutputVolume's 400
+// handling); any other non-2xx status is a *StatusError.
+func SetGroupVolume(ctx context.Context, client *http.Client, baseURL, groupID string, volume int) (*GroupVolume, error) {
+	body, err := json.Marshal(struct {
+		Volume int `json:"volume"`
+	}{Volume: volume})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/groups/" + url.PathEscape(groupID) + "/volume"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "group", ID: groupID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var gv GroupVolume
+	if err := json.NewDecoder(resp.Body).Decode(&gv); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if gv.GroupID == "" {
+		return nil, &DecodeError{Err: fmt.Errorf("group volume response missing required groupId")}
+	}
+	return &gv, nil
 }

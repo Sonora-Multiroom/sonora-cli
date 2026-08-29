@@ -31,6 +31,7 @@ Commands:
   enable inputs/<id>               Enable a disabled input
   disable inputs/<id>              Disable an input
   set outputs/<id> volume <0-100>  Set an output's volume level
+  set groups/<id> volume <0-100>   Set a group's volume level
   help                             Show this help
 
   <resource>  inputs (in), outputs (out), groups (gr), routes (rt)
@@ -55,6 +56,7 @@ Examples:
   sonora route inputs/spotify-1 outputs/office-speaker
   sonora transfer routes/route-abc-123 groups/living-room
   sonora set outputs/office-speaker volume 40
+  sonora set groups/living-room volume 40
   sonora delete routes/route-abc-123
   sonora enable inputs/spotify-1
 
@@ -193,12 +195,13 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 }
 
 // dispatchSet resolves the resource-path argument following `set` via
-// respath and calls outputs.RunSetVolume — the only resource/attribute
-// combination `set` currently supports is `outputs`/`volume` (the literal
-// `volume` word and its `<0-100>` value are validated by RunSetVolume
-// itself). Any other resource is a usage error.
+// respath and calls outputs.RunSetVolume or groups.RunSetVolume — the only
+// resource/attribute combinations `set` currently supports are
+// `outputs`/`volume` and `groups`/`volume` (the literal `volume` word and
+// its `<0-100>` value are validated by each RunSetVolume itself). Any other
+// resource is a usage error.
 func dispatchSet(args []string, stdout, stderr io.Writer) int {
-	usage := "usage: sonora set outputs/<output-id> volume <0-100> [flags]"
+	usage := "usage: sonora set <outputs|groups>/<id> volume <0-100> [flags]"
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -214,18 +217,21 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Outputs {
+	if path.Kind != respath.Outputs && path.Kind != respath.Groups {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: set does not support %s; only outputs/<output-id> volume <0-100> is supported\n", path.Kind)
+		fmt.Fprintf(stderr, "error: set does not support %s; only outputs/<id> volume <0-100> and groups/<id> volume <0-100> are supported\n", path.Kind)
 		return 2
 	}
 	if path.ID == "" {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintln(stderr, "error: missing required argument: <output-id>")
+		fmt.Fprintf(stderr, "error: missing required argument: <%s-id>\n", strings.TrimSuffix(path.Kind.String(), "s"))
 		return 2
 	}
 
 	callArgs := append([]string{path.ID}, args[1:]...)
+	if path.Kind == respath.Groups {
+		return groups.RunSetVolume(callArgs, stdout, stderr)
+	}
 	return outputs.RunSetVolume(callArgs, stdout, stderr)
 }
 

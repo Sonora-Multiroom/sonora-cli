@@ -102,7 +102,9 @@ func TestOutputsSetVolume_OutOfRangeIsUsageError(t *testing.T) {
 }
 
 func TestOutputsSetVolume_NonOutputsResourceIsUsageError(t *testing.T) {
-	res := runCLI(t, "set", "groups/main-floor", "volume", "50")
+	// groups also supports `set .../volume` now (see groups_volume_test.go),
+	// so exercise a resource that still doesn't: inputs.
+	res := runCLI(t, "set", "inputs/spotify-1", "volume", "50")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
