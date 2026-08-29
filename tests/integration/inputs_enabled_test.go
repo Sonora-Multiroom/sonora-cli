@@ -108,8 +108,8 @@ func TestInputsEnable_NotFound(t *testing.T) {
 	}
 }
 
-func TestInputsEnable_NonInputsOutputsResourceIsUsageError(t *testing.T) {
-	res := runCLI(t, "enable", "groups/living-room")
+func TestInputsEnable_UnsupportedResourceIsUsageError(t *testing.T) {
+	res := runCLI(t, "enable", "routes/route-abc-123")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)

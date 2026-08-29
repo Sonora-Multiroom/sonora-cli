@@ -21,20 +21,20 @@ import (
 const helpText = `Usage: sonora <verb> <resource>[/<id>] [flags]
 
 Commands:
-  get <resource>[/<id>]            Fetch a collection, or a single item by id
-  list <resource>                  Fetch a collection (synonym of 'get')
-  play <uri> <target>              Play an audio URI on an output or group
-  route inputs/<id> <target>       Connect an existing input to a target
-  transfer routes/<id> <target>    Move an active route's playback to a target
-  delete routes/<id>               Stop and remove a route
-  stop routes/<id>                 Alias of 'delete routes/<id>'
-  pause routes/<id>                Pause an active route's playback
-  resume routes/<id>               Resume a paused route's playback
-  enable inputs|outputs/<id>       Enable a disabled input or output
-  disable inputs|outputs/<id>      Disable an input or output
-  set outputs/<id> volume <0-100>  Set an output's volume level
-  set groups/<id> volume <0-100>   Set a group's volume level
-  help                             Show this help
+  get <resource>[/<id>]               Fetch a collection, or a single item by id
+  list <resource>                     Fetch a collection (synonym of 'get')
+  play <uri> <target>                 Play an audio URI on an output or group
+  route inputs/<id> <target>          Connect an existing input to a target
+  transfer routes/<id> <target>       Move playback to a new target
+  delete routes/<id>                  Stop and remove a route
+  stop routes/<id>                    Alias of 'delete routes/<id>'
+  pause routes/<id>                   Pause an active route's playback
+  resume routes/<id>                  Resume a paused route's playback
+  enable inputs|outputs|groups/<id>   Enable a disabled input, output, or group
+  disable inputs|outputs|groups/<id>  Disable an input, output, or group
+  set outputs/<id> volume <0-100>     Set an output's volume level
+  set groups/<id> volume <0-100>      Set a group's volume level
+  help                                Show this help
 
   <resource>  inputs (in), outputs (out), groups (gr), routes (rt)
   <target>    outputs/<id> or groups/<id>
@@ -64,6 +64,7 @@ Examples:
   sonora resume routes/route-abc-123
   sonora enable inputs/spotify-1
   sonora disable outputs/office-speaker
+  sonora enable groups/living-room
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
 e.g. 'sonora get routes --help'.
@@ -163,11 +164,12 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 }
 
 // dispatchEnabled resolves the resource-path argument following `enable`/
-// `disable` via respath and calls inputs.RunEnable/RunDisable — the only
-// resource `enable`/`disable` currently support is `inputs`. Any other
-// resource is a usage error.
+// `disable` via respath and calls inputs.RunEnable/RunDisable,
+// outputs.RunEnable/RunDisable, or groups.RunEnable/RunDisable — the only
+// resources `enable`/`disable` currently support are `inputs`, `outputs`,
+// and `groups`. Any other resource is a usage error.
 func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id>|outputs/<output-id> [flags]", verb)
+	usage := fmt.Sprintf("usage: sonora %s inputs/<input-id>|outputs/<output-id>|groups/<group-id> [flags]", verb)
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -183,9 +185,9 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Inputs && path.Kind != respath.Outputs {
+	if path.Kind != respath.Inputs && path.Kind != respath.Outputs && path.Kind != respath.Groups {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: %s does not support %s; only inputs/<input-id> and outputs/<output-id> are supported\n", verb, path.Kind)
+		fmt.Fprintf(stderr, "error: %s does not support %s; only inputs/<input-id>, outputs/<output-id>, and groups/<group-id> are supported\n", verb, path.Kind)
 		return 2
 	}
 	if path.ID == "" {
@@ -195,16 +197,23 @@ func dispatchEnabled(verb string, args []string, stdout, stderr io.Writer) int {
 	}
 
 	callArgs := append([]string{path.ID}, args[1:]...)
-	if path.Kind == respath.Outputs {
+	switch path.Kind {
+	case respath.Outputs:
 		if verb == "enable" {
 			return outputs.RunEnable(callArgs, stdout, stderr)
 		}
 		return outputs.RunDisable(callArgs, stdout, stderr)
+	case respath.Groups:
+		if verb == "enable" {
+			return groups.RunEnable(callArgs, stdout, stderr)
+		}
+		return groups.RunDisable(callArgs, stdout, stderr)
+	default:
+		if verb == "enable" {
+			return inputs.RunEnable(callArgs, stdout, stderr)
+		}
+		return inputs.RunDisable(callArgs, stdout, stderr)
 	}
-	if verb == "enable" {
-		return inputs.RunEnable(callArgs, stdout, stderr)
-	}
-	return inputs.RunDisable(callArgs, stdout, stderr)
 }
 
 // dispatchPause resolves the resource-path argument following `pause`/
