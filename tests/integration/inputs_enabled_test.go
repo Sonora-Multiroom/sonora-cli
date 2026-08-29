@@ -108,8 +108,8 @@ func TestInputsEnable_NotFound(t *testing.T) {
 	}
 }
 
-func TestInputsEnable_NonInputsResourceIsUsageError(t *testing.T) {
-	res := runCLI(t, "enable", "outputs/office-speaker")
+func TestInputsEnable_NonInputsOutputsResourceIsUsageError(t *testing.T) {
+	res := runCLI(t, "enable", "groups/living-room")
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
