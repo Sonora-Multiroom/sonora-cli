@@ -24,6 +24,16 @@ type Input struct {
 	Pauseable   bool    `json:"pauseable"`
 }
 
+// CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
+// api/openapi.json field-for-field (constitution Principle II).
+type CreateInputRequest struct {
+	InputID     string `json:"inputId"`
+	DisplayName string `json:"displayName"`
+	URI         string `json:"uri"`
+	Enabled     bool   `json:"enabled"`
+	AutoRemove  bool   `json:"autoRemove"`
+}
+
 func validateInput(i Input) error {
 	if i.InputID == "" || i.DisplayName == "" {
 		return fmt.Errorf("input missing required inputId/displayName")
@@ -166,4 +176,89 @@ func SetInputEnabled(ctx context.Context, client *http.Client, baseURL, inputID 
 		return nil, &DecodeError{Err: err}
 	}
 	return &input, nil
+}
+
+// CreateInput calls POST {baseURL}/api/v2/inputs (operationId
+// "createInput"), registering a new ephemeral audio input. On success (201),
+// the decoded Input is returned, validated via the existing validateInput
+// helper (malformed body → *DecodeError, mirroring CreateRoute's success
+// handling). A 400/409 attempts to decode the body as an errorResponse into
+// an *APIError, falling back to a *StatusError if that decode fails
+// (mirroring CreateRoute's 400/422 handling); any other non-2xx status is a
+// *StatusError.
+func CreateInput(ctx context.Context, client *http.Client, baseURL string, req CreateInputRequest) (*Input, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/api/v2/inputs", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusBadRequest, http.StatusConflict:
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return nil, &StatusError{StatusCode: resp.StatusCode}
+		}
+		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var created Input
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateInput(created); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &created, nil
+}
+
+// DeleteInput calls DELETE {baseURL}/api/v2/inputs/{inputId} (operationId
+// "deleteInput"), removing a previously registered ephemeral input. On
+// success (204) nil is returned. A 404 is returned as a *NotFoundError
+// naming the input. A 400 (the input is a static, YAML-configured input and
+// cannot be deleted) attempts to decode the body as an errorResponse into an
+// *APIError, falling back to a *StatusError if that decode fails; any other
+// non-2xx status is a *StatusError.
+func DeleteInput(ctx context.Context, client *http.Client, baseURL, inputID string) error {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/inputs/" + url.PathEscape(inputID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return &NotFoundError{Resource: "input", ID: inputID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		var errBody errorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return &StatusError{StatusCode: resp.StatusCode}
+		}
+		return &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &StatusError{StatusCode: resp.StatusCode}
+	}
+	return nil
 }

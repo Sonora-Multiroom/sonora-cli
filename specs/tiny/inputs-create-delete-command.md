@@ -2,7 +2,7 @@
 
 **Branch**: feature/inputs-create-delete-command
 **Date**: 2026-08-29
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -44,12 +44,11 @@ pattern.
 2. `sonora delete inputs/<input-id>` sends `DELETE /api/v2/inputs/{inputId}`; on success (204)
    it prints an inputId/status/message record (mirroring `RenderRouteDeletedYAML`/`JSON`'s
    shape) and exits 0. `sonora delete routes/<id>` continues to work unchanged.
-3. A 404 on create's target lookup n/a; for create, a 409 (duplicate input id) reports the
-   hub's error detail (or a generic "hub reported an error" fallback) and exits with
-   `ClassHub`'s code; a 400 (validation) reports the detail and exits with `ClassValidation`'s
-   code. For delete, a 404 reports "input not found: `<id>`" and exits with `ClassNotFound`'s
-   code; a 400 (static input, cannot be deleted) reports the detail and exits with
-   `ClassValidation`'s code.
+3. For create, a 409 (duplicate input id) reports the hub's error detail (or a generic "hub
+   reported an error" fallback) and exits with `ClassHub`'s code; a 400 (validation) reports
+   the detail and exits with `ClassValidation`'s code. For delete, a 404 reports "input not
+   found: `<id>`" and exits with `ClassNotFound`'s code; a 400 (static input, cannot be
+   deleted) reports the detail and exits with `ClassValidation`'s code.
 4. Missing `<input-id>`/`<uri>` (create) or `<input-id>` (delete), or unexpected extra
    arguments, produce a usage error on stderr (`ClassUsage`'s exit code).
 5. `--json`, `--verbose`, and `--hub-url` behave the same as every other command.
@@ -75,21 +74,21 @@ pattern.
 
 ## Tasks
 
-- [ ] Write contract tests for `hub.CreateInput`/`hub.DeleteInput`
-- [ ] Implement `hub.CreateInputRequest`, `hub.CreateInput`, `hub.DeleteInput` in `internal/hub/inputs.go`
-- [ ] Write + implement `RenderInputDeletedYAML`/`JSON` in `internal/render/inputs.go`
-- [ ] Write unit tests + implement `inputs.RunCreate` in `internal/cli/inputs/create.go`
-- [ ] Write unit tests + implement `inputs.RunDelete` in `internal/cli/inputs/delete.go`
-- [ ] Write integration tests + wire `create` dispatch and extend `dispatchDelete` for `inputs`
+- [x] Write contract tests for `hub.CreateInput`/`hub.DeleteInput`
+- [x] Implement `hub.CreateInputRequest`, `hub.CreateInput`, `hub.DeleteInput` in `internal/hub/inputs.go`
+- [x] Write + implement `RenderInputDeletedYAML`/`JSON` in `internal/render/inputs.go`
+- [x] Write unit tests + implement `inputs.RunCreate` in `internal/cli/inputs/create.go`
+- [x] Write unit tests + implement `inputs.RunDelete` in `internal/cli/inputs/delete.go`
+- [x] Write integration tests + wire `create` dispatch and extend `dispatchDelete` for `inputs`
       in `cmd/sonora/main.go`, update `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora create inputs/<id> <uri> --display-name <name>` and `sonora delete inputs/<id>`
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora create inputs/<id> <uri> --display-name <name>` and `sonora delete inputs/<id>`
       verified end-to-end against a mock hub, including 400/404/409 error paths, and
       `sonora delete routes/<id>` confirmed unaffected

@@ -162,3 +162,30 @@ func TestRenderInputJSON_SingleObjectRoundTrips(t *testing.T) {
 		t.Errorf("round-tripped value = %+v, want %+v", decoded, i)
 	}
 }
+
+func TestRenderInputDeletedYAML_ExposesExactlyThreeFields(t *testing.T) {
+	got := render.RenderInputDeletedYAML("spotify-1", "Removed inputs/spotify-1.")
+
+	for _, field := range []string{"inputId", "status", "message"} {
+		if !strings.Contains(got, field) {
+			t.Errorf("expected field %q in YAML output, got:\n%s", field, got)
+		}
+	}
+}
+
+func TestRenderInputDeletedJSON_RoundTrips(t *testing.T) {
+	message := "Removed inputs/spotify-1."
+	got := render.RenderInputDeletedJSON("spotify-1", message)
+
+	var decoded struct {
+		InputID string `json:"inputId"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, got)
+	}
+	if decoded.InputID != "spotify-1" || decoded.Status == "" || decoded.Message != message {
+		t.Errorf("unexpected decoded content: %+v", decoded)
+	}
+}

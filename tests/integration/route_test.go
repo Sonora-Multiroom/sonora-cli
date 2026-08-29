@@ -497,8 +497,11 @@ func TestRouteDelete_422_StopFailed(t *testing.T) {
 	}
 }
 
-func TestRouteDelete_NonRoutesResource_IsUsageError(t *testing.T) {
-	res := runCLI(t, "delete", "inputs/spotify-1")
+// TestRouteDelete_UnsupportedResourceIsUsageError covers delete given a
+// resource neither routes nor inputs support (outputs/groups); inputs is
+// covered separately by TestInputsDelete_Success_YAML et al.
+func TestRouteDelete_UnsupportedResourceIsUsageError(t *testing.T) {
+	res := runCLI(t, "delete", "outputs/office-speaker")
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
