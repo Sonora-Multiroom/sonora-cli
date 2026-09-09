@@ -103,3 +103,45 @@ func RenderRouteJSON(r hub.Route) string {
 	}
 	return string(data) + "\n"
 }
+
+func writeStopReason(b *bytes.Buffer, indent string, stopReason *string) {
+	if stopReason == nil {
+		fmt.Fprintf(b, "%sstopReason: null\n", indent)
+		return
+	}
+	fmt.Fprintf(b, "%sstopReason: %q\n", indent, *stopReason)
+}
+
+// RenderBulkStopYAML renders a bulk stop-routes result (`stop routes`, `stop
+// outputs/<id>`, `stop groups/<id>`) as a small, fixed-shape YAML document,
+// mirroring RenderRoutesYAML's list shape.
+func RenderBulkStopYAML(r hub.BulkStopResponse) string {
+	var b bytes.Buffer
+	if len(r.StoppedRoutes) == 0 {
+		b.WriteString("# no routes stopped\n")
+		b.WriteString("stoppedCount: 0\n")
+		b.WriteString("stoppedRoutes: []\n")
+		return b.String()
+	}
+	fmt.Fprintf(&b, "stoppedCount: %d\n", r.StoppedCount)
+	b.WriteString("stoppedRoutes:\n")
+	for _, e := range r.StoppedRoutes {
+		fmt.Fprintf(&b, "  - routeId: %q\n", e.RouteID)
+		fmt.Fprintf(&b, "    targetType: %q\n", e.TargetType)
+		fmt.Fprintf(&b, "    targetId: %q\n", e.TargetID)
+		writeStopReason(&b, "    ", e.StopReason)
+	}
+	return b.String()
+}
+
+// RenderBulkStopJSON renders a bulk stop-routes result as strict JSON,
+// mirroring hub.BulkStopResponse's field names exactly.
+func RenderBulkStopJSON(r hub.BulkStopResponse) string {
+	data, err := json.Marshal(r)
+	if err != nil {
+		// hub.BulkStopResponse's fields are all plain scalars/pointers to
+		// scalars — Marshal cannot fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}

@@ -267,3 +267,33 @@ func SetOutputVolume(ctx context.Context, client *http.Client, baseURL, outputID
 	}
 	return &ov, nil
 }
+
+// StopRoutesForOutput calls DELETE {baseURL}/api/v2/outputs/{outputId}/routes
+// (operationId "stopRoutesForOutput"), stopping every route addressed
+// directly to this output plus any group route whose group currently
+// includes it as a member. Idempotent — zero matching routes still returns
+// 200 with stoppedCount 0. A 404 is returned as a *NotFoundError naming the
+// output; any other non-2xx status is a *StatusError; a malformed 200 body
+// is a *DecodeError.
+func StopRoutesForOutput(ctx context.Context, client *http.Client, baseURL, outputID string) (*BulkStopResponse, error) {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/outputs/" + url.PathEscape(outputID) + "/routes"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "output", ID: outputID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+	return decodeBulkStopResponse(resp.Body)
+}

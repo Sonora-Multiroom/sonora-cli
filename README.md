@@ -40,7 +40,8 @@ table, common flags, and examples from the terminal.
 | `list <resource>` | same four, collection form only | same |
 | `create inputs/<id> <uri>` | `inputs` only | `in` |
 | `delete <resource>/<id>` | `routes`, `inputs` | `rt`, `in` |
-| `stop routes/<id>` | alias of `delete routes/<id>` | `rt` |
+| `stop routes[/<id>]` | bare = stop all; `/<id>` = alias of `delete routes/<id>` | `rt` |
+| `stop <resource>/<id>` | `outputs`, `groups` — stop every route in scope | `out`, `gr` |
 | `pause routes/<id>` | `routes` only | `rt` |
 | `resume routes/<id>` | `routes` only | `rt` |
 | `enable <resource>/<id>` | `inputs`, `outputs`, `groups` | `in`, `out`, `gr` |
@@ -64,8 +65,15 @@ a new ephemeral input and prints the created input record. `--display-name` is r
 
 `delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
 alias. `delete inputs/<id>` removes a previously created ephemeral input (static,
-YAML-configured inputs cannot be deleted). `routes` and `inputs` support deletion today;
-`stop` remains a `routes`-only alias.
+YAML-configured inputs cannot be deleted). `routes` and `inputs` support deletion today.
+
+`stop routes` (no id) stops every active route system-wide; `stop outputs/<id>` stops every
+route for that output, including a group route it belongs to (a single output can't be
+detached from a live group route); `stop groups/<id>` stops every route for that group,
+including routes addressed directly to its member outputs. All three are idempotent — nothing
+in scope still succeeds and reports zero routes stopped — and print a `stoppedCount`/
+`stoppedRoutes` confirmation. `stop outputs/<id>`/`stop groups/<id>` 404 on an unknown id;
+`stop routes` never does. `stop inputs/<id>` is not supported.
 
 `pause routes/<id>` and `resume routes/<id>` pause or resume an active route's playback and
 print the updated `routeId`/`paused`/`status` confirmation. Both are idempotent — pausing an
@@ -117,6 +125,9 @@ sonora get routes --status active
 sonora get groups/<id> --json
 sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
 sonora transfer routes/<route-id> outputs/bedroom-speaker
+sonora stop routes
+sonora stop outputs/<id>
+sonora stop groups/<id>
 ```
 
 ## Configuration

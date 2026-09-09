@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -40,6 +41,41 @@ type CreateRouteRequest struct {
 type TransferRequest struct {
 	TargetID   string `json:"targetId"`
 	TargetType string `json:"targetType"`
+}
+
+// StoppedRouteEntry mirrors #/components/schemas/StoppedRouteEntry in
+// api/openapi.json field-for-field (constitution Principle II). StopReason is
+// nullable in the schema (omitted for the stop-all endpoint), hence the
+// pointer.
+type StoppedRouteEntry struct {
+	RouteID    string  `json:"routeId"`
+	TargetType string  `json:"targetType"`
+	TargetID   string  `json:"targetId"`
+	StopReason *string `json:"stopReason"`
+}
+
+// BulkStopResponse mirrors #/components/schemas/BulkStopResponse in
+// api/openapi.json field-for-field (constitution Principle II). Returned by
+// StopAllRoutes, and (from outputs.go/groups.go) StopRoutesForOutput/
+// StopRoutesForGroup, so it lives here alongside the rest of the route
+// domain rather than being duplicated per caller.
+type BulkStopResponse struct {
+	StoppedCount  int                 `json:"stoppedCount"`
+	StoppedRoutes []StoppedRouteEntry `json:"stoppedRoutes"`
+}
+
+// decodeBulkStopResponse decodes a BulkStopResponse body, normalizing a null/
+// absent stoppedRoutes to an empty slice (mirroring ListRoutes' nil-to-empty
+// normalization) so callers never need a nil check.
+func decodeBulkStopResponse(body io.Reader) (*BulkStopResponse, error) {
+	var r BulkStopResponse
+	if err := json.NewDecoder(body).Decode(&r); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if r.StoppedRoutes == nil {
+		r.StoppedRoutes = []StoppedRouteEntry{}
+	}
+	return &r, nil
 }
 
 // PauseRequest mirrors #/components/schemas/PauseRequest in
@@ -295,6 +331,31 @@ func SetPauseState(ctx context.Context, client *http.Client, baseURL, routeID st
 		return nil, &DecodeError{Err: err}
 	}
 	return &route, nil
+}
+
+// StopAllRoutes calls DELETE {baseURL}/api/v2/routes (operationId
+// "stopAllRoutes"), stopping every currently active route system-wide.
+// Idempotent — zero active routes still returns 200 with stoppedCount 0.
+// Neither a 404 nor a 400 is documented for this operation, so any non-2xx
+// status is a *StatusError; a malformed 200 body is a *DecodeError.
+func StopAllRoutes(ctx context.Context, client *http.Client, baseURL string) (*BulkStopResponse, error) {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/routes"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+	return decodeBulkStopResponse(resp.Body)
 }
 
 // TransferRoute calls POST {baseURL}/api/v2/routes/{routeId}/transfer

@@ -156,6 +156,84 @@ func TestRunGetList_NoResourceArgument_EnumeratesValidResources(t *testing.T) {
 	}
 }
 
+func TestRunStop_RoutesBare_DispatchesToRunStopAll(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "routes", "--hub-url", unreachableHubURL}, &stdout, &stderr)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4 (dispatch reached RunStopAll); stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRunStop_RoutesWithID_DispatchesToRunDelete(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "routes/route-abc-123", "--hub-url", unreachableHubURL}, &stdout, &stderr)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4 (dispatch reached RunDelete); stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRunStop_OutputWithID_DispatchesToRunStop(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "outputs/office-speaker", "--hub-url", unreachableHubURL}, &stdout, &stderr)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4 (dispatch reached outputs.RunStop); stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRunStop_GroupWithID_DispatchesToRunStop(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "groups/living-room", "--hub-url", unreachableHubURL}, &stdout, &stderr)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4 (dispatch reached groups.RunStop); stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRunStop_BareOutputs_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "outputs"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("stdout = %q, want empty", stdout.String())
+	}
+}
+
+func TestRunStop_BareGroups_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "groups"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+}
+
+func TestRunStop_Inputs_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"stop", "inputs/spotify-1"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "inputs") {
+		t.Errorf("stderr = %q, want mention of unsupported inputs resource", stderr.String())
+	}
+}
+
+func TestRunDelete_StillOnlySupportsRoutesAndInputs(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"delete", "outputs/office-speaker"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+}
+
 func TestRunOldStyleInvocation_UnknownCommand(t *testing.T) {
 	cases := [][]string{
 		{"outputs", "list"},

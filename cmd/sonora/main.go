@@ -30,7 +30,8 @@ Commands:
   create inputs/<id> <uri>            Register a new ephemeral input
   delete routes/<id>                  Stop and remove a route
   delete inputs/<id>                  Remove an ephemeral input
-  stop routes/<id>                    Alias of 'delete routes/<id>'
+  stop routes[/<id>]                  Stop all routes, or one by id
+  stop outputs|groups/<id>            Stop every route for an output or group
   pause routes/<id>                   Pause an active route's playback
   resume routes/<id>                  Resume a paused route's playback
   enable inputs|outputs|groups/<id>   Enable a disabled input, output, or group
@@ -70,6 +71,9 @@ Examples:
   sonora create inputs/spotify-1 "https://stream.mp3" --display-name Spotify
   sonora delete routes/route-abc-123
   sonora delete inputs/spotify-1
+  sonora stop routes
+  sonora stop outputs/office-speaker
+  sonora stop groups/living-room
   sonora pause routes/route-abc-123
   sonora resume routes/route-abc-123
   sonora enable inputs/spotify-1
@@ -118,8 +122,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchGetList(args[0], args[1:], stdout, stderr)
 	case "create":
 		return dispatchCreate(args[1:], stdout, stderr)
-	case "delete", "stop":
-		return dispatchDelete(args[0], args[1:], stdout, stderr)
+	case "delete":
+		return dispatchDelete(args[1:], stdout, stderr)
+	case "stop":
+		return dispatchStop(args[1:], stdout, stderr)
 	case "enable", "disable":
 		return dispatchEnabled(args[0], args[1:], stdout, stderr)
 	case "mute", "unmute":
@@ -181,16 +187,12 @@ func dispatchCreate(args []string, stdout, stderr io.Writer) int {
 	return inputs.RunCreate(callArgs, stdout, stderr)
 }
 
-// dispatchDelete resolves the resource-path argument following `delete`/
-// `stop` via respath and calls routes.RunDelete or inputs.RunDelete —
-// `delete` supports `routes` and `inputs`; `stop` is an exact alias of
-// `delete` for `routes` only, per docs/cli-command-landscape.md. Any other
-// resource, or `stop` given `inputs`, is a usage error.
-func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
-	usage := fmt.Sprintf("usage: sonora %s routes/<route-id> [flags]", verb)
-	if verb == "delete" {
-		usage = "usage: sonora delete routes/<route-id>|inputs/<input-id> [flags]"
-	}
+// dispatchDelete resolves the resource-path argument following `delete` via
+// respath and calls routes.RunDelete or inputs.RunDelete — the only
+// resources `delete` currently supports are `routes` and `inputs`. Any
+// other resource is a usage error.
+func dispatchDelete(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora delete routes/<route-id>|inputs/<input-id> [flags]"
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -206,13 +208,9 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Routes && (verb != "delete" || path.Kind != respath.Inputs) {
+	if path.Kind != respath.Routes && path.Kind != respath.Inputs {
 		fmt.Fprintln(stderr, usage)
-		if verb == "delete" {
-			fmt.Fprintf(stderr, "error: delete does not support %s; only routes/<route-id> and inputs/<input-id> are supported\n", path.Kind)
-		} else {
-			fmt.Fprintf(stderr, "error: %s does not support %s; only routes/<route-id> is supported\n", verb, path.Kind)
-		}
+		fmt.Fprintf(stderr, "error: delete does not support %s; only routes/<route-id> and inputs/<input-id> are supported\n", path.Kind)
 		return 2
 	}
 	idArgName := "<route-id>"
@@ -230,6 +228,60 @@ func dispatchDelete(verb string, args []string, stdout, stderr io.Writer) int {
 		return inputs.RunDelete(callArgs, stdout, stderr)
 	}
 	return routes.RunDelete(callArgs, stdout, stderr)
+}
+
+// dispatchStop resolves the resource-path argument following `stop` via
+// respath and calls routes.RunDelete/RunStopAll, outputs.RunStop, or
+// groups.RunStop. `routes/<route-id>` is an exact alias of `delete
+// routes/<route-id>` (single-route stop); bare `routes` (no id) stops every
+// active route system-wide; `outputs/<output-id>` and `groups/<group-id>`
+// stop every route in that output's/group's scope. `inputs`, and a bare
+// `outputs`/`groups` with no id, are usage errors.
+func dispatchStop(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora stop routes[/<route-id>]|outputs/<output-id>|groups/<group-id> [flags]"
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Routes && path.Kind != respath.Outputs && path.Kind != respath.Groups {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: stop does not support %s; only routes[/<route-id>], outputs/<output-id>, and groups/<group-id> are supported\n", path.Kind)
+		return 2
+	}
+	if path.Kind != respath.Routes && path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: missing required argument: <%s-id>\n", strings.TrimSuffix(path.Kind.String(), "s"))
+		return 2
+	}
+
+	rest := args[1:]
+	callArgs := rest
+	if path.ID != "" {
+		callArgs = append([]string{path.ID}, rest...)
+	}
+
+	switch path.Kind {
+	case respath.Outputs:
+		return outputs.RunStop(callArgs, stdout, stderr)
+	case respath.Groups:
+		return groups.RunStop(callArgs, stdout, stderr)
+	default: // respath.Routes
+		if path.ID != "" {
+			return routes.RunDelete(callArgs, stdout, stderr)
+		}
+		return routes.RunStopAll(callArgs, stdout, stderr)
+	}
 }
 
 // dispatchEnabled resolves the resource-path argument following `enable`/

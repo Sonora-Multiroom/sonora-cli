@@ -267,3 +267,33 @@ func SetGroupVolume(ctx context.Context, client *http.Client, baseURL, groupID s
 	}
 	return &gv, nil
 }
+
+// StopRoutesForGroup calls DELETE {baseURL}/api/v2/groups/{groupId}/routes
+// (operationId "stopRoutesForGroup"), stopping every route addressed
+// directly to this group plus any route addressed directly to one of the
+// group's member outputs. Idempotent — zero matching routes still returns
+// 200 with stoppedCount 0. A 404 is returned as a *NotFoundError naming the
+// group; any other non-2xx status is a *StatusError; a malformed 200 body is
+// a *DecodeError.
+func StopRoutesForGroup(ctx context.Context, client *http.Client, baseURL, groupID string) (*BulkStopResponse, error) {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/groups/" + url.PathEscape(groupID) + "/routes"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "group", ID: groupID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+	return decodeBulkStopResponse(resp.Body)
+}

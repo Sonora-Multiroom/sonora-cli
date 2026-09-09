@@ -4,13 +4,13 @@
     "title": "Multiroom Audio Hub v2 API",
     "description": "Professional REST API v2 for real-time multi-room audio routing. Provides full CRUD for inputs, output volume/mute control, route lifecycle management, instant URI-based playback, and idempotent master mute control.",
     "contact": {
-      "name": "Multiroom AI Team"
+      "name": "Sonora Multiroom Team"
     },
     "license": {
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.11"
+    "version": "0.1.16"
   },
   "servers": [
     {
@@ -36,12 +36,12 @@
       "description": "Audio output management — list outputs, control volume and mute state"
     },
     {
-      "name": "Routes",
-      "description": "Audio route lifecycle — create, list, retrieve, stop, and transfer routes"
-    },
-    {
       "name": "Groups",
       "description": "Audio output group management — list groups and control group volume"
+    },
+    {
+      "name": "Routes",
+      "description": "Audio route lifecycle — create, list, retrieve, stop, and transfer routes"
     }
   ],
   "paths": {
@@ -760,6 +760,26 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Stop every currently active route system-wide",
+        "description": "Stops all active routes regardless of target. Idempotent — if no routes are active, succeeds with stoppedCount 0. Best-effort: a route that fails to stop individually does not fail the whole request. This endpoint has no server-side confirmation gate; any client exposing it to an end user is responsible for confirming with that user first.",
+        "operationId": "stopAllRoutes",
+        "responses": {
+          "200": {
+            "description": "Stop-all completed (possibly with zero routes stopped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStopResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v2/routes/{routeId}/transfer": {
@@ -1342,6 +1362,98 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/outputs/{outputId}/routes": {
+      "delete": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Stop every route associated with a single output",
+        "description": "Stops routes addressed directly to this output, and any group route whose group currently includes this output as a member (the whole group route is stopped, since a single output cannot be detached from a live group route). Idempotent and best-effort, matching DELETE /api/v2/routes semantics.",
+        "operationId": "stopRoutesForOutput",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop completed (possibly with zero routes stopped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStopResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/groups/{groupId}/routes": {
+      "delete": {
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Stop every route associated with a group",
+        "description": "Stops routes addressed directly to this group, and any route addressed directly to one of the group's member outputs. Idempotent and best-effort, matching DELETE /api/v2/routes semantics.",
+        "operationId": "stopRoutesForGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Unique group identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "living-room"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop completed (possibly with zero routes stopped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStopResponse"
                 }
               }
             }
@@ -2014,6 +2126,66 @@
           "inputId",
           "uri"
         ]
+      },
+      "BulkStopResponse": {
+        "type": "object",
+        "description": "Result of a scoped stop-routes operation",
+        "properties": {
+          "stoppedCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Equal to stoppedRoutes.length; convenience for callers that don't need detail",
+            "examples": [
+              2
+            ]
+          },
+          "stoppedRoutes": {
+            "type": "array",
+            "description": "The routes that were in scope and had a stop attempted",
+            "items": {
+              "$ref": "#/components/schemas/StoppedRouteEntry"
+            }
+          }
+        }
+      },
+      "StoppedRouteEntry": {
+        "type": "object",
+        "description": "One route that was in scope and had a stop attempted",
+        "properties": {
+          "routeId": {
+            "type": "string",
+            "description": "Unique route identifier",
+            "examples": [
+              "route-abc-123"
+            ]
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Target output or group ID",
+            "examples": [
+              "office-speaker"
+            ]
+          },
+          "stopReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the route fell within the requested stop scope",
+            "enum": [
+              "DIRECT",
+              "GROUP_MEMBERSHIP"
+            ]
+          }
+        }
       }
     }
   }
