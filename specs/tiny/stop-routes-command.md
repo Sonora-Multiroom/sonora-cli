@@ -2,7 +2,7 @@
 
 **Branch**: feature/stop-routes-command
 **Date**: 2026-09-09
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -35,7 +35,8 @@ into a new `dispatchStop`.
 | `README.md` | Modified — update the `stop routes/<id>` section; no longer describe `stop` as a routes-only alias |
 | `docs/cli-command-landscape.md` | Modified — add three new ✅ rows under `## routes` |
 | `tests/contract/routes_stop_test.go`, `outputs_stop_test.go`, `groups_stop_test.go` | New — contract tests for the three hub functions (200, 404 where applicable, malformed body) |
-| `tests/unit/cli_routes_stop_test.go`, `cli_outputs_stop_test.go`, `cli_groups_stop_test.go`, `cli_stop_dispatch_test.go` | New — unit tests for the three `Run*` functions and `main.go`'s `dispatchStop` routing |
+| `tests/unit/cli_routes_stop_test.go`, `cli_outputs_stop_test.go`, `cli_groups_stop_test.go` | New — unit tests for the three `Run*` functions |
+| `cmd/sonora/main_test.go` | Modified — dispatch-routing tests for `stop` live alongside the existing `get`/`list` dispatch tests in this file (not a separate `tests/unit` file), matching how `dispatchGetList`/`dispatchEnabled` routing is already tested here |
 | `tests/integration/stop_routes_test.go` | New — end-to-end dispatch coverage for `stop routes`, `stop outputs/<id>`, `stop groups/<id>`, plus rejection of `stop inputs/<id>`, `stop outputs` (bare), `stop groups` (bare) |
 
 ## Requirements
@@ -75,19 +76,19 @@ into a new `dispatchStop`.
 
 ## Tasks
 
-- [ ] Contract tests + `hub.StopAllRoutes`/`StopRoutesForOutput`/`StopRoutesForGroup` + `BulkStopResponse`/`StoppedRouteEntry`
-- [ ] `render.RenderBulkStopYAML`/`JSON`
-- [ ] Unit tests + `routes.RunStopAll`, `outputs.RunStop`, `groups.RunStop`
-- [ ] `dispatchStop` in `cmd/sonora/main.go` (+ `helpText`) + its unit tests
-- [ ] Integration test for `stop routes`/`stop outputs/<id>`/`stop groups/<id>` and rejection cases
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
+- [x] Contract tests + `hub.StopAllRoutes`/`StopRoutesForOutput`/`StopRoutesForGroup` + `BulkStopResponse`/`StoppedRouteEntry`
+- [x] `render.RenderBulkStopYAML`/`JSON`
+- [x] Unit tests + `routes.RunStopAll`, `outputs.RunStop`, `groups.RunStop`
+- [x] `dispatchStop` in `cmd/sonora/main.go` (+ `helpText`) + its dispatch tests in `cmd/sonora/main_test.go`
+- [x] Integration test for `stop routes`/`stop outputs/<id>`/`stop groups/<id>` and rejection cases
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `go test ./...`, `go vet ./...`, `gofmt -l .`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes
-- [ ] `go vet ./...` and `gofmt -l .` clean
-- [ ] `stop routes`, `stop outputs/<id>`, `stop groups/<id>` verified
+- [x] All tasks checked off
+- [x] `go test ./...` passes
+- [x] `go vet ./...` and `gofmt -l .` clean
+- [x] `stop routes`, `stop outputs/<id>`, `stop groups/<id>` verified
       end-to-end against a mock hub, including 404 and zero-stopped paths,
       and existing `stop routes/<id>` still works unchanged
