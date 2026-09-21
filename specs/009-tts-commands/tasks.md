@@ -22,7 +22,7 @@ the test task(s) that must land first and fail.
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependency on incomplete tasks)
-- **[Story]**: User story the task belongs to (US1–US5)
+- **[Story]**: User story the task belongs to (US1–US6)
 - File paths are exact and relative to the repo root
 
 ## Path Conventions
@@ -331,6 +331,44 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 
 ---
 
+## Phase 9: User Story 6 - Override the response wait for a slow TTS provider (Priority: P4)
+
+**Added**: 2026-09-22, amending spec.md (FR-013a, Session 2026-09-22), plan.md, and
+research.md §6 — a real hub was found whose TTS provider timeout exceeds the 10 s default
+FR-013's fixed 15 s bound assumed, so the "`--timeout` is out of scope" call was reversed.
+
+**Goal**: `sonora speak ... --timeout <duration>` overrides the default 15 s response bound
+per invocation (FR-013a), for hubs whose TTS provider timeout exceeds the hub's assumed
+10 s default.
+
+**Independent Test**: Against a fake hub whose `/api/tts/speak` handler sleeps 300 ms before
+responding, `sonora speak "Hi" outputs/kitchen --timeout 50ms` exits 4 (network timeout) in
+well under 1 s, proving the flag actually shortens the bound below the 15 s default.
+`--timeout 0`/`-5s`/`notaduration` exit 2 with zero requests sent.
+
+### Tests for User Story 6 (write first, must fail) ⚠️
+
+- [ ] T050 [P] [US6] Extend tests/unit/cli_tts_speak_test.go with `--timeout` cases for `tts.RunSpeak`:
+  - a slow fake hub (sleeps e.g. 300 ms) with `--timeout 50ms` exits 4 in well under 1 s (proves the flag actually overrides the 15 s default, not just accepted and ignored);
+  - the same slow fake hub (300 ms) with no `--timeout` still succeeds (the default remains long enough for an ordinary slow response);
+  - `--timeout 0`, `--timeout -5s`, and `--timeout notaduration` each exit 2 with `error: --timeout must be a positive duration` and zero requests sent;
+  - `--help` lists `--timeout` alongside the other six flags (extends T022's flag-listing test).
+- [ ] T051 [P] [US6] Extend tests/integration/tts_test.go with `TestSpeak_TimeoutOverride_SlowProviderStillReceived`: set `mockTTSHub.speakDelay` past the 15 s default (e.g. 20 s), `speakStatus`/`speakBody` to a 503 `PROVIDER_TIMEOUT` response as in `TestSpeak_SlowProviderStillReceived`, and invoke with `--timeout 25s`; assert exit 10 (the hub's own response, not a CLI network timeout) and that elapsed time is under 25 s. `t.Skip` under `testing.Short()`, matching the existing slow test.
+
+### Implementation for User Story 6
+
+- [ ] T052 [US6] In internal/cli/tts/speak.go: add a `--timeout DURATION` string flag ("override the default 15s response-wait bound", per contracts/cli-tts.md). Detect "supplied" with `fs.Visit`, the same pattern as `--provider`/`--voice`/`--language` (T024). When supplied, parse with `time.ParseDuration`; a parse error or a value `<= 0` is `error: --timeout must be a positive duration`, exit 2, checked before any I/O (alongside the other empty-value checks). Build the client with `hub.NewClientWithTimeout(d)` where `d` is the parsed duration when supplied, else `hub.SpeakTimeout` (the existing default). Makes T050 and T051 pass.
+
+**Checkpoint**: US1–US6 all pass independently. `speak` supports a configurable response bound.
+
+### Polish for User Story 6
+
+- [ ] T053 [P] Update README.md: mention `--timeout` in the `speak` paragraph (FR-015 already requires the command table and exit codes to stay current; this extends that coverage to the new flag).
+- [ ] T054 [P] Update docs/cli-command-landscape.md: add `--timeout` to the `speak` row's flag list in the "tts (extension)" section.
+- [ ] T055 Run `make check` (gofmt, go vet, full `go test ./...`, including both slow tests — T051 and the original SC-003 test) and fix any findings. Re-run T047's regression method (diff `sonora help` output, exit codes, and cold-start timing against `main`) to confirm no existing command or the original five TTS user stories regressed.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -353,6 +391,10 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
   file T027 creates), so run it after US4 or create the files in whichever lands first. The
   US1 test files follow the same rule (T034, T035, T037).
 - **Polish (Phase 8)**: after all stories. T049 comes after T047, whose timings it cites.
+- **US6 (Phase 9, added 2026-09-22)**: depends on US1's `RunSpeak` (T016). T052 edits
+  internal/cli/tts/speak.go, the same file as T020/T024, so it must run after those two (all
+  three land in Phase 8 already, well before this phase starts). T050/T051 can be written any
+  time after their target files exist (T010, T012).
 
 ### Within Each Story
 
@@ -372,6 +414,8 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - US4 tests T025–T029 and implementation T031 in parallel with T030.
 - US5 tests T034–T038 and implementation T040 in parallel with T039.
 - Polish: T043 and T044 in parallel.
+- US6 tests: T050 and T051 are different files, run in parallel. Polish for US6: T053 and
+  T054 in parallel.
 
 ---
 
@@ -414,6 +458,8 @@ Task: "speak dispatch + helpText in cmd/sonora/main.go"
 2. US4 (`get tts-cache`), then US5 (`clear tts-cache`). The cache commands can be delivered
    independently of `speak`, after Phase 2.
 3. Polish: docs, help text, full `make check`, regression, quickstart.
+4. US6 (`--timeout`, added 2026-09-22): optional post-MVP amendment, done any time after US1
+   exists (it only needs `RunSpeak`, T016). Not part of the original MVP scope.
 
 ## Notes
 

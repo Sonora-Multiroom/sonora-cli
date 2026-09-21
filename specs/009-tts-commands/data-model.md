@@ -96,7 +96,7 @@ The existing classes are unchanged, and one class is added.
 | 0 | success | 202 / 200 / 204 |
 | 2 | usage | bad args, empty text, empty flag value, wrong target kind, unreadable standard input, `clear` of anything but `tts-cache`, `list tts-cache` |
 | 3 | hub | malformed success body; non-TTS-shaped error with a status other than 400/503; unrecognised code with a status other than 400/503 |
-| 4 | network | hub unreachable or timed out (5 s standard, 15 s for `speak`); inventory answers 404 (`HubAddress`) |
+| 4 | network | hub unreachable or timed out (5 s standard, 15 s for `speak` by default or `--timeout`'s value); inventory answers 404 (`HubAddress`) |
 | 5 | not found | `PROVIDER_NOT_FOUND` |
 | 6 | validation | `INVALID_REQUEST`; unrecognised or absent code on a 400 |
 | 10 | service unavailable | `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`, `PROVIDER_ERROR`, `FORMAT_NORMALIZATION_FAILED`; unrecognised or absent code on a 503 |

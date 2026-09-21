@@ -163,16 +163,33 @@ suffix (contracts/cli-tts.md).
 
 **Decision**: add `hub.NewClientWithTimeout(d time.Duration)`. `NewClient()` becomes
 `NewClientWithTimeout(requestTimeout)`, and its behaviour doesn't change. `internal/hub/tts.go`
-exports `SpeakTimeout = 15 * time.Second`, and `RunSpeak` builds its client with it. The cache
-commands and the inventory lookup keep the standard 5 s client (FR-013).
+exports `SpeakTimeout = 15 * time.Second` as the default. `RunSpeak` defines a `--timeout
+<duration>` flag (FR-013a, added 2026-09-22): when supplied, its value is parsed with
+`time.ParseDuration` and used instead of `SpeakTimeout`; when omitted, `SpeakTimeout` applies
+unchanged. The cache commands and the inventory lookup are unaffected and keep the standard
+5 s client (FR-013).
 
 **Rationale**: 15 s = the hub's 10 s default provider timeout + 5 s margin (spec Assumptions),
-so SC-003's "hub's timeout error, not a CLI timeout" holds. A single constructor parameter
-keeps one timeout mechanism (`http.Client.Timeout`) rather than mixing in per-call contexts.
+so SC-003's "hub's timeout error, not a CLI timeout" holds for a hub running that default. A
+single constructor parameter keeps one timeout mechanism (`http.Client.Timeout`) rather than
+mixing in per-call contexts — `--timeout` reuses that same constructor with a
+flag-supplied `d` instead of the constant, so no new mechanism is introduced.
 
-**Alternatives considered**: a `--timeout` flag, which the spec puts out of scope
-(Assumptions). A context deadline around one call, which works but would be the only place
-in the CLI that bounds a request differently.
+**Validation** (FR-013a): a supplied `--timeout` value is checked with `fs.Visit`, the same
+"supplied" detection `speak`'s other optional flags use (research §7). `time.ParseDuration`
+failure, or a parsed value ≤ 0, is a usage error (`error: --timeout must be a positive
+duration`) raised before any I/O, exactly like `--provider`/`--voice`/`--language`'s
+empty-value rule. No upper bound is enforced — an operator who sets an excessive value still
+gets a finite, explicit bound (Principle IV), just one they chose themselves.
+
+**Alternatives considered** (2026-09-21, superseded 2026-09-22): a `--timeout` flag, which the
+spec originally put out of scope (Assumptions), on the assumption every hub's TTS provider
+respects the documented 10 s default. That assumption doesn't hold for every deployment — a
+hub configured with a longer provider timeout needs a matching CLI bound, or the CLI's own
+timeout error (exit 4) shadows the hub's real response — so the flag was added instead
+(spec Session 2026-09-22). A context deadline around one call was also considered and rejected
+both times: it works, but would be the only place in the CLI that bounds a request via a
+mechanism other than `http.Client.Timeout`.
 
 ## 7. Positional parsing, `--`, and standard input
 
@@ -195,6 +212,10 @@ the slice passed to `fs.Parse` contained `"--"` before the first returned positi
   `clear tts-cache --provider` applies the same rule (FR-007).
   Supplied values go into the request as pointers, so omitted ones are left out of the JSON
   entirely (`omitempty` on `*string`).
+- `--timeout` (added 2026-09-22, FR-013a) is an `fs.String` flag, detected as "supplied" the
+  same way. A supplied value is parsed with `time.ParseDuration`; a parse failure or a
+  value ≤ 0 is a usage error (§6). It never touches the request body — only the client
+  constructor's `d`.
 
 **Why fix `--` for `speak` only**: `play` has the same latent quirk, but changing it is out of
 scope. For `speak` it matters, because free text beginning with a dash is a listed edge case.
@@ -229,7 +250,10 @@ Tests are written first and must fail before implementation:
   non-TTS-shaped error bodies, and `ListExtensions` decode/404.
 - **Unit**: `cli_tts_speak_test.go` covers parsing (order, extra args, `--`, `-` with an
   injected reader, empty/whitespace/CRLF-trimmed text, empty flag values, target kinds and
-  aliases). `cli_tts_cache_test.go` covers flags and extra args. `tts_report_test.go` is a
+  aliases), plus (added 2026-09-22, FR-013a) `--timeout` being forwarded to
+  `hub.NewClientWithTimeout`, omission keeping the `SpeakTimeout` default, and a parse
+  failure or non-positive value being a usage error with zero requests sent.
+  `cli_tts_cache_test.go` covers flags and extra args. `tts_report_test.go` is a
   table test of every diagnosis row in §5 and every code-to-class row in §3.
   `render_tts_test.go` checks field order, sorted providers, the `{}` empty map and strict
   JSON. `hub_errors_test.go` (or an extension of the existing one) asserts that exit code 13
@@ -240,7 +264,9 @@ Tests are written first and must fail before implementation:
   code in the contract's table; stdin piping via a new `runCLIWithStdin` helper in the same
   file; and a slow-handler test showing a response after about 11 s is still received
   (SC-003). The slow test is skipped under `-short`, so it runs at most once per full
-  run.
+  run. A second slow-handler test (added 2026-09-22, SC-003a) uses `--timeout` to raise the
+  bound past 15 s and confirms the hub's own response, not a CLI timeout, is received;
+  also skipped under `-short`.
 - `cmd/sonora/main_test.go`: help text lists `speak`, `get tts-cache` and `clear tts-cache`;
   the `clear` dispatcher's usage errors.
 

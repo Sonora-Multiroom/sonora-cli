@@ -47,6 +47,8 @@ make build        # produces ./sonora.exe (or ./sonora via docker-build)
 | 13 | Disable the TTS extension in the hub config, restart, run #1 | `text-to-speech is not available on this hub: the TTS extension is installed but disabled …`, exit 13 |
 | 14 | `sonora speak "Hi" out/kitchen --hub-url http://localhost:9` | `could not reach the hub`, exit 4 |
 | 15 | `sonora get tts-cache --hub-url <some non-hub web server>` returning 404 for everything | Hub-address message naming the URL, exit 4 |
+| 16 | `sonora speak "Hi" out/kitchen --timeout 30s`, against a hub whose provider takes longer than 15 s | Waits past 15 s and reports the hub's own response, not a CLI timeout (SC-003a) |
+| 17 | `sonora speak "Hi" out/kitchen --timeout 0` and `--timeout notaduration` | `error: --timeout must be a positive duration`, exit 2, no request sent |
 
 Check each exit code with `echo $?` (POSIX shells) or `$LASTEXITCODE` (PowerShell).
 

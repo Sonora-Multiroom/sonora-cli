@@ -30,12 +30,14 @@ Flags:
   --json             emit strict JSON instead of the default YAML
   --language TAG     BCP 47 language tag override
   --provider NAME    TTS provider override
+  --timeout DURATION override the default 15s response-wait bound
   --verbose          print the underlying error detail on failure
   --voice ID         provider-specific voice override
 ```
 
-Requests: exactly one `POST /api/tts/speak`, bounded at 15 s. After a 404, exactly one
-additional `GET /api/v2/extensions`, bounded at 5 s.
+Requests: exactly one `POST /api/tts/speak`, bounded at 15 s by default, or at `--timeout`'s
+value when supplied (FR-013a). After a 404, exactly one additional `GET /api/v2/extensions`,
+bounded at 5 s (`--timeout` does not affect the inventory lookup).
 
 ### Arguments
 
@@ -51,6 +53,7 @@ additional `GET /api/v2/extensions`, bounded at 5 s.
 | Unparseable target | `sonora: <respath error>` → 2 |
 | 0 / 1 / 3+ positionals | `error: missing required argument: <text>` / `… <target-path>` / `error: unexpected argument(s): [...]` → 2 |
 | `--provider`, `--voice` or `--language` given an empty or whitespace-only value | `error: --<flag> must not be empty` → 2 |
+| `--timeout` given a value `time.ParseDuration` rejects, or a value ≤ 0 (e.g. `0s`, `-5s`) | `error: --timeout must be a positive duration` → 2 |
 
 To speak text that starts with a dash, put it after `--`:
 `sonora speak -- "-5 degrees outside" outputs/porch`. A lone `-` always means standard input.
@@ -164,6 +167,6 @@ verbatim on one line.
 | 404, inventory also 404 | `<url> is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file` | 4 |
 | Malformed success body (FR-005a) | `hub returned an unexpected or malformed response` | 3 |
 | Hub unreachable | `could not reach the hub` | 4 |
-| No response within the bound (5 s; 15 s for `speak`) | `hub did not respond in time` | 4 |
+| No response within the bound (5 s; 15 s for `speak`, or `--timeout`'s value) | `hub did not respond in time` | 4 |
 
 The CLI never retries a TTS request (FR-014).

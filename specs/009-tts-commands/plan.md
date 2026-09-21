@@ -27,8 +27,9 @@ the core problem-details shape. Both are handled by one shared failure path in a
   inventory also answers 404, the command reports a hub-address problem with exit 4.
 
 `speak` gets a 15 s request bound so the hub's own 10 s provider-timeout error arrives first. It
-can also read its text from standard input (`-`). See [research.md](research.md) for the
-decisions.
+can also read its text from standard input (`-`). An optional `--timeout <duration>` flag
+overrides that 15 s default per invocation, for hubs configured with a longer TTS provider
+timeout (spec Session 2026-09-22, FR-013a). See [research.md](research.md) for the decisions.
 
 ## Technical Context
 
@@ -57,7 +58,7 @@ see [research.md §9](research.md#9-testing-strategy-principle-vi).
 **Constraints**:
 
 - Timeouts: 5 s per request for the cache commands and the inventory lookup; 15 s for `speak`
-  (FR-013). No retries (FR-014).
+  by default, overridable with `--timeout <duration>` (FR-013, FR-013a). No retries (FR-014).
 - A successful command makes exactly one request (SC-005a).
 - The failure path makes at most one extra request, the inventory lookup (FR-010a).
 - No CLI-side text length limit (FR-003).
@@ -72,11 +73,11 @@ One exit-code class is added.
 
 | Principle | Check | Status |
 |---|---|---|
-| I. Instant Startup | Dispatch adds three string comparisons in `run`. Clients are built inside the `Run*` functions only after flags, positionals, target path and standard input are validated. Standard input is read only for `-`, and only after the target is validated (research §10). | PASS |
-| II. API Contract Fidelity | Wire types mirror `SpeakRequest`, `SpeakAcceptedResponse`, `CacheStats`, `TtsErrorResponse`, `ExtensionInventory` and `Extension`. Every documented status (202/200/204/400/503) is handled explicitly. The required-field rules (FR-005a) are *stricter* than the published spec, which marks no field required, and that tightening is a spec decision rather than an invented field. The extension's own contract is honoured where more precise (FR-016). No undocumented endpoint is used; `/actuator/extensions` is explicitly excluded. | PASS |
-| III. Minimal Dependencies | No new module. New files: `hub/tts.go`, `hub/extensions.go`, `cli/tts/*`, `render/tts.go`. Existing `respath`, `config`, `clihelp`, `ClassifyError` and exit classes are reused. | PASS |
-| IV. Resilient HTTP Client | Every request has an explicit bound: 5 s, or 15 s via the new `NewClientWithTimeout`, with `NewClient` unchanged. Every failure (TTS code, non-TTS body, 404, inventory failure, malformed body, network) maps to a distinguishable exit code with a plain message, and the raw error is available under `--verbose`. Error bodies are read through a size limit. No panics. Connection reuse holds through the shared `DefaultTransport`. | PASS |
-| V. CLI UX Consistency | Verb-first: `speak`, `get tts-cache`, `clear tts-cache`. YAML by default and `--json` on all three. `--json`/`--hub-url`/`--verbose` are unchanged; `--provider` means the same thing on both commands that take it. Target addressing is path-style with aliases, as for `play`/`transfer`. The new exit code 13 extends the exit-code table (contracts/cli-tts.md, and the README section added by FR-015) without moving any existing code. | PASS |
+| I. Instant Startup | Dispatch adds three string comparisons in `run`. Clients are built inside the `Run*` functions only after flags, positionals, target path and standard input are validated. Standard input is read only for `-`, and only after the target is validated (research §10). `--timeout` is parsed with `time.ParseDuration` and validated (positive) alongside the other flags, before the client is built — a bad value never reaches the network layer. | PASS |
+| II. API Contract Fidelity | Wire types mirror `SpeakRequest`, `SpeakAcceptedResponse`, `CacheStats`, `TtsErrorResponse`, `ExtensionInventory` and `Extension`. Every documented status (202/200/204/400/503) is handled explicitly. The required-field rules (FR-005a) are *stricter* than the published spec, which marks no field required, and that tightening is a spec decision rather than an invented field. The extension's own contract is honoured where more precise (FR-016). No undocumented endpoint is used; `/actuator/extensions` is explicitly excluded. `--timeout` is a CLI-side-only control; it changes no request/response shape. | PASS |
+| III. Minimal Dependencies | No new module. New files: `hub/tts.go`, `hub/extensions.go`, `cli/tts/*`, `render/tts.go`. Existing `respath`, `config`, `clihelp`, `ClassifyError` and exit classes are reused. `--timeout` uses only `time.ParseDuration` (stdlib). | PASS |
+| IV. Resilient HTTP Client | Every request has an explicit bound: 5 s, or 15 s via the new `NewClientWithTimeout`, with `NewClient` unchanged. `--timeout` still produces one explicit, finite bound via the same `NewClientWithTimeout` — never an unbounded wait — it just lets the operator raise it per invocation (research §6). Every failure (TTS code, non-TTS body, 404, inventory failure, malformed body, network) maps to a distinguishable exit code with a plain message, and the raw error is available under `--verbose`. Error bodies are read through a size limit. No panics. Connection reuse holds through the shared `DefaultTransport`. | PASS |
+| V. CLI UX Consistency | Verb-first: `speak`, `get tts-cache`, `clear tts-cache`. YAML by default and `--json` on all three. `--json`/`--hub-url`/`--verbose` are unchanged; `--provider` means the same thing on both commands that take it. Target addressing is path-style with aliases, as for `play`/`transfer`. The new exit code 13 extends the exit-code table (contracts/cli-tts.md, and the README section added by FR-015) without moving any existing code. `--timeout` follows the same empty/invalid-value-is-a-usage-error pattern as `--provider`/`--voice`/`--language`. | PASS |
 | VI. Test-First | Contract, unit and integration tests are listed per behaviour in research §9 and must be written and failing before implementation. `/speckit-tasks` orders them first. | PASS (planned; enforced at task/implementation time) |
 
 **Post-design re-check** (after Phase 1): still PASS on all six. The design adds no dependency,
@@ -87,6 +88,12 @@ shared code is additive:
 - two new `ClassifyError` branches, keyed on new error types, so existing errors can't reach
   them;
 - `NewClientWithTimeout`, with `NewClient` delegating to it using the same 5 s.
+
+**2026-09-22 amendment re-check** (`--timeout`, FR-013a): still PASS on all six. `--timeout`
+reuses the existing `NewClientWithTimeout(d time.Duration)` constructor from the original
+design — `RunSpeak` simply computes `d` from the flag (default `hub.SpeakTimeout`) instead of
+always passing the constant. No new file, no new dependency, no new error type, no change to
+any other command's timeout.
 
 ## Project Structure
 
@@ -125,7 +132,9 @@ internal/hub/
 
 internal/cli/tts/
 ├── speak.go                 # NEW: RunSpeak(args, stdin, stdout, stderr): parsing loop with `--` fix,
-│                            #   `-` → stdin, target kind → targetType, empty-value checks
+│                            #   `-` → stdin, target kind → targetType, empty-value checks;
+│                            #   MODIFIED (2026-09-22): `--timeout <duration>` flag, parsed with
+│                            #   time.ParseDuration, validated positive, overriding hub.SpeakTimeout
 ├── cache.go                 # NEW: RunGetCache, RunClearCache
 └── report.go                # NEW: shared failure path: 404 → one ListExtensions → TTSUnavailableError;
                              #   message formatting (`<code>: <msg>`), --verbose detail, exit code
@@ -142,7 +151,7 @@ tests/
 │   └── tts_test.go          # NEW: built binary vs request-counting fake hub; runCLIWithStdin helper;
 │                            #   every exit code; slow-provider test (skipped with -short)
 └── unit/
-    ├── cli_tts_speak_test.go    # NEW
+    ├── cli_tts_speak_test.go    # NEW; MODIFIED (2026-09-22): --timeout parsing/validation cases
     ├── cli_tts_cache_test.go    # NEW
     ├── tts_report_test.go       # NEW: diagnosis table + code → exit-class table
     └── render_tts_test.go       # NEW
@@ -154,7 +163,9 @@ docs/cli-command-landscape.md    # MODIFIED: new "tts (extension)" section, ✅ 
 **Structure Decision**: One new command package, `internal/cli/tts`, because the three commands
 share an error model that no other command uses (research §1). There are two new hub files, one
 new render file, and additive edits to `hub/client.go`, `hub/errors.go` and `cmd/sonora/main.go`.
-There are no new top-level directories and no behaviour changes to existing commands.
+There are no new top-level directories and no behaviour changes to existing commands. The
+2026-09-22 `--timeout` amendment (FR-013a) adds no new file: it is a flag on the existing
+`speak.go`, reusing `hub.NewClientWithTimeout`.
 
 ## Complexity Tracking
 

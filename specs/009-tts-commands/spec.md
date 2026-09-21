@@ -68,6 +68,14 @@ never calls it on the success path.
 - Q: Should `speak` read the text from standard input? → A: Yes. A lone `-` in place of the
   text means "read the text from standard input", with trailing newlines trimmed.
 
+### Session 2026-09-22
+
+- Q: Should the speak command's response-wait bound be configurable? → A: Yes, via an
+  optional `--timeout` flag (FR-013a), overriding the default 15 s (FR-013). This reverses
+  the original Assumptions' "out of scope" call for a user-configurable timeout: a real hub
+  was found whose configured TTS provider timeout exceeds the assumed 10 s default, so the
+  fixed 15 s CLI bound cut off before the hub's own timeout error could be returned.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Announce text on a single output (Priority: P1)
@@ -204,6 +212,32 @@ the cleared entries.
 
 ---
 
+### User Story 6 - Override the response wait for a slow TTS provider (Priority: P4)
+
+An operator whose hub's TTS provider is configured with a longer synthesis timeout than the
+hub's 10-second default wants `speak` to wait long enough to receive the hub's own timeout
+error, instead of the CLI giving up first and misreporting a network failure.
+
+**Why this priority**: Only relevant when a hub deviates from the assumed 10-second default;
+the fixed 15-second bound (FR-013) already covers the common case.
+
+**Independent Test**: Run `speak` against a fake hub that takes longer than 15 seconds to
+respond, with `--timeout` set high enough to cover it, and confirm the command waits and
+reports the hub's actual response rather than a CLI-side timeout.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub whose provider takes longer than 15 seconds, **When** the user runs
+   `speak` with `--timeout 30s`, **Then** the command waits up to 30 seconds and reports the
+   hub's own response (success or provider error) rather than a CLI network timeout.
+2. **Given** no `--timeout` is supplied, **When** the user runs `speak`, **Then** the default
+   15-second bound (FR-013) applies unchanged.
+3. **Given** `--timeout` is supplied with a zero, negative, or unparsable value, **When** the
+   user runs the speak command, **Then** it fails with a usage error before contacting the
+   hub.
+
+---
+
 ### Edge Cases
 
 - **TTS extension not installed, disabled, rejected, or inert on the hub**: the TTS
@@ -254,6 +288,12 @@ the cleared entries.
 - **Positional arguments in the wrong order or extra positional arguments**: usage error.
 - **`--provider`, `--voice` or `--language` given an empty or whitespace-only value**: usage
   error before any request is sent, on every command that takes the flag.
+- **Hub configured with a provider timeout longer than 10 seconds**: the default 15-second
+  bound (FR-013) is not enough, and the user sees a CLI network timeout instead of the hub's
+  own error. `--timeout` (FR-013a) lets the user raise the bound for that invocation; other
+  TTS commands keep their standard 5-second bound, unaffected.
+- **`--timeout` given a zero, negative, or unparsable value**: usage error before any request
+  is sent.
 
 ## Requirements *(mandatory)*
 
@@ -343,9 +383,13 @@ the cleared entries.
   offered by the hub → a new "TTS not available" code, 13; hub unreachable, or the
   extension inventory answering 404 (FR-010a) → network error (4). An unrecognised code MUST fall back to the class
   implied by the HTTP status.
-- **FR-013**: The speak command's wait for a response MUST be bounded, and MUST be long
-  enough to receive the hub's default 10-second synthesis-timeout error rather than timing
-  out first. Other TTS commands keep the CLI's standard request bound.
+- **FR-013**: The speak command's wait for a response MUST be bounded, and MUST default to
+  long enough to receive the hub's default 10-second synthesis-timeout error rather than
+  timing out first. Other TTS commands keep the CLI's standard request bound.
+- **FR-013a**: The speak command MUST accept an optional `--timeout <duration>` flag that
+  overrides FR-013's default bound for that invocation. The value MUST be a positive
+  duration; a zero, negative, or unparsable value MUST be a usage error raised before
+  contacting the hub. Other TTS commands are unaffected by this flag.
 - **FR-014**: The CLI MUST NOT retry any TTS request automatically.
 - **FR-015**: The new commands, the `tts-cache` keyword, and the `clear` verb MUST appear in
   `sonora help`, the README command table, and the CLI command landscape document. The
@@ -376,6 +420,9 @@ the cleared entries.
   run on a local network.
 - **SC-003**: When the hub's provider times out at its default 10-second limit, the user
   sees the hub's provider-timeout error — not a CLI network timeout — 100% of the time.
+- **SC-003a**: A user whose hub is configured with a provider timeout longer than 10 seconds
+  can, by supplying `--timeout`, still receive the hub's own response rather than a CLI
+  network timeout, 100% of the time.
 - **SC-004**: Every failure listed in Edge Cases exits with the exit code class documented
   for it (FR-012; usage errors → 2) and a message that names the cause, verified by tests; no failure prints a raw
   program error or stack trace without `--verbose`.
@@ -408,10 +455,9 @@ the cleared entries.
   three reasons: it is not in `api/openapi.json`, its shape is explicitly not a published
   contract, and as a diagnostic tool it may be reachable only from the hub's own host, so
   a remote CLI cannot rely on it.
-- A speak request's response wait is bounded at 15 seconds (hub's 10-second default
-  synthesis timeout plus margin). Hubs configured with a slower provider may exceed this;
-  the user then gets a network-timeout failure, which is acceptable for this feature. A
-  user-configurable timeout (e.g. a `--timeout` flag) is out of scope.
+- A speak request's response wait defaults to 15 seconds (hub's 10-second default synthesis
+  timeout plus margin), overridable per invocation with `--timeout` (FR-013a) for hubs
+  configured with a longer provider timeout (Session 2026-09-22).
 - The `speak` verb takes the text as its first positional argument and the target as its
   second, mirroring `play <uri> <target>`. The text may be `-` to read it from standard
   input (FR-003a).

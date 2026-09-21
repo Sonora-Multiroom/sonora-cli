@@ -37,3 +37,7 @@
   specs (006, 008). No language, library or code structure is named.
 - Informed defaults recorded in Assumptions rather than as clarification markers: 15 s speak
   response bound, `clear` without confirmation, extension-absent detection, positional order.
+- **2026-09-22 amendment**: added User Story 6, FR-013a, SC-003a and an edge case for the
+  `--timeout` override flag (Session 2026-09-22 in spec.md), reversing the original
+  Assumptions' "out of scope" call. Re-validated against all items above; no new
+  implementation detail, ambiguity, or clarification marker introduced.
