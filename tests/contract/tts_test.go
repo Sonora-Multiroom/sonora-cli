@@ -324,6 +324,30 @@ func TestSpeak_ErrorBody_MessageCollapsedToSingleLine(t *testing.T) {
 	}
 }
 
+// TestSpeak_ErrorBody_BareCarriageReturn_CollapsedToSingleLine guards against
+// an old-Mac-style bare "\r" (with no following "\n") surviving into a
+// rendered error, where it would move the terminal cursor back to column 0
+// mid-message and visually overwrite the text that follows it.
+func TestSpeak_ErrorBody_BareCarriageReturn_CollapsedToSingleLine(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "PROVIDER_ERROR", "message": "line1\rline2"})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.SpeakRequest{Text: "Hi", TargetName: "kitchen", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.Speak(context.Background(), client, srv.URL, req)
+	var ttsErr *hub.TTSError
+	if !errors.As(err, &ttsErr) {
+		t.Fatalf("expected a *hub.TTSError, got %T: %v", err, err)
+	}
+	if strings.ContainsAny(ttsErr.Message, "\r\n") {
+		t.Errorf("expected a single-line message with no bare \\r, got: %q", ttsErr.Message)
+	}
+}
+
 func TestSpeak_ErrorBody_1MiB_HandledSafely(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -81,6 +81,13 @@ func TestReportError_TTSNotOffered_DiagnosisMessages(t *testing.T) {
 			wantTail: ": the TTS extension failed to load: bad jar",
 		},
 		{
+			name:     "REJECTED with multi-line reason",
+			status:   200,
+			body:     `{"extensions":[{"id":"tts","status":"REJECTED","rejectionReason":"failed to init:\nstack trace line 2"}]}`,
+			wantExit: 13,
+			wantTail: ": the TTS extension failed to load: failed to init: stack trace line 2",
+		},
+		{
 			name:     "REJECTED with null reason",
 			status:   200,
 			body:     `{"extensions":[{"id":"tts","status":"REJECTED","rejectionReason":null}]}`,

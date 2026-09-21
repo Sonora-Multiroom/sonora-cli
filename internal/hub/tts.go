@@ -67,11 +67,16 @@ type coreErrorShape struct {
 	Detail string `json:"detail"`
 }
 
-// singleLine collapses any line breaks so a rendered error message never
-// spans multiple terminal lines.
-func singleLine(s string) string {
+// SingleLine collapses any line breaks — "\r\n", bare "\n", and bare "\r"
+// (old-Mac line endings, which would otherwise move the terminal cursor back
+// to column 0 mid-message) — so a rendered error message never spans
+// multiple terminal lines or overwrites itself. Every hub-supplied string
+// that ends up embedded in a rendered error must be passed through this
+// first.
+func SingleLine(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", " ")
 	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
 	return strings.TrimSpace(s)
 }
 
@@ -84,7 +89,7 @@ func decodeTTSError(resp *http.Response) error {
 
 	var shaped ttsErrorShape
 	if err := json.Unmarshal(body, &shaped); err == nil && shaped.Error != "" {
-		return &TTSError{StatusCode: resp.StatusCode, Code: shaped.Error, Message: singleLine(shaped.Message)}
+		return &TTSError{StatusCode: resp.StatusCode, Code: shaped.Error, Message: SingleLine(shaped.Message)}
 	}
 
 	var core coreErrorShape
@@ -96,7 +101,7 @@ func decodeTTSError(resp *http.Response) error {
 			msg = core.Title
 		}
 	}
-	return &TTSError{StatusCode: resp.StatusCode, Message: singleLine(msg)}
+	return &TTSError{StatusCode: resp.StatusCode, Message: SingleLine(msg)}
 }
 
 // Speak calls POST {baseURL}/api/tts/speak (operationId "speak"), triggering

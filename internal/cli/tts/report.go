@@ -74,7 +74,7 @@ func diagnoseUnavailable(baseURL string) error {
 		case "REJECTED":
 			reason := ""
 			if ext.RejectionReason != nil {
-				reason = *ext.RejectionReason
+				reason = hub.SingleLine(*ext.RejectionReason)
 			}
 			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected, Reason: reason}
 		case "INERT":
