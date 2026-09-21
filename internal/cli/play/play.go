@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/cli/respath"
@@ -44,21 +45,12 @@ func Run(args []string, stdout, stderr io.Writer) int {
 
 	// flag.Parse stops at the first non-flag argument, so <uri>/<target-path>
 	// preceding a flag (per the documented invocation shape) would otherwise
-	// be mistaken for the end of flags. Re-parse in a loop, peeling off one
-	// positional argument at a time, so flags can appear before, between, or
-	// after the two identifiers.
-	var positional []string
-	remaining := args
-	for {
-		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
-		}
-		rest := fs.Args()
-		if len(rest) == 0 {
-			break
-		}
-		positional = append(positional, rest[0])
-		remaining = rest[1:]
+	// be mistaken for the end of flags. clihelp.ParsePositional re-parses in a
+	// loop, peeling off one positional argument at a time, so flags can
+	// appear before, between, or after the two identifiers.
+	positional, err := clihelp.ParsePositional(fs, args)
+	if err != nil {
+		return hub.ClassUsage.ExitCode()
 	}
 	if len(positional) != 2 {
 		fmt.Fprintln(stderr, usage)
@@ -74,6 +66,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	uri, targetArg := positional[0], positional[1]
 
+	if strings.HasSuffix(targetArg, "/") {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
+		return hub.ClassUsage.ExitCode()
+	}
 	targetPath, err := respath.Parse(targetArg)
 	if err != nil {
 		fmt.Fprintln(stderr, usage)

@@ -44,29 +44,13 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	// flag.Parse stops at the first non-flag argument, so <text>/<target-path>
 	// preceding a flag would otherwise be mistaken for the end of flags.
-	// Re-parse in a loop, peeling off one positional argument at a time, so
-	// flags can appear before, between, or after the two identifiers — with
-	// one addition over play's loop (research.md §7): once a "--" terminator
-	// is consumed, every remaining argument is positional and the loop stops
-	// calling fs.Parse, so a later argument shaped like a flag (e.g. --json)
-	// is not mistaken for one.
-	var positional []string
-	remaining := args
-	for {
-		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
-		}
-		rest := fs.Args()
-		if len(rest) == 0 {
-			break
-		}
-		consumedIdx := len(remaining) - len(rest)
-		if consumedIdx > 0 && remaining[consumedIdx-1] == "--" {
-			positional = append(positional, rest...)
-			break
-		}
-		positional = append(positional, rest[0])
-		remaining = rest[1:]
+	// clihelp.ParsePositional re-parses in a loop, peeling off one positional
+	// argument at a time, so flags can appear before, between, or after the
+	// two identifiers, and handles a "--" terminator (research.md §7)
+	// without confusing it with a preceding flag's own value.
+	positional, err := clihelp.ParsePositional(fs, args)
+	if err != nil {
+		return hub.ClassUsage.ExitCode()
 	}
 	if len(positional) != 2 {
 		fmt.Fprintln(stderr, speakUsage)
@@ -105,6 +89,11 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		speakTimeout = d
 	}
 
+	if strings.HasSuffix(targetArg, "/") {
+		fmt.Fprintln(stderr, speakUsage)
+		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
+		return hub.ClassUsage.ExitCode()
+	}
 	targetPath, err := respath.Parse(targetArg)
 	if err != nil {
 		fmt.Fprintln(stderr, speakUsage)

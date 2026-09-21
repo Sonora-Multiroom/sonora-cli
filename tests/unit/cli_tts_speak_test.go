@@ -306,6 +306,31 @@ func TestRunSpeak_DashTerminator_TextSpokenAsIs(t *testing.T) {
 	}
 }
 
+// TestRunSpeak_DashTerminator_NotConfusedWithFlagValue guards against a "--"
+// consumed as a preceding flag's own value (flag.Parse accepts any string as
+// a string flag's value unconditionally) being mistaken for an end-of-flags
+// terminator. Here "--provider --" sets provider to the literal string "--";
+// the real positionals are "hello" and "outputs/kitchen", and "--voice x"
+// is a flag occurring after them.
+func TestRunSpeak_DashTerminator_NotConfusedWithFlagValue(t *testing.T) {
+	srv, h := newSpeakSuccessHub(t)
+	var stdout, stderr bytes.Buffer
+	code := tts.RunSpeak([]string{"--provider", "--", "hello", "--voice", "x", "outputs/kitchen", "--hub-url", srv.URL}, strings.NewReader(""), &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if h.lastBody["text"] != "hello" {
+		t.Errorf("expected text %q, got: %+v", "hello", h.lastBody["text"])
+	}
+	if h.lastBody["providerName"] != "--" {
+		t.Errorf("expected providerName %q, got: %+v", "--", h.lastBody["providerName"])
+	}
+	if h.lastBody["voice"] != "x" {
+		t.Errorf("expected voice %q, got: %+v", "x", h.lastBody["voice"])
+	}
+}
+
 func TestRunSpeak_DashTerminator_TrailingFlagLikeArgTreatedAsPositional(t *testing.T) {
 	srv, count := countingSpeakHub(t)
 	var stdout, stderr bytes.Buffer
@@ -388,6 +413,7 @@ func TestRunSpeak_TargetTable(t *testing.T) {
 		{name: "inputs wrong kind", target: "inputs/x", wantExit: 2, wantMsg: "speak target must be outputs/<id> or groups/<id>"},
 		{name: "outputs missing id", target: "outputs", wantExit: 2, wantMsg: "must include an id"},
 		{name: "gr missing id", target: "gr", wantExit: 2, wantMsg: "must include an id"},
+		{name: "outputs trailing slash, empty id", target: "outputs/", wantExit: 2, wantMsg: "must include an id"},
 		{name: "unrecognized resource", target: "bogus/x", wantExit: 2, wantMsg: "unrecognized resource"},
 	}
 	for _, c := range cases {

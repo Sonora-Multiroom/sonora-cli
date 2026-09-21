@@ -65,6 +65,25 @@ func TestPlayRun_MissingTargetPath(t *testing.T) {
 	}
 }
 
+// TestPlayRun_TargetTrailingSlash_ReportsMissingID guards against
+// respath.Parse's "malformed identifier" message (meant for an invalid id)
+// masking play's own clearer "must include an id" message when the id
+// segment is simply empty, e.g. a trailing slash left on "outputs/".
+func TestPlayRun_TargetTrailingSlash_ReportsMissingID(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "outputs/"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "must include an id") {
+		t.Errorf("expected the missing-id message, got: %s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "malformed identifier") {
+		t.Errorf("expected respath's malformed-identifier message not to leak through, got: %s", stderr.String())
+	}
+}
+
 func TestPlayRun_TooManyPositionalArguments(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := play.Run([]string{"uri", "outputs/target", "extra"}, &stdout, &stderr)
