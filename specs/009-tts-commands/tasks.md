@@ -348,24 +348,24 @@ well under 1 s, proving the flag actually shortens the bound below the 15 s defa
 
 ### Tests for User Story 6 (write first, must fail) ⚠️
 
-- [ ] T050 [P] [US6] Extend tests/unit/cli_tts_speak_test.go with `--timeout` cases for `tts.RunSpeak`:
+- [X] T050 [P] [US6] Extend tests/unit/cli_tts_speak_test.go with `--timeout` cases for `tts.RunSpeak`:
   - a slow fake hub (sleeps e.g. 300 ms) with `--timeout 50ms` exits 4 in well under 1 s (proves the flag actually overrides the 15 s default, not just accepted and ignored);
   - the same slow fake hub (300 ms) with no `--timeout` still succeeds (the default remains long enough for an ordinary slow response);
   - `--timeout 0`, `--timeout -5s`, and `--timeout notaduration` each exit 2 with `error: --timeout must be a positive duration` and zero requests sent;
   - `--help` lists `--timeout` alongside the other six flags (extends T022's flag-listing test).
-- [ ] T051 [P] [US6] Extend tests/integration/tts_test.go with `TestSpeak_TimeoutOverride_SlowProviderStillReceived`: set `mockTTSHub.speakDelay` past the 15 s default (e.g. 20 s), `speakStatus`/`speakBody` to a 503 `PROVIDER_TIMEOUT` response as in `TestSpeak_SlowProviderStillReceived`, and invoke with `--timeout 25s`; assert exit 10 (the hub's own response, not a CLI network timeout) and that elapsed time is under 25 s. `t.Skip` under `testing.Short()`, matching the existing slow test.
+- [X] T051 [P] [US6] Extend tests/integration/tts_test.go with `TestSpeak_TimeoutOverride_SlowProviderStillReceived`: set `mockTTSHub.speakDelay` past the 15 s default (e.g. 20 s), `speakStatus`/`speakBody` to a 503 `PROVIDER_TIMEOUT` response as in `TestSpeak_SlowProviderStillReceived`, and invoke with `--timeout 25s`; assert exit 10 (the hub's own response, not a CLI network timeout) and that elapsed time is under 25 s. `t.Skip` under `testing.Short()`, matching the existing slow test.
 
 ### Implementation for User Story 6
 
-- [ ] T052 [US6] In internal/cli/tts/speak.go: add a `--timeout DURATION` string flag ("override the default 15s response-wait bound", per contracts/cli-tts.md). Detect "supplied" with `fs.Visit`, the same pattern as `--provider`/`--voice`/`--language` (T024). When supplied, parse with `time.ParseDuration`; a parse error or a value `<= 0` is `error: --timeout must be a positive duration`, exit 2, checked before any I/O (alongside the other empty-value checks). Build the client with `hub.NewClientWithTimeout(d)` where `d` is the parsed duration when supplied, else `hub.SpeakTimeout` (the existing default). Makes T050 and T051 pass.
+- [X] T052 [US6] In internal/cli/tts/speak.go: add a `--timeout DURATION` string flag ("override the default 15s response-wait bound", per contracts/cli-tts.md). Detect "supplied" with `fs.Visit`, the same pattern as `--provider`/`--voice`/`--language` (T024). When supplied, parse with `time.ParseDuration`; a parse error or a value `<= 0` is `error: --timeout must be a positive duration`, exit 2, checked before any I/O (alongside the other empty-value checks). Build the client with `hub.NewClientWithTimeout(d)` where `d` is the parsed duration when supplied, else `hub.SpeakTimeout` (the existing default). Makes T050 and T051 pass.
 
 **Checkpoint**: US1–US6 all pass independently. `speak` supports a configurable response bound.
 
 ### Polish for User Story 6
 
-- [ ] T053 [P] Update README.md: mention `--timeout` in the `speak` paragraph (FR-015 already requires the command table and exit codes to stay current; this extends that coverage to the new flag).
-- [ ] T054 [P] Update docs/cli-command-landscape.md: add `--timeout` to the `speak` row's flag list in the "tts (extension)" section.
-- [ ] T055 Run `make check` (gofmt, go vet, full `go test ./...`, including both slow tests — T051 and the original SC-003 test) and fix any findings. Re-run T047's regression method (diff `sonora help` output, exit codes, and cold-start timing against `main`) to confirm no existing command or the original five TTS user stories regressed.
+- [X] T053 [P] Update README.md: mention `--timeout` in the `speak` paragraph (FR-015 already requires the command table and exit codes to stay current; this extends that coverage to the new flag).
+- [X] T054 [P] Update docs/cli-command-landscape.md: add `--timeout` to the `speak` row's flag list in the "tts (extension)" section.
+- [X] T055 Run `make check` (gofmt, go vet, full `go test ./...`, including both slow tests — T051 and the original SC-003 test) and fix any findings. Re-run T047's regression method (diff `sonora help` output, exit codes, and cold-start timing against `main`) to confirm no existing command or the original five TTS user stories regressed.
 
 ---
 
@@ -484,7 +484,15 @@ Task: "speak dispatch + helpText in cmd/sonora/main.go"
 - docs/cli-command-landscape.md is excluded from git tracking by this repo's local
   `.git/info/exclude` (not the committed `.gitignore`) — a deliberate, pre-existing local-only
   exclusion. T044's edit was made on disk as instructed, but it will not appear in `git
-  status`/diffs and won't be included in any commit from this branch.
+  status`/diffs and won't be included in any commit from this branch. Its T054 edit is
+  likewise on-disk only.
+- T055: `make` is not installed in this environment, so `gofmt -l .`, `go vet ./...` and
+  `go test ./...` were run directly instead — all clean/green, including both slow tests
+  (`TestSpeak_SlowProviderStillReceived`, ~11s, and the new
+  `TestSpeak_TimeoutOverride_SlowProviderStillReceived`, ~20s). Regression re-check against
+  `main` (994bd4f) via a disposable `git worktree`: `sonora help` diff shows only additive
+  lines (the three TTS commands and their examples); cold start (median of 10 runs of `sonora
+  get outputs --hub-url http://127.0.0.1:1`): main 63 ms, branch 62 ms — no regression.
 
 ### T049: PR self-review (Constitution Principles I, III, IV, VI)
 
