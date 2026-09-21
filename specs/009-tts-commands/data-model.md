@@ -80,7 +80,7 @@ A 200 body that isn't a JSON object → diagnosis `Unknown` (never a separate fa
 | --- | --- | --- |
 | `TTSError` | `StatusCode int`, `Code string`, `Message string` | By `Code`, then by `StatusCode` (see exit codes below) |
 | `TTSNotOfferedError` | none | Internal only. Always converted to `TTSUnavailableError` before classification. |
-| `TTSUnavailableError` | `Diagnosis TTSDiagnosis`, `Reason string`, `Cause error` | 13, or 4 when `Diagnosis == DiagnosisHubAddress` |
+| `TTSUnavailableError` | `Diagnosis TTSDiagnosis`, `Reason string`, `LoadingDisabled bool`, `BaseURL string`, `Cause error` | 13, or 4 when `Diagnosis == DiagnosisHubAddress` |
 
 `TTSDiagnosis` values: `DiagnosisUnknown`, `DiagnosisNotInstalled` (and the
 `loadingEnabled == false` wording), `DiagnosisDisabled`, `DiagnosisRejected`,
