@@ -12,7 +12,9 @@ Common to all three commands:
   (FR-009). `--help`/`-h` prints the command's usage and flags to stdout and exits 0.
 - Flags may appear before, between or after positional arguments. `--` ends flag parsing.
 - Results go to stdout. Every failure goes to stderr only, as `error: <message> (hub URL:
-  <url>)`, followed by `detail: <underlying error>` when `--verbose` is set.
+  <url>)`, followed by `detail: <underlying error>` when `--verbose` is set. The one
+  exception is the hub-address failure (inventory also 404): its message already starts
+  with the URL, so it is printed as `error: <message>` without the `(hub URL: …)` suffix.
 - Usage errors print the usage line and then `error: <reason>` to stderr, exit 2, and send
   no request.
 

@@ -71,7 +71,7 @@ FR-010 to FR-012 apply to all three commands.
   - Matching uses `id == "tts"` only: an entry with `name: "tts"` and another id counts as absent.
   - Given any error other than `*hub.TTSNotOfferedError` (for example a `*hub.TTSError`), assert zero inventory requests.
   - With `verbose=true`, a `detail:` line is printed. Without it, the lookup's own error never appears.
-  - Output format is `error: <message> (hub URL: <url>)`.
+  - Output format is `error: <message> (hub URL: <url>)`, except the inventory-404 case, which is `error: <message>` with no suffix (the URL appears exactly once).
 
 ### Implementation for Phase 2
 
@@ -91,7 +91,7 @@ FR-010 to FR-012 apply to all three commands.
   Makes T003 pass.
 - [ ] T008 Create internal/cli/tts/report.go with `ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int`:
   - On `*hub.TTSNotOfferedError`, call `hub.ListExtensions` exactly once with a fresh `hub.NewClient()` and build a `*hub.TTSUnavailableError` from the result per research.md §5, setting `BaseURL` for `DiagnosisHubAddress` and `Cause` for lookup failures.
-  - Then, for any error, classify with `hub.ClassifyError`, print `error: <msg> (hub URL: <baseURL>)`, add `detail: <err>` when verbose, and return `class.ExitCode()`.
+  - Then, for any error, classify with `hub.ClassifyError`, print `error: <msg> (hub URL: <baseURL>)` (just `error: <msg>` for `DiagnosisHubAddress`, whose message already starts with the URL), add `detail: <err>` when verbose, and return `class.ExitCode()`.
   Depends on T005 and T007. Makes T004 pass.
 
 **Checkpoint**: `go test ./tests/unit/ ./tests/contract/` passes for T002–T004, and existing tests are still green.
@@ -112,7 +112,7 @@ exits 2 with no request.
 
 - [ ] T009 [P] [US1] Create tests/contract/tts_test.go with `hub.Speak(ctx, client, baseURL, hub.SpeakRequest)` contract tests:
   - Request: `POST /api/tts/speak`, `Content-Type: application/json`, and a body with exactly `text`, `targetName`, `targetType` when the optional pointers are nil (no `providerName`/`voice`/`language` keys).
-  - 202: decodes `announcementId`, `cacheHit` and `queueDepth`. Each missing field (three cases), and a non-JSON body, return `*hub.DecodeError` (FR-005a).
+  - 202: decodes `announcementId`, `cacheHit` and `queueDepth`. Each missing field (three cases), an empty `announcementId` (`""`), and a non-JSON body, return `*hub.DecodeError` (FR-005a).
   - 400 and 503: each documented code returns `*hub.TTSError` with the status, code and message.
   - An unknown code (`SOMETHING_NEW`) is kept verbatim.
   - A core-shaped body (`{"title","detail"}`), an HTML body and an empty body return a `*hub.TTSError` with an empty code, the message taken from `detail`, then `title`, else empty.
@@ -128,6 +128,8 @@ exits 2 with no request.
   - a literal `""` and `"   "` text (exit 2, `text must not be empty`, no request);
   - `--` followed by `"-5 degrees"` spoken as text, and a later `--json` after `--` treated as a positional (so exit 2, unexpected argument);
   - missing text, missing target and extra positional (exit 2, messages per contracts/cli-tts.md);
+  - positionals in the wrong order (`speak outputs/kitchen "Hi"`) → exit 2 with the respath error for `Hi`, no request;
+  - a table test of non-group targets: `out/kitchen` → `SINGLE_OUTPUT`/`kitchen`; `routes/x` and `inputs/x` → exit 2 with `speak target must be outputs/<id> or groups/<id>`; `outputs` and `gr` (no id) → exit 2 with `must include an id`; `bogus/x` → exit 2 with the respath error. Every usage case asserts zero hub requests. (Group targets are US2: T018.)
   - `--help` (stdout, exit 0);
   - a 404 from speak followed by a diagnosis, confirming `ReportError` is used (exit 13).
 - [ ] T011 [P] [US1] Create tests/unit/render_tts_test.go for `render.RenderSpeakYAML(hub.SpeakAccepted)` and `render.RenderSpeakJSON`: exact YAML `announcementId: "<id>"\ncacheHit: <bool>\nqueueDepth: <n>\n`, and JSON with exactly those three keys, newline-terminated.
@@ -140,6 +142,8 @@ exits 2 with no request.
   - `TARGET_NOT_FOUND` → exit 12, stderr contains `TARGET_NOT_FOUND:` and the hub message;
   - `INVALID_REQUEST` (text too long) → 6;
   - `PROVIDER_TIMEOUT` → 10;
+  - no retries (FR-014): each of the three failure cases above records exactly 1 request to `/api/tts/speak`;
+  - `routes/x` → exit 2 with 0 requests recorded;
   - a 404 with the inventory listing `tts` as `DISABLED` → 13 and exactly 1 inventory request;
   - a 404 with the inventory also 404 → 4, and the message names the URL;
   - an unreachable hub (closed server URL) → 4;
@@ -160,7 +164,7 @@ exits 2 with no request.
 - [ ] T016 [US1] Create internal/cli/tts/speak.go with `RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int`:
   - Define the flags `--json`, `--verbose` and `--hub-url`, and set up `clihelp.SetUsage`/`clihelp.Requested` with the usage line `usage: sonora speak <text|-> <outputs|groups>/<id> [flags]`.
   - Parse with `play`'s re-parse loop, except that once `--` has been consumed all remaining args are positional (research.md §7).
-  - Require exactly 2 positionals. Parse the target with `respath.Parse`, require an id, and accept only `respath.Outputs` (→ `SINGLE_OUTPUT`) or `respath.Groups` (→ `OUTPUT_GROUP`); anything else is exit 2.
+  - Require exactly 2 positionals. Parse the target with `respath.Parse`, require an id, and accept only `respath.Outputs` (→ `SINGLE_OUTPUT`); anything else is exit 2 with `speak target must be outputs/<id> or groups/<id>`. Group targets are added in US2 (T020), after their tests fail.
   - Validate the target before reading standard input. When the text is `-`, read with `io.ReadAll(stdin)` and trim trailing CR/LF.
   - Reject empty or whitespace-only text (exit 2).
   - Resolve the URL with `config.ResolveHubURL`, build the client with `hub.NewClientWithTimeout(hub.SpeakTimeout)` and call `hub.Speak`. On error, return `ReportError(...)`. On success, render YAML or JSON.
@@ -173,27 +177,20 @@ exits 2 with no request.
 
 ## Phase 4: User Story 2 - Announce text on an output group (Priority: P2)
 
-**Goal**: The same command works with `groups/<id>` and aliases (`gr/`, `out/`). Other kinds
-and bare resources are usage errors before contacting the hub.
+**Goal**: The same command works with `groups/<id>` and its alias `gr/<id>`. Rejecting other
+kinds and bare resources, and the `out/` alias, are already covered by US1 (T010, T012).
 
 **Independent Test**: `sonora speak "Motion detected in garden" groups/all-rooms` exits 0 and
-the fake hub receives `targetType: OUTPUT_GROUP`, `targetName: all-rooms`. `routes/x`,
-`inputs/x` and `outputs` exit 2 with zero requests.
+the fake hub receives `targetType: OUTPUT_GROUP`, `targetName: all-rooms`.
 
-### Tests for User Story 2 (write first) ⚠️
+### Tests for User Story 2 (write first, must fail) ⚠️
 
-- [ ] T018 [P] [US2] Extend tests/unit/cli_tts_speak_test.go with a table test of targets:
-  - `groups/all-rooms` and `gr/all-rooms` → `OUTPUT_GROUP`/`all-rooms`;
-  - `out/kitchen` → `SINGLE_OUTPUT`/`kitchen`;
-  - `routes/x` and `inputs/x` → exit 2 with `speak target must be outputs/<id> or groups/<id>`;
-  - `outputs` and `gr` (no id) → exit 2 with `must include an id`;
-  - `bogus/x` → exit 2 with the respath error.
-  Every usage case asserts zero hub requests.
-- [ ] T019 [P] [US2] Extend tests/integration/tts_test.go: a `gr/all-rooms` target succeeds with the same YAML fields as US1 and the recorded body has `targetType: OUTPUT_GROUP`; `routes/x` exits 2 with 0 requests recorded.
+- [ ] T018 [P] [US2] Extend tests/unit/cli_tts_speak_test.go with a table test of group targets: `groups/all-rooms` and `gr/all-rooms` → exit 0, recorded body `targetType: OUTPUT_GROUP`, `targetName: all-rooms`. These fail against T016, which accepts outputs only.
+- [ ] T019 [P] [US2] Extend tests/integration/tts_test.go: a `gr/all-rooms` target succeeds with the same YAML fields as US1, and the recorded body has `targetType: OUTPUT_GROUP`.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Run T018 and T019 against `RunSpeak` from T016. If any case fails, fix the target-kind handling in internal/cli/tts/speak.go only. No new flags or branches are expected, because T016 already maps both kinds generically.
+- [ ] T020 [US2] In internal/cli/tts/speak.go, also accept `respath.Groups` (→ `OUTPUT_GROUP`) in the target-kind check. Other kinds keep the T016 error. Depends on T016. Makes T018 and T019 pass, and the T010 target table still passes.
 
 **Checkpoint**: US1 and US2 both pass independently.
 
@@ -328,8 +325,9 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - [ ] T044 [P] Update docs/cli-command-landscape.md: add a "tts (extension)" section with ✅ rows mapping `sonora speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language]` → `POST /api/tts/speak`, `sonora get tts-cache` → `GET /api/tts/cache/stats` and `sonora clear tts-cache [--provider]` → `DELETE /api/tts/cache`. Note that `listExtensions` is used internally only, and update the operationId count in the intro.
 - [ ] T045 Review cmd/sonora/main.go `helpText` as a whole: the new lines are aligned with existing entries, and the `Commands:` column widths are unchanged (FR-015). Re-run `go test ./cmd/...`.
 - [ ] T046 Run `make check` (gofmt, go vet, the full `go test ./...` including the slow SC-003 test) and fix any findings in files touched by this feature.
-- [ ] T047 Regression (SC-006): diff the `sonora help` output and the exit codes of existing commands against `main`, using `go test ./tests/... ./cmd/...` on both branches. Confirm no existing test changed expectation apart from the additive help-text assertions.
-- [ ] T048 Walk through specs/009-tts-commands/quickstart.md sections 1–2. Run section 3 against a real hub if one is available; otherwise record in this file under Notes which manual rows were not run.
+- [ ] T047 Regression (SC-006): diff the `sonora help` output and the exit codes of existing commands against `main`, using `go test ./tests/... ./cmd/...` on both branches. Confirm no existing test changed expectation apart from the additive help-text assertions. Also measure cold start on both branches (for example, the median of 20 runs of `sonora get outputs --hub-url http://127.0.0.1:1`, which fails fast) and record the before/after timings under Notes (Principle I, Performance Standards).
+- [ ] T048 Walk through specs/009-tts-commands/quickstart.md sections 1–2. Run section 3 against a real hub if one is available, including row 2 (cache-hit `speak` under 1 s, SC-002). Otherwise record under Notes in this file which manual rows were not run.
+- [ ] T049 Write the PR self-review against Constitution Principles I, III, IV and VI. It is required because this feature changes HTTP client construction (`hub.NewClientWithTimeout`). Cover: startup path unchanged (T047 timings); no new dependency; every request bounded (5 s / 15 s), with no retries and connection reuse through `http.DefaultTransport`; every behaviour had a failing test first. Put it in the PR description.
 
 ---
 
@@ -341,17 +339,17 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - **Foundational (Phase 2)**: depends on Setup. **Blocks all stories.** Every command uses
   `ReportError`, the TTS error types and exit 13.
 - **US1 (Phase 3)**: depends on Phase 2.
-- **US2 (Phase 4)**: depends on US1's `RunSpeak` (T016) and dispatch (T017). It adds tests and
-  at most a fix.
-- **US3 (Phase 5)**: depends on US1 (T016). It is independent of US2 and can run in parallel
-  with it.
-- **US4 (Phase 6)**: depends on Phase 2 only. It is independent of US1–US3, apart from sharing
-  files: `internal/hub/tts.go` and `internal/render/tts.go` need T014/T015 to have created
-  them, or US4 creates them if run first.
+- **US2 (Phase 4)**: depends on US1's `RunSpeak` (T016) and dispatch (T017). It adds group
+  targets (T020).
+- **US3 (Phase 5)**: depends on US1 (T016). Its tests can be written in parallel with US2's,
+  but T020 and T024 both edit internal/cli/tts/speak.go, so run those two one after the other.
+- **US4 (Phase 6)**: depends on Phase 2 only. It is independent of US1–US3. `internal/hub/tts.go`
+  already exists from T005. `internal/render/tts.go` is created by T015, or by T031 if US4
+  runs first.
 - **US5 (Phase 7)**: depends on Phase 2. It shares `internal/cli/tts/cache.go` with US4
   (T041 edits the file T032 creates), so run it after US4 or create the file in whichever
   lands first.
-- **Polish (Phase 8)**: after all stories.
+- **Polish (Phase 8)**: after all stories. T049 comes after T047, whose timings it cites.
 
 ### Within Each Story
 

@@ -285,8 +285,9 @@ the cleared entries.
 - **FR-005a**: Although `api/openapi.json` marks no success-response field as required,
   the CLI MUST treat these as required and reject a body missing any of them as malformed
   (hub-error class, 3): `announcementId`, `cacheHit`, `queueDepth` (speak) and
-  `totalEntries`, `totalSizeBytes`, `maxSizeBytes` (cache stats). An absent or null
-  `entriesByProvider` MUST be shown as an empty breakdown, not rejected.
+  `totalEntries`, `totalSizeBytes`, `maxSizeBytes` (cache stats). An empty
+  `announcementId` counts as missing. An absent or null `entriesByProvider` MUST be shown
+  as an empty breakdown, not rejected.
 
 **Cache**
 
@@ -314,10 +315,12 @@ the cleared entries.
   | Inventory result | Reported reason |
   | --- | --- |
   | no `tts` entry | TTS extension is not installed on this hub |
+  | no `tts` entry, and the inventory reports `loadingEnabled: false` | TTS extension is not installed on this hub, noting that extension loading is switched off in the hub's configuration |
   | status `DISABLED` | TTS extension is installed but disabled in the hub's configuration |
   | status `REJECTED` | TTS extension failed to load, followed by the hub's rejection reason |
   | status `INERT` | TTS extension is loaded but inactive |
   | status `ACTIVE` | hub's TTS API does not match this CLI (version mismatch) |
+  | any other status value | none: generic "TTS not available on this hub" |
   | inventory itself answers 404 | the address is not a Multiroom Audio Hub API: either the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded. The message names the URL that was used and how to change it (`--hub-url`, `MULTIROOM_URL`, config file) |
   | inventory lookup fails any other way (network, 5xx, malformed body) | none: generic "TTS not available on this hub" |
 

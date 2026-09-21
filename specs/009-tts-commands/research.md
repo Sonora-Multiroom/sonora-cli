@@ -149,10 +149,14 @@ whose own client has the longer bound (§6). Both share `http.DefaultTransport`,
 keep-alive connection from the failed TTS call is reused (Performance Standards, "connection
 reuse").
 
-**`loadingEnabled == false` refinement**: the spec's "no `tts` entry" row doesn't separate
+**`loadingEnabled == false` refinement**: a plain "no `tts` entry" doesn't separate
 "nobody installed it" from "the hub has extension loading switched off". The inventory
-answers that at no extra cost, so the message says so. Diagnosis and exit class stay as the
-spec defines them. This is a wording refinement within FR-010's row, not new behaviour.
+answers that at no extra cost, so the message says so (FR-010 has a row for it). Diagnosis
+and exit class are the same as for "not installed".
+
+**Output format**: every diagnosis is printed as `error: <message> (hub URL: <url>)`, except
+`HubAddress`, whose message already starts with the URL and so is printed without the
+suffix (contracts/cli-tts.md).
 
 ## 6. Request timeout for `speak`
 

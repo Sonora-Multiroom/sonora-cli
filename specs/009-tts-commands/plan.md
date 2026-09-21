@@ -62,8 +62,8 @@ see [research.md §9](research.md#9-testing-strategy-principle-vi).
 - The failure path makes at most one extra request, the inventory lookup (FR-010a).
 - No CLI-side text length limit (FR-003).
 
-**Scale/Scope**: Three commands, one new verb (`speak`), one new verb (`clear`) and one
-singleton keyword (`tts-cache`). Four hub operations are consumed, one of them internally only.
+**Scale/Scope**: Three commands, two new verbs (`speak`, `clear`) and one singleton
+keyword (`tts-cache`). Four hub operations are consumed, one of them internally only.
 One exit-code class is added.
 
 ## Constitution Check
