@@ -50,7 +50,7 @@ additional `GET /api/v2/extensions`, bounded at 5 s.
 | Target with no id (`outputs`) | `error: missing required argument: <target-path> must include an id` → 2 |
 | Unparseable target | `sonora: <respath error>` → 2 |
 | 0 / 1 / 3+ positionals | `error: missing required argument: <text>` / `… <target-path>` / `error: unexpected argument(s): [...]` → 2 |
-| `--provider`, `--voice` or `--language` given an empty value | `error: --<flag> must not be empty` → 2 |
+| `--provider`, `--voice` or `--language` given an empty or whitespace-only value | `error: --<flag> must not be empty` → 2 |
 
 To speak text that starts with a dash, put it after `--`:
 `sonora speak -- "-5 degrees outside" outputs/porch`. A lone `-` always means standard input.
@@ -132,7 +132,8 @@ given (5 s). The command does not prompt for confirmation.
 | `clear tts-cache` | `cleared: all` | `{"cleared":"all"}` |
 | `clear tts-cache --provider openai` | `cleared: provider`<br>`provider: "openai"` | `{"cleared":"provider","provider":"openai"}` |
 
-`--provider ""` → 2. Clearing an already-empty cache succeeds (FR-008).
+`--provider` with an empty or whitespace-only value → `error: --provider must not be empty` → 2,
+as for `speak`. Clearing an already-empty cache succeeds (FR-008).
 
 `clear` with no argument, or with any resource other than `tts-cache`:
 `usage: sonora clear tts-cache [flags]` then `error: clear supports only tts-cache` → 2.

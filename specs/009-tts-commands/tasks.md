@@ -234,24 +234,24 @@ per-provider breakdown, in YAML (default) or JSON.
 
 ### Tests for User Story 4 (write first, must fail) ⚠️
 
-- [ ] T025 [P] [US4] Extend tests/contract/tts_test.go with `hub.GetTTSCacheStats(ctx, client, baseURL)`:
+- [ ] T025 [P] [US4] Extend tests/contract/tts_test.go (create it if US1's T009 has not run) with `hub.GetTTSCacheStats(ctx, client, baseURL)`:
   - `GET /api/tts/cache/stats`, decoding all four fields;
   - `entriesByProvider` absent and `null` both yield a non-nil empty map;
   - each missing required field (`totalEntries`, `totalSizeBytes`, `maxSizeBytes`) returns `*hub.DecodeError`;
   - 404 returns `*hub.TTSNotOfferedError`;
   - 500 with a `{error,message}` body returns `*hub.TTSError`.
-- [ ] T026 [P] [US4] Extend tests/unit/render_tts_test.go for `render.RenderTTSCacheStatsYAML`/`JSON`:
+- [ ] T026 [P] [US4] Extend tests/unit/render_tts_test.go (create it if US1's T011 has not run) for `render.RenderTTSCacheStatsYAML`/`JSON`:
   - exact YAML for a populated map, with providers sorted and names quoted, and for an empty map (`entriesByProvider: {}`);
   - JSON always contains an `entriesByProvider` object (`{}` when empty, never `null`);
   - `totalSizeBytes` above 2^31 renders exactly.
 - [ ] T027 [P] [US4] Create tests/unit/cli_tts_cache_test.go for `tts.RunGetCache(args, stdout, stderr) int`: success YAML and `--json`; an extra positional → exit 2; `--help` → stdout, exit 0; a 404 → diagnosis via `ReportError` (exit 13).
-- [ ] T028 [P] [US4] Extend tests/integration/tts_test.go and `mockTTSHub` with `/api/tts/cache/stats`:
+- [ ] T028 [P] [US4] Extend tests/integration/tts_test.go and `mockTTSHub` with `/api/tts/cache/stats`. If US1's T012 has not run, first create the file with `runCLIWithStdin` and `mockTTSHub` as T012 describes (request counting per path, scriptable responses, `/api/v2/extensions`).
   - `get tts-cache` success with exactly 1 request;
   - `--json`;
   - an empty cache;
   - a 404 with the inventory showing `REJECTED` and a reason → 13, with stderr containing the reason;
   - `list tts-cache` → exit 2 with `use 'sonora get tts-cache'`.
-- [ ] T029 [P] [US4] Extend cmd/sonora/main_test.go: the help text contains `get tts-cache`, and `run([]string{"list", "tts-cache"}, …)` exits 2 with the contract's message.
+- [ ] T029 [P] [US4] Extend cmd/sonora/main_test.go: the help text contains `get tts-cache`; `run([]string{"list", "tts-cache"}, …)` exits 2 with the contract's message; `run([]string{"get", "tts-cache/x"}, …)` exits 2 (not recognised as a resource, contracts/cli-tts.md).
 
 ### Implementation for User Story 4
 
@@ -283,15 +283,15 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 
 ### Tests for User Story 5 (write first, must fail) ⚠️
 
-- [ ] T034 [P] [US5] Extend tests/contract/tts_test.go with `hub.ClearTTSCache(ctx, client, baseURL, provider *string)`:
+- [ ] T034 [P] [US5] Extend tests/contract/tts_test.go (create it if neither T009 nor T025 has run) with `hub.ClearTTSCache(ctx, client, baseURL, provider *string)`:
   - `DELETE /api/tts/cache`, with no query string when `provider` is nil;
   - `providerName=openai` when set, with a value containing a space or `&` URL-encoded;
   - 204 returns nil;
   - 400 `PROVIDER_NOT_FOUND` returns `*hub.TTSError`;
   - 404 returns `*hub.TTSNotOfferedError`.
-- [ ] T035 [P] [US5] Extend tests/unit/render_tts_test.go for `render.RenderTTSCacheClearedYAML(provider *string)`/`JSON`: `cleared: all\n` and `{"cleared":"all"}`; `cleared: provider\nprovider: "openai"\n` and `{"cleared":"provider","provider":"openai"}`.
-- [ ] T036 [P] [US5] Extend tests/unit/cli_tts_cache_test.go for `tts.RunClearCache(args, stdout, stderr) int`: with and without `--provider`, the recorded query and output match; `--provider ""` → exit 2 with zero requests; an extra positional → 2; `--json`; `--help` lists `--provider`.
-- [ ] T037 [P] [US5] Extend tests/integration/tts_test.go and `mockTTSHub` with `DELETE /api/tts/cache`:
+- [ ] T035 [P] [US5] Extend tests/unit/render_tts_test.go (create it if neither T011 nor T026 has run) for `render.RenderTTSCacheClearedYAML(provider *string)`/`JSON`: `cleared: all\n` and `{"cleared":"all"}`; `cleared: provider\nprovider: "openai"\n` and `{"cleared":"provider","provider":"openai"}`.
+- [ ] T036 [P] [US5] Extend tests/unit/cli_tts_cache_test.go (create it if US4's T027 has not run) for `tts.RunClearCache(args, stdout, stderr) int`: with and without `--provider`, the recorded query and output match; `--provider ""` and `--provider "  "` → exit 2 with `--provider must not be empty` and zero requests; an extra positional → 2; `--json`; `--help` lists `--provider`.
+- [ ] T037 [P] [US5] Extend tests/integration/tts_test.go and `mockTTSHub` with `DELETE /api/tts/cache` (create the file and helpers as T012 describes if neither T012 nor T028 has run):
   - clear all;
   - clear with a provider;
   - clear twice, both exit 0 (FR-008);
@@ -306,7 +306,7 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - [ ] T040 [P] [US5] In internal/render/tts.go, add `RenderTTSCacheClearedYAML(provider *string)` and `RenderTTSCacheClearedJSON(provider *string)`, using a payload struct `{Cleared string "json:cleared"; Provider *string "json:provider,omitempty"}`. Makes T035 pass.
 - [ ] T041 [US5] In internal/cli/tts/cache.go, add `RunClearCache(args, stdout, stderr) int`:
   - flags `--json`, `--verbose`, `--hub-url` and `--provider NAME`, usage line `usage: sonora clear tts-cache [flags]`;
-  - an empty `--provider` is exit 2; extra positionals are exit 2;
+  - a supplied `--provider` that is empty after `strings.TrimSpace` is exit 2 (`error: --provider must not be empty`), the same rule as `speak` (T024); extra positionals are exit 2;
   - `hub.NewClient()`, `hub.ClearTTSCache`, `ReportError` on failure, then render.
   Depends on T008, T039 and T040. Makes T036 pass.
 - [ ] T042 [US5] In cmd/sonora/main.go, add `case "clear": return dispatchClear(args[1:], stdout, stderr)` and write `dispatchClear`:
@@ -321,7 +321,7 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T043 [P] Update README.md: add `speak`, `get tts-cache` and `clear tts-cache` to the command table and examples, note that they need the hub's TTS extension, and document exit code 13 wherever the README lists exit codes (FR-015).
+- [ ] T043 [P] Update README.md: add `speak`, `get tts-cache` and `clear tts-cache` to the command table and examples, note that they need the hub's TTS extension. The README has no exit-code list yet, so add an "Exit codes" section listing every code from `hub.ErrorClass.ExitCode` (0, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12) plus the new 13 "TTS not available", with the TTS sources from data-model.md (Exit codes) (FR-015, SC-004).
 - [ ] T044 [P] Update docs/cli-command-landscape.md: add a "tts (extension)" section with ✅ rows mapping `sonora speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language]` → `POST /api/tts/speak`, `sonora get tts-cache` → `GET /api/tts/cache/stats` and `sonora clear tts-cache [--provider]` → `DELETE /api/tts/cache`. Note that `listExtensions` is used internally only, and update the operationId count in the intro.
 - [ ] T045 Review cmd/sonora/main.go `helpText` as a whole: the new lines are aligned with existing entries, and the `Commands:` column widths are unchanged (FR-015). Re-run `go test ./cmd/...`.
 - [ ] T046 Run `make check` (gofmt, go vet, the full `go test ./...` including the slow SC-003 test) and fix any findings in files touched by this feature.
@@ -345,10 +345,13 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
   but T020 and T024 both edit internal/cli/tts/speak.go, so run those two one after the other.
 - **US4 (Phase 6)**: depends on Phase 2 only. It is independent of US1–US3. `internal/hub/tts.go`
   already exists from T005. `internal/render/tts.go` is created by T015, or by T031 if US4
-  runs first.
+  runs first. The same applies to the test files US1 creates (tests/contract/tts_test.go,
+  tests/unit/render_tts_test.go, tests/integration/tts_test.go with `mockTTSHub` and
+  `runCLIWithStdin`): whichever story lands first creates them (T025, T026, T028).
 - **US5 (Phase 7)**: depends on Phase 2. It shares `internal/cli/tts/cache.go` with US4
-  (T041 edits the file T032 creates), so run it after US4 or create the file in whichever
-  lands first.
+  (T041 edits the file T032 creates) and tests/unit/cli_tts_cache_test.go (T036 extends the
+  file T027 creates), so run it after US4 or create the files in whichever lands first. The
+  US1 test files follow the same rule (T034, T035, T037).
 - **Polish (Phase 8)**: after all stories. T049 comes after T047, whose timings it cites.
 
 ### Within Each Story
@@ -363,7 +366,9 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - Phase 2 tests: T002, T003 and T004 are different files.
 - Phase 2 implementation: T006 and T007 in parallel with T005. T008 comes last.
 - US1 tests: T009–T013 are five different files. US1 implementation: T015 in parallel with T014.
-- US2 (T018, T019) and US3 (T021–T023) tests in parallel with each other, after US1.
+- US2 (T018, T019) and US3 (T021–T023) tests after US1. Only T021 runs in parallel with the
+  US2 tests: T018 and T022 both edit tests/unit/cli_tts_speak_test.go, and T019 and T023 both
+  edit tests/integration/tts_test.go, so run each pair one after the other.
 - US4 tests T025–T029 and implementation T031 in parallel with T030.
 - US5 tests T034–T038 and implementation T040 in parallel with T039.
 - Polish: T043 and T044 in parallel.

@@ -252,7 +252,8 @@ the cleared entries.
 - **Standard input empty, whitespace-only, or unreadable when the text is `-`**: usage
   error, and no request is sent.
 - **Positional arguments in the wrong order or extra positional arguments**: usage error.
-- **`--provider` given with an empty value**: usage error before any request is sent.
+- **`--provider`, `--voice` or `--language` given an empty or whitespace-only value**: usage
+  error before any request is sent, on every command that takes the flag.
 
 ## Requirements *(mandatory)*
 
@@ -277,7 +278,7 @@ the cleared entries.
   raised before contacting the hub.
 - **FR-004**: The command MUST accept optional `--provider <name>`, `--voice <id>`, and
   `--language <tag>` options, each sent to the hub only when supplied. An option supplied
-  with an empty value MUST be a usage error.
+  with an empty or whitespace-only value MUST be a usage error.
 - **FR-005**: On acceptance, the command MUST return immediately — without waiting or
   polling for playback to start or finish — and MUST display the announcement identifier,
   whether the audio was served from cache, and the target's queue depth, exactly as the
@@ -299,7 +300,8 @@ the cleared entries.
   clears the whole TTS cache, or only the named provider's entries when `--provider` is
   given. On success (hub 204, no body), it prints a structured confirmation: `cleared: all`,
   or `cleared: provider` plus `provider: <name>`. The output is YAML by default and the same
-  fields as a JSON object with `--json`. `clear` is a new verb and
+  fields as a JSON object with `--json`. `--provider` follows FR-004's empty-value rule.
+  `clear` is a new verb and
   applies only to `tts-cache` in this feature; any other resource is a usage error.
 - **FR-008**: Clearing an already-empty cache MUST succeed.
 
@@ -346,7 +348,8 @@ the cleared entries.
   out first. Other TTS commands keep the CLI's standard request bound.
 - **FR-014**: The CLI MUST NOT retry any TTS request automatically.
 - **FR-015**: The new commands, the `tts-cache` keyword, and the `clear` verb MUST appear in
-  `sonora help`, the README command table, and the CLI command landscape document.
+  `sonora help`, the README command table, and the CLI command landscape document. The
+  README MUST also list the CLI's exit codes, including the new code 13.
 - **FR-016**: All request and response handling MUST follow the TTS operations as published
   in the hub's API description (`api/openapi.json`); where that description is less precise
   than the extension's own contract (e.g. error codes, which it leaves as free text), the
@@ -373,8 +376,8 @@ the cleared entries.
   run on a local network.
 - **SC-003**: When the hub's provider times out at its default 10-second limit, the user
   sees the hub's provider-timeout error — not a CLI network timeout — 100% of the time.
-- **SC-004**: Every failure listed in Edge Cases produces a distinct, documented exit code
-  class and a message that names the cause, verified by tests; no failure prints a raw
+- **SC-004**: Every failure listed in Edge Cases exits with the exit code class documented
+  for it (FR-012; usage errors → 2) and a message that names the cause, verified by tests; no failure prints a raw
   program error or stack trace without `--verbose`.
 - **SC-005**: Against a hub where the TTS extension is not active, 100% of TTS commands
   report "TTS not available" rather than a misleading not-found error. Whenever the hub's
@@ -407,7 +410,8 @@ the cleared entries.
   a remote CLI cannot rely on it.
 - A speak request's response wait is bounded at 15 seconds (hub's 10-second default
   synthesis timeout plus margin). Hubs configured with a slower provider may exceed this;
-  the user then gets a network-timeout failure, which is acceptable for this feature.
+  the user then gets a network-timeout failure, which is acceptable for this feature. A
+  user-configurable timeout (e.g. a `--timeout` flag) is out of scope.
 - The `speak` verb takes the text as its first positional argument and the target as its
   second, mirroring `play <uri> <target>`. The text may be `-` to read it from standard
   input (FR-003a).

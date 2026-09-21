@@ -15,7 +15,7 @@ precise, the CLI accepts anything that contract allows (FR-016).
 | Text | `text` | string | Required. Non-empty and not whitespace-only (FR-003). No CLI maximum. |
 | TargetName | `targetName` | string | Required. The `<id>` of `outputs/<id>` or `groups/<id>`, already validated by `respath` (`^[a-zA-Z0-9_-]{1,255}$`). |
 | TargetType | `targetType` | string enum | Required. `SINGLE_OUTPUT` for `outputs`/`out`, `OUTPUT_GROUP` for `groups`/`gr` (FR-002). |
-| ProviderName | `providerName` | *string, omitempty | Sent only when `--provider` is supplied. The value must not be empty (FR-004). |
+| ProviderName | `providerName` | *string, omitempty | Sent only when `--provider` is supplied. The value must not be empty or whitespace-only (FR-004). |
 | Voice | `voice` | *string, omitempty | Sent only when `--voice` is supplied. Same rule. |
 | Language | `language` | *string, omitempty | Sent only when `--language` is supplied. Same rule. No BCP 47 validation client-side. |
 

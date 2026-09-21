@@ -64,7 +64,7 @@ unit-tested.
 | --- | --- | --- |
 | `*TTSError{StatusCode, Code, Message}` | `Speak`/`ClearTTSCache`/`GetTTSCacheStats` on 400 or 503 | The extension rejected the request. `Code` is the machine-readable code; it may be empty (§4). |
 | `*TTSNotOfferedError{}` | any TTS operation on 404 | The extension is not serving on this hub. Never shown to the user directly. |
-| `*TTSUnavailableError{Diagnosis, Reason, Cause}` | `tts.report` after running the diagnosis (§5) | The user-facing "TTS not available" failure, carrying why. |
+| `*TTSUnavailableError{Diagnosis, Reason, LoadingDisabled, BaseURL, Cause}` | `tts.ReportError` after running the diagnosis (§5) | The user-facing "TTS not available" failure, carrying why. |
 
 `hub.ClassifyError` gets two new branches, checked before the existing ones:
 
@@ -115,7 +115,8 @@ for scripts.
 
 ## 5. "TTS not available" diagnosis (FR-010, FR-010a)
 
-**Decision**: `tts.report(err)` checks `errors.As(err, *TTSNotOfferedError)`. If it matches,
+**Decision**: `tts.ReportError(stderr, err, baseURL, verbose)` checks
+`errors.As(err, *TTSNotOfferedError)`. If it matches,
 it makes exactly one `hub.ListExtensions` call and builds a `*TTSUnavailableError`:
 
 | Inventory outcome | `Diagnosis` | Message tail |
@@ -169,7 +170,7 @@ commands and the inventory lookup keep the standard 5 s client (FR-013).
 so SC-003's "hub's timeout error, not a CLI timeout" holds. A single constructor parameter
 keeps one timeout mechanism (`http.Client.Timeout`) rather than mixing in per-call contexts.
 
-**Alternatives considered**: a `--timeout` flag, which the spec explicitly defers
+**Alternatives considered**: a `--timeout` flag, which the spec puts out of scope
 (Assumptions). A context deadline around one call, which works but would be the only place
 in the CLI that bounds a request differently.
 
@@ -191,6 +192,7 @@ the slice passed to `fs.Parse` contained `"--"` before the first returned positi
   The hub is not contacted.
 - `--provider`, `--voice` and `--language` are `fs.String` flags. "Supplied" is detected with
   `fs.Visit`, and a supplied value that is empty or whitespace-only is a usage error (FR-004).
+  `clear tts-cache --provider` applies the same rule (FR-007).
   Supplied values go into the request as pointers, so omitted ones are left out of the JSON
   entirely (`omitempty` on `*string`).
 
