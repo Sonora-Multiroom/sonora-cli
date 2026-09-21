@@ -36,6 +36,133 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
+// TestRunHelp_ListsSpeak covers 009-tts-commands (T013): the help text
+// names the speak command and gives a runnable example.
+func TestRunHelp_ListsSpeak(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "speak <text|-> <target>") {
+		t.Errorf("expected help to describe 'speak <text|-> <target>', got:\n%s", out)
+	}
+	if !strings.Contains(out, "sonora speak") {
+		t.Errorf("expected help to give a 'sonora speak' example, got:\n%s", out)
+	}
+}
+
+// TestRunSpeak_NoArgs_UsageError covers 009-tts-commands (T013): `sonora
+// speak` with no arguments is a usage error naming the speak usage line.
+func TestRunSpeak_NoArgs_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"speak"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage: sonora speak") {
+		t.Errorf("expected the speak usage line on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestRunHelp_ListsGetTTSCache covers 009-tts-commands US4 (T029).
+func TestRunHelp_ListsGetTTSCache(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stdout.String(), "get tts-cache") {
+		t.Errorf("expected help to list 'get tts-cache', got:\n%s", stdout.String())
+	}
+}
+
+// TestRunListTTSCache_UsageError covers 009-tts-commands US4 (T029).
+func TestRunListTTSCache_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"list", "tts-cache"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "use 'sonora get tts-cache'") {
+		t.Errorf("expected stderr to point at 'sonora get tts-cache', got: %s", stderr.String())
+	}
+}
+
+// TestRunGetTTSCacheSlashID_UsageError covers 009-tts-commands US4 (T029):
+// tts-cache/<anything> is not recognised as a resource.
+func TestRunGetTTSCacheSlashID_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"get", "tts-cache/x"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+}
+
+// TestRunHelp_ListsClearTTSCache covers 009-tts-commands US5 (T038).
+func TestRunHelp_ListsClearTTSCache(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stdout.String(), "clear tts-cache") {
+		t.Errorf("expected help to list 'clear tts-cache', got:\n%s", stdout.String())
+	}
+}
+
+// TestRunClear_NoResource_UsageError covers 009-tts-commands US5 (T038):
+// `clear` with no argument is a usage error naming the clear usage line.
+func TestRunClear_NoResource_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"clear"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage: sonora clear tts-cache") {
+		t.Errorf("expected the clear usage line on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestRunClear_MasterMute_UsageError covers 009-tts-commands US5 (T038):
+// `clear` only supports tts-cache — any other resource is a usage error.
+func TestRunClear_MasterMute_UsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"clear", "master-mute"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage: sonora clear tts-cache") {
+		t.Errorf("expected the clear usage line on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestRunClear_Help covers 009-tts-commands US5 (T038): `clear --help`
+// prints the usage on stdout and exits 0.
+func TestRunClear_Help(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"clear", "--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "usage: sonora clear tts-cache") {
+		t.Errorf("expected the clear usage line on stdout, got: %s", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("expected help on stdout only, got stderr: %s", stderr.String())
+	}
+}
+
 func TestRunVersionPrecedence(t *testing.T) {
 	cases := [][]string{
 		{"--version", "--help"},

@@ -125,6 +125,66 @@ func TestPrintUsage_MatchesSetUsage(t *testing.T) {
 	}
 }
 
+func newParsePositionalFlagSet() *flag.FlagSet {
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.Bool("json", false, "")
+	fs.String("name", "", "")
+	return fs
+}
+
+func TestParsePositional_InterleavedFlagsAndPositionals(t *testing.T) {
+	fs := newParsePositionalFlagSet()
+	got, err := clihelp.ParsePositional(fs, []string{"a", "--json", "b", "--name", "x"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Errorf("got %v, want [a b]", got)
+	}
+}
+
+func TestParsePositional_DashDashTerminator_RestArePositional(t *testing.T) {
+	fs := newParsePositionalFlagSet()
+	got, err := clihelp.ParsePositional(fs, []string{"--json", "--", "a", "--name", "b"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 3 || got[0] != "a" || got[1] != "--name" || got[2] != "b" {
+		t.Errorf("got %v, want [a --name b]", got)
+	}
+}
+
+// TestParsePositional_DashDashAsFlagValue_NotAConfusedTerminator guards
+// against a "--" that flag.Parse consumed as a preceding flag's own value
+// (it accepts any string as a string flag's value unconditionally) being
+// mistaken for an end-of-flags terminator: "--name --" sets name to the
+// literal string "--", so only "a" and "b" are positional, and "--json"
+// occurring afterward is still a flag.
+func TestParsePositional_DashDashAsFlagValue_NotAConfusedTerminator(t *testing.T) {
+	fs := newParsePositionalFlagSet()
+	got, err := clihelp.ParsePositional(fs, []string{"--name", "--", "a", "--json", "b"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Errorf("got %v, want [a b]", got)
+	}
+	if fs.Lookup("name").Value.String() != "--" {
+		t.Errorf("name = %q, want \"--\"", fs.Lookup("name").Value.String())
+	}
+	if fs.Lookup("json").Value.String() != "true" {
+		t.Errorf("json = %q, want \"true\"", fs.Lookup("json").Value.String())
+	}
+}
+
+func TestParsePositional_UnknownFlag_ReturnsError(t *testing.T) {
+	fs := newParsePositionalFlagSet()
+	fs.SetOutput(new(bytes.Buffer))
+	if _, err := clihelp.ParsePositional(fs, []string{"--bogus"}); err == nil {
+		t.Error("expected an error for an unknown flag, got nil")
+	}
+}
+
 func TestRequested(t *testing.T) {
 	// AGENTS.md: long flags require "--", short flags are single-letter with
 	// "-". The single-dash multi-letter "-help" the flag package would accept

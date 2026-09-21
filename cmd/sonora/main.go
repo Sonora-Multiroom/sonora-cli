@@ -16,6 +16,7 @@ import (
 	"sonora-cli/internal/cli/respath"
 	"sonora-cli/internal/cli/route"
 	"sonora-cli/internal/cli/routes"
+	"sonora-cli/internal/cli/tts"
 	"sonora-cli/internal/version"
 )
 
@@ -25,6 +26,7 @@ Commands:
   get <resource>[/<id>]               Fetch a collection, or a single item by id
   list <resource>                     Fetch a collection (synonym of 'get')
   play <uri> <target>                 Play an audio URI on an output or group
+  speak <text|-> <target>             Speak text via the hub's TTS extension
   route inputs/<id> <target>          Connect an existing input to a target
   transfer routes/<id> <target>       Move playback to a new target
   create inputs/<id> <uri>            Register a new ephemeral input
@@ -43,6 +45,8 @@ Commands:
   unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
   set groups/<id> volume <0-100>      Set a group's volume level
+  get tts-cache                       Fetch TTS audio-cache statistics
+  clear tts-cache                     Clear the TTS audio cache
   help                                Show this help
 
   <resource>  inputs (in), outputs (out), groups (gr), routes (rt)
@@ -64,6 +68,7 @@ Examples:
   sonora get routes --status active
   sonora get groups/living-room --json
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker
+  sonora speak "Dinner is ready" outputs/kitchen
   sonora route inputs/spotify-1 outputs/office-speaker
   sonora transfer routes/route-abc-123 groups/living-room
   sonora set outputs/office-speaker volume 40
@@ -84,6 +89,8 @@ Examples:
   sonora get master-mute
   sonora mute all
   sonora unmute all
+  sonora get tts-cache
+  sonora clear tts-cache --provider openai
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
 e.g. 'sonora get routes --help'.
@@ -110,6 +117,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if args[0] == "play" {
 		return play.Run(args[1:], stdout, stderr)
 	}
+	if args[0] == "speak" {
+		return tts.RunSpeak(args[1:], os.Stdin, stdout, stderr)
+	}
 	if args[0] == "route" {
 		return route.Run(args[1:], stdout, stderr)
 	}
@@ -134,6 +144,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchPause(args[0], args[1:], stdout, stderr)
 	case "set":
 		return dispatchSet(args[1:], stdout, stderr)
+	case "clear":
+		return dispatchClear(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "sonora: unknown command %q\n", args[0])
 		return 2
@@ -473,6 +485,26 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 	return outputs.RunSetVolume(callArgs, stdout, stderr)
 }
 
+// dispatchClear resolves the argument following `clear` — the only resource
+// `clear` currently supports is the literal keyword `tts-cache` (FR-007),
+// not a respath-addressable resource, so this dispatcher checks for that
+// keyword directly rather than calling respath.Parse. Any other argument,
+// or none at all, is a usage error naming tts-cache as the only supported
+// resource.
+func dispatchClear(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora clear tts-cache [flags]"
+	if len(args) > 0 && args[0] == "tts-cache" {
+		return tts.RunClearCache(args[1:], stdout, stderr)
+	}
+	if clihelp.Requested(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	fmt.Fprintln(stderr, usage)
+	fmt.Fprintln(stderr, "error: clear supports only tts-cache")
+	return 2
+}
+
 // dispatchGetList resolves the resource-path argument following `get`/`list`
 // via respath and translates it into the matching resource package's
 // existing RunList/RunGet call (research.md §2). A `list` given a resource
@@ -492,6 +524,14 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return mastermute.RunGet(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "tts-cache" {
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not support tts-cache; use 'sonora get tts-cache' instead")
+			return 2
+		}
+		return tts.RunGetCache(args[1:], stdout, stderr)
 	}
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
