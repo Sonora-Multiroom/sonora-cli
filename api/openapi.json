@@ -4,7 +4,7 @@
     "title": "Multiroom Audio Hub v2 API",
     "description": "Professional REST API v2 for real-time multi-room audio routing. Provides full CRUD for inputs, output volume/mute control, route lifecycle management, instant URI-based playback, and idempotent master mute control.",
     "contact": {
-      "name": "Multiroom AI Team"
+      "name": "Sonora Multiroom Team"
     },
     "license": {
       "name": "AGPL-3.0",
@@ -14,7 +14,7 @@
   },
   "servers": [
     {
-      "url": "http://multiroom.lan:8080",
+      "url": "http://localhost:8080",
       "description": "Generated server url"
     }
   ],
