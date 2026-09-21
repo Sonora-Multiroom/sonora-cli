@@ -4,17 +4,17 @@
     "title": "Multiroom Audio Hub v2 API",
     "description": "Professional REST API v2 for real-time multi-room audio routing. Provides full CRUD for inputs, output volume/mute control, route lifecycle management, instant URI-based playback, and idempotent master mute control.",
     "contact": {
-      "name": "Sonora Multiroom Team"
+      "name": "Multiroom AI Team"
     },
     "license": {
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.16"
+    "version": "0.1.18"
   },
   "servers": [
     {
-      "url": "http://localhost:8080",
+      "url": "http://multiroom.lan:8080",
       "description": "Generated server url"
     }
   ],
@@ -26,6 +26,10 @@
     {
       "name": "Master Mute",
       "description": "System-wide master mute control — silence all audio outputs"
+    },
+    {
+      "name": "Extensions",
+      "description": "Inventory of discovered extensions — what loaded, what didn't, and why"
     },
     {
       "name": "Playback",
@@ -1027,6 +1031,341 @@
         }
       }
     },
+    "/api/tts/speak": {
+      "post": {
+        "tags": [
+          "tts-controller"
+        ],
+        "summary": "Trigger a TTS announcement",
+        "operationId": "speak",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Request accepted; audio exists and is queued to play",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeakAcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, unknown target, or unknown provider",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Provider unavailable, errored, or returned an unconvertible format",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/routes": {
+      "get": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "getAllRoutes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Route"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "createRoute_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/routes/{routeId}/transfer": {
+      "post": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "transferRoute_1",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/routes/{routeId}/stop": {
+      "post": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "stopRoute",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/routes/{routeId}/start": {
+      "post": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "startRoute",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/routes/group": {
+      "post": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "createGroupRoute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/play": {
+      "post": {
+        "tags": [
+          "play-controller"
+        ],
+        "operationId": "play",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/master-mute/toggle": {
+      "post": {
+        "tags": [
+          "master-mute-controller"
+        ],
+        "operationId": "toggleMasterMute",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/master-mute/groups/{groupId}/toggle": {
+      "post": {
+        "tags": [
+          "master-mute-controller"
+        ],
+        "operationId": "toggleGroupMute",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/inputs": {
+      "get": {
+        "tags": [
+          "inputs-controller"
+        ],
+        "operationId": "getAllInputs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AudioInputDefinition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inputs-controller"
+        ],
+        "operationId": "registerInput",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioInputDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioInputDefinition"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/routes/{routeId}": {
       "get": {
         "tags": [
@@ -1379,6 +1718,170 @@
         }
       }
     },
+    "/api/v2/extensions": {
+      "get": {
+        "tags": [
+          "Extensions"
+        ],
+        "summary": "List discovered extensions",
+        "description": "Returns the inventory captured at start-up: every extension JAR found, including rejected ones, with its status and (for REJECTED) the reason.",
+        "operationId": "listExtensions",
+        "responses": {
+          "200": {
+            "description": "Inventory returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionInventory"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tts/cache/stats": {
+      "get": {
+        "tags": [
+          "tts-cache-controller"
+        ],
+        "summary": "Get audio cache statistics",
+        "operationId": "getCacheStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheStats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/routes/{routeId}": {
+      "get": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "getRoute_1",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "deleteRoute_1",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/routes/{routeId}/transferable": {
+      "get": {
+        "tags": [
+          "routes-controller"
+        ],
+        "operationId": "isTransferable",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outputs": {
+      "get": {
+        "tags": [
+          "outputs-controller"
+        ],
+        "operationId": "listOutputs_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices": {
+      "get": {
+        "tags": [
+          "devices-controller"
+        ],
+        "operationId": "listDevices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/outputs/{outputId}/routes": {
       "delete": {
         "tags": [
@@ -1467,6 +1970,63 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/tts/cache": {
+      "delete": {
+        "tags": [
+          "tts-cache-controller"
+        ],
+        "summary": "Clear the audio cache",
+        "operationId": "clearCache",
+        "parameters": [
+          {
+            "name": "providerName",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cache cleared successfully"
+          },
+          "400": {
+            "description": "Unknown provider name specified",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inputs/{inputId}": {
+      "delete": {
+        "tags": [
+          "inputs-controller"
+        ],
+        "operationId": "unregisterInput",
+        "parameters": [
+          {
+            "name": "inputId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -2126,6 +2686,408 @@
           "inputId",
           "uri"
         ]
+      },
+      "SpeakRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ]
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "voice": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetName",
+          "targetType",
+          "text"
+        ]
+      },
+      "SpeakAcceptedResponse": {
+        "type": "object",
+        "properties": {
+          "announcementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cacheHit": {
+            "type": "boolean"
+          },
+          "queueDepth": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TtsErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateGroupRouteRequest": {
+        "type": "object",
+        "properties": {
+          "inputId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "volume": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "groupId",
+          "inputId"
+        ]
+      },
+      "PlayRequest": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "targetOutputId": {
+            "type": "string"
+          },
+          "targetGroupId": {
+            "type": "string"
+          },
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 0
+          },
+          "validDestination": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "uri"
+        ]
+      },
+      "AudioInputDefinition": {
+        "type": "object",
+        "properties": {
+          "inputId": {
+            "$ref": "#/components/schemas/InputId"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1
+          },
+          "format": {
+            "$ref": "#/components/schemas/SampleFormat"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "shared": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "autoRemove": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "uri"
+        ]
+      },
+      "InputId": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "SampleFormat": {
+        "type": "object",
+        "properties": {
+          "sampleRate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bitDepth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "channels": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampleType": {
+            "type": "string",
+            "enum": [
+              "PCM",
+              "FLOAT"
+            ]
+          }
+        }
+      },
+      "Extension": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requiredApiVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "REJECTED",
+              "DISABLED",
+              "INERT"
+            ]
+          },
+          "connectionState": {
+            "type": "string",
+            "enum": [
+              "NOT_APPLICABLE",
+              "CONNECTED",
+              "DISCONNECTED"
+            ]
+          },
+          "rejectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ExtensionInventory": {
+        "type": "object",
+        "properties": {
+          "loadingEnabled": {
+            "type": "boolean"
+          },
+          "extensionsDirectory": {
+            "type": "string"
+          },
+          "extensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Extension"
+            }
+          }
+        }
+      },
+      "CacheStats": {
+        "type": "object",
+        "properties": {
+          "totalEntries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entriesByProvider": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "Route": {
+        "type": "object",
+        "properties": {
+          "routeId": {
+            "$ref": "#/components/schemas/RouteId"
+          },
+          "inputId": {
+            "$ref": "#/components/schemas/InputId"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ]
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "STARTING",
+              "ACTIVE",
+              "STOPPING",
+              "STOPPED",
+              "FAILED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "transferable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RouteId": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "outputIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OutputItem": {
+        "type": "object",
+        "properties": {
+          "outputId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "OutputsResponse": {
+        "type": "object",
+        "properties": {
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputItem"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupItem"
+            }
+          }
+        }
+      },
+      "AudioDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INPUT",
+              "OUTPUT"
+            ]
+          },
+          "maxChannels": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultSampleRate": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DevicesResponse": {
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioDevice"
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioDevice"
+            }
+          }
+        }
       },
       "BulkStopResponse": {
         "type": "object",
