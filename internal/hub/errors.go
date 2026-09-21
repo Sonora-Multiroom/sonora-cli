@@ -23,12 +23,15 @@ const (
 	ClassServiceUnavailable
 	ClassInputNotFound
 	ClassTargetNotFound
+	ClassTTSUnavailable
 )
 
 // ExitCode returns the CLI exit code for this error class, per research.md §6.
 // Exit code 7 ("target matches both an output and a group") is retired —
 // path-style target addressing makes that case structurally unreachable
-// (data-model.md) — and is not reused by any other class.
+// (data-model.md) — and is not reused by any other class. Exit code 13
+// (ClassTTSUnavailable) is added by 009-tts-commands (data-model.md's exit
+// code table).
 func (c ErrorClass) ExitCode() int {
 	switch c {
 	case ClassUsage:
@@ -51,6 +54,8 @@ func (c ErrorClass) ExitCode() int {
 		return 11
 	case ClassTargetNotFound:
 		return 12
+	case ClassTTSUnavailable:
+		return 13
 	default:
 		return 0
 	}
@@ -111,6 +116,41 @@ func (e *APIError) Error() string {
 func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	if err == nil {
 		return ClassNone, ""
+	}
+
+	// TTS branches (009-tts-commands, research.md §3), checked before the
+	// existing branches: *TTSUnavailableError and *TTSError are new types
+	// introduced by this feature and can't be produced by any pre-existing
+	// code path, so this ordering changes no existing classification.
+	var unavailErr *TTSUnavailableError
+	if errors.As(err, &unavailErr) {
+		if unavailErr.Diagnosis == DiagnosisHubAddress {
+			return ClassNetwork, unavailErr.Error()
+		}
+		return ClassTTSUnavailable, unavailErr.Error()
+	}
+
+	var ttsErr *TTSError
+	if errors.As(err, &ttsErr) {
+		msg := ttsErr.Error()
+		switch ttsErr.Code {
+		case "TARGET_NOT_FOUND":
+			return ClassTargetNotFound, msg
+		case "INVALID_REQUEST":
+			return ClassValidation, msg
+		case "PROVIDER_NOT_FOUND":
+			return ClassNotFound, msg
+		case "PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED", "PROVIDER_ERROR", "FORMAT_NORMALIZATION_FAILED":
+			return ClassServiceUnavailable, msg
+		}
+		switch ttsErr.StatusCode {
+		case 400:
+			return ClassValidation, msg
+		case 503:
+			return ClassServiceUnavailable, msg
+		default:
+			return ClassHub, msg
+		}
 	}
 
 	var notFoundErr *NotFoundError

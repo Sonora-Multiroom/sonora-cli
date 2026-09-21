@@ -51,6 +51,9 @@ table, common flags, and examples from the terminal.
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
+| `speak <text|-> <resource>/<id>` | `outputs`, `groups` (hub TTS extension) | `out`, `gr` |
+| `get tts-cache` | TTS audio-cache statistics (hub TTS extension) | — |
+| `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -107,6 +110,15 @@ group, creating the ephemeral input and route in one call —
 `outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume, and
 `--display-name NAME` sets the ephemeral input's display name.
 
+`speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language]` requests a TTS
+announcement via the hub's optional TTS extension and returns as soon as the hub accepts it
+(no waiting for playback), printing `announcementId`/`cacheHit`/`queueDepth`. `<text>` may be
+`-` to read from standard input. `get tts-cache` prints TTS audio-cache statistics
+(`totalEntries`/`totalSizeBytes`/`maxSizeBytes`/`entriesByProvider`), and `clear tts-cache
+[--provider <name>]` clears all cache entries, or one provider's, printing `cleared` (`all` or
+`provider`, idempotent — clearing an empty cache still succeeds). All three need the hub's TTS
+extension to be installed and active; if it isn't, the CLI diagnoses why and exits 13.
+
 Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
 (override the hub base URL), and `--verbose` (print underlying error detail on failure).
 These are per-command flags, so write them **after** the resource path — `sonora get outputs
@@ -128,7 +140,27 @@ sonora transfer routes/<route-id> outputs/bedroom-speaker
 sonora stop routes
 sonora stop outputs/<id>
 sonora stop groups/<id>
+sonora speak "Dinner is ready" outputs/kitchen
+sonora get tts-cache
+sonora clear tts-cache --provider openai
 ```
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | success |
+| 2 | usage error (bad arguments, missing/invalid flags) |
+| 3 | hub returned an unexpected or malformed response |
+| 4 | network error — hub unreachable, timed out, or (for TTS commands) not serving this API |
+| 5 | resource not found (including TTS `PROVIDER_NOT_FOUND`) |
+| 6 | validation error (rejected request, including TTS `INVALID_REQUEST`) |
+| 8 | route operation failed (422) |
+| 9 | audio source unreachable (502) |
+| 10 | service temporarily unavailable (503, including TTS provider timeout/rate-limit/error) |
+| 11 | input not found (route commands) |
+| 12 | target not found (route commands, including TTS `TARGET_NOT_FOUND`) |
+| 13 | TTS not available — the hub's TTS extension isn't installed, active, or hub-version-compatible |
 
 ## Configuration
 

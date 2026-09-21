@@ -259,3 +259,238 @@ type opErrStub struct{}
 func (e *opErrStub) Error() string   { return "dial tcp: connection refused" }
 func (e *opErrStub) Timeout() bool   { return false }
 func (e *opErrStub) Temporary() bool { return false }
+
+// --- 009-tts-commands: ClassTTSUnavailable, TTSError/TTSUnavailableError
+// classification, and the configurable client timeout (T002). ---
+
+func TestErrorClass_TTSUnavailableExitCode(t *testing.T) {
+	if got := hub.ClassTTSUnavailable.ExitCode(); got != 13 {
+		t.Errorf("ClassTTSUnavailable.ExitCode() = %d, want 13", got)
+	}
+}
+
+func TestErrorClass_AllExitCodesDistinct_IncludingTTS(t *testing.T) {
+	cases := map[hub.ErrorClass]int{
+		hub.ClassUsage:              2,
+		hub.ClassHub:                3,
+		hub.ClassNetwork:            4,
+		hub.ClassNotFound:           5,
+		hub.ClassValidation:         6,
+		hub.ClassRouteFailed:        8,
+		hub.ClassSourceUnreachable:  9,
+		hub.ClassServiceUnavailable: 10,
+		hub.ClassInputNotFound:      11,
+		hub.ClassTargetNotFound:     12,
+		hub.ClassTTSUnavailable:     13,
+	}
+	seen := map[int]hub.ErrorClass{}
+	for class, want := range cases {
+		got := class.ExitCode()
+		if got != want {
+			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
+		}
+		if prev, ok := seen[got]; ok {
+			t.Errorf("exit code %d reused: %v and %v", got, prev, class)
+		}
+		seen[got] = class
+	}
+}
+
+func TestClassifyError_TTSError_ByCode(t *testing.T) {
+	cases := []struct {
+		code  string
+		class hub.ErrorClass
+	}{
+		{"TARGET_NOT_FOUND", hub.ClassTargetNotFound},
+		{"INVALID_REQUEST", hub.ClassValidation},
+		{"PROVIDER_NOT_FOUND", hub.ClassNotFound},
+		{"PROVIDER_TIMEOUT", hub.ClassServiceUnavailable},
+		{"PROVIDER_RATE_LIMITED", hub.ClassServiceUnavailable},
+		{"PROVIDER_ERROR", hub.ClassServiceUnavailable},
+		{"FORMAT_NORMALIZATION_FAILED", hub.ClassServiceUnavailable},
+	}
+	for _, c := range cases {
+		t.Run(c.code, func(t *testing.T) {
+			err := &hub.TTSError{StatusCode: 400, Code: c.code, Message: "boom"}
+			class, msg := hub.ClassifyError(err)
+			if class != c.class {
+				t.Errorf("code %s: got class %v, want %v", c.code, class, c.class)
+			}
+			want := c.code + ": boom"
+			if msg != want {
+				t.Errorf("code %s: got message %q, want %q", c.code, msg, want)
+			}
+		})
+	}
+}
+
+func TestClassifyError_TTSError_UnknownOrEmptyCodeFallsBackToStatus(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		class  hub.ErrorClass
+	}{
+		{"unknown code 400", 400, hub.ClassValidation},
+		{"unknown code 503", 503, hub.ClassServiceUnavailable},
+		{"unknown code 500", 500, hub.ClassHub},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := &hub.TTSError{StatusCode: c.status, Code: "SOMETHING_NEW", Message: "boom"}
+			class, msg := hub.ClassifyError(err)
+			if class != c.class {
+				t.Errorf("got class %v, want %v", class, c.class)
+			}
+			if msg != "SOMETHING_NEW: boom" {
+				t.Errorf("got message %q, want %q", msg, "SOMETHING_NEW: boom")
+			}
+		})
+	}
+
+	emptyCases := []struct {
+		name   string
+		status int
+		class  hub.ErrorClass
+		msg    string
+	}{
+		{"empty code, message present, 400", 400, hub.ClassValidation, "hub rejected the request (HTTP 400): boom"},
+		{"empty code, message present, 503", 503, hub.ClassServiceUnavailable, "hub rejected the request (HTTP 503): boom"},
+		{"empty code, message present, 500", 500, hub.ClassHub, "hub rejected the request (HTTP 500): boom"},
+		{"empty code, no message, 500", 500, hub.ClassHub, "hub reported an error (HTTP 500)"},
+	}
+	for _, c := range emptyCases {
+		t.Run(c.name, func(t *testing.T) {
+			message := "boom"
+			if c.msg == "hub reported an error (HTTP 500)" {
+				message = ""
+			}
+			err := &hub.TTSError{StatusCode: c.status, Code: "", Message: message}
+			class, msg := hub.ClassifyError(err)
+			if class != c.class {
+				t.Errorf("got class %v, want %v", class, c.class)
+			}
+			if msg != c.msg {
+				t.Errorf("got message %q, want %q", msg, c.msg)
+			}
+		})
+	}
+}
+
+func TestClassifyError_TTSUnavailableError_ByDiagnosis(t *testing.T) {
+	const head = "text-to-speech is not available on this hub"
+	cases := []struct {
+		name      string
+		err       *hub.TTSUnavailableError
+		wantClass hub.ErrorClass
+		wantMsg   string
+	}{
+		{
+			"not installed",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension is not installed on this hub",
+		},
+		{
+			"not installed, loading disabled",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled, LoadingDisabled: true},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension is not installed on this hub (extension loading is switched off in the hub's configuration)",
+		},
+		{
+			"disabled",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisDisabled},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension is installed but disabled in the hub's configuration",
+		},
+		{
+			"rejected with reason",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected, Reason: "bad jar"},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension failed to load: bad jar",
+		},
+		{
+			"rejected without reason",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension failed to load",
+		},
+		{
+			"inert",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisInert},
+			hub.ClassTTSUnavailable,
+			head + ": the TTS extension is loaded but inactive",
+		},
+		{
+			"version mismatch",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisVersionMismatch},
+			hub.ClassTTSUnavailable,
+			head + ": the hub's TTS API does not match this CLI version",
+		},
+		{
+			"unknown",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown},
+			hub.ClassTTSUnavailable,
+			head,
+		},
+		{
+			"hub address",
+			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: "http://example.invalid"},
+			hub.ClassNetwork,
+			"http://example.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(c.err)
+			if class != c.wantClass {
+				t.Errorf("got class %v, want %v", class, c.wantClass)
+			}
+			if msg != c.wantMsg {
+				t.Errorf("got message %q, want %q", msg, c.wantMsg)
+			}
+			if c.err.Diagnosis != hub.DiagnosisHubAddress && class != hub.ClassTTSUnavailable {
+				t.Errorf("expected every non-HubAddress diagnosis to classify as ClassTTSUnavailable")
+			}
+		})
+	}
+}
+
+func TestTTSUnavailableError_Unwrap(t *testing.T) {
+	cause := errors.New("dial failed")
+	err := &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown, Cause: cause}
+	if !errors.Is(err, cause) {
+		t.Errorf("expected errors.Is to find Cause via Unwrap")
+	}
+}
+
+func TestNewClientWithTimeout_EnforcesGivenTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(300 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	client := hub.NewClientWithTimeout(50 * time.Millisecond)
+
+	start := time.Now()
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	_, err = client.Do(req)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected a timeout error, got nil")
+	}
+	if elapsed > 250*time.Millisecond {
+		t.Errorf("client did not abort at timeout: took %v", elapsed)
+	}
+}
+
+func TestNewClient_DefaultTimeoutIsFiveSeconds(t *testing.T) {
+	client := hub.NewClient()
+	if client.Timeout != 5*time.Second {
+		t.Errorf("NewClient().Timeout = %v, want 5s", client.Timeout)
+	}
+}
