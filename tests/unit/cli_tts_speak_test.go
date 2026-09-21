@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"sonora-cli/internal/cli/tts"
 )
@@ -52,6 +53,78 @@ func newSpeakSuccessHub(t *testing.T) (*httptest.Server, *speakSuccessHub) {
 	}))
 	t.Cleanup(srv.Close)
 	return srv, h
+}
+
+// newSlowSpeakSuccessHub answers POST /api/tts/speak with a fixed 202 body,
+// like newSpeakSuccessHub, but sleeps for delay before responding, so tests
+// can exercise the --timeout override (009-tts-commands US6, T050).
+func newSlowSpeakSuccessHub(t *testing.T, delay time.Duration) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(delay)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"announcementId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "cacheHit": false, "queueDepth": 1,
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestRunSpeak_TimeoutOverride_ShortensBelowDefault covers 009-tts-commands
+// US6 (T050): a supplied --timeout actually overrides the 15s default,
+// rather than being accepted and ignored, proven by a fake hub slower than
+// the override but well within the default.
+func TestRunSpeak_TimeoutOverride_ShortensBelowDefault(t *testing.T) {
+	srv := newSlowSpeakSuccessHub(t, 300*time.Millisecond)
+	var stdout, stderr bytes.Buffer
+	start := time.Now()
+	code := tts.RunSpeak([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL, "--timeout", "50ms"}, strings.NewReader(""), &stdout, &stderr)
+	elapsed := time.Since(start)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
+	}
+	if elapsed >= time.Second {
+		t.Errorf("expected --timeout to shorten the bound well under 1s, took %v", elapsed)
+	}
+}
+
+// TestRunSpeak_NoTimeoutFlag_DefaultStillSucceeds covers 009-tts-commands
+// US6 (T050): omitting --timeout keeps the 15s default, long enough for an
+// ordinary slow response.
+func TestRunSpeak_NoTimeoutFlag_DefaultStillSucceeds(t *testing.T) {
+	srv := newSlowSpeakSuccessHub(t, 300*time.Millisecond)
+	var stdout, stderr bytes.Buffer
+	code := tts.RunSpeak([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL}, strings.NewReader(""), &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+}
+
+// TestRunSpeak_TimeoutFlag_InvalidValues covers 009-tts-commands US6 (T050,
+// FR-013a): a --timeout value that time.ParseDuration rejects, or a
+// non-positive parsed value, is a usage error with zero requests sent.
+func TestRunSpeak_TimeoutFlag_InvalidValues(t *testing.T) {
+	for _, val := range []string{"0", "-5s", "notaduration"} {
+		t.Run(val, func(t *testing.T) {
+			srv, count := countingSpeakHub(t)
+			var stdout, stderr bytes.Buffer
+			code := tts.RunSpeak([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL, "--timeout", val}, strings.NewReader(""), &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), "--timeout must be a positive duration") {
+				t.Errorf("expected '--timeout must be a positive duration', got: %s", stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests, got %d", got)
+			}
+		})
+	}
 }
 
 func TestRunSpeak_Help(t *testing.T) {
@@ -447,15 +520,16 @@ func TestRunSpeak_ProviderVoiceLanguage_EmptyValue(t *testing.T) {
 	}
 }
 
-// TestRunSpeak_Help_ListsAllSixFlags covers 009-tts-commands US3 (T022).
-func TestRunSpeak_Help_ListsAllSixFlags(t *testing.T) {
+// TestRunSpeak_Help_ListsAllSevenFlags covers 009-tts-commands US3 (T022)
+// and US6 (T050), which extends it with --timeout.
+func TestRunSpeak_Help_ListsAllSevenFlags(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := tts.RunSpeak([]string{"--help"}, strings.NewReader(""), &stdout, &stderr)
 
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
 	}
-	for _, flag := range []string{"--hub-url", "--json", "--language", "--provider", "--verbose", "--voice"} {
+	for _, flag := range []string{"--hub-url", "--json", "--language", "--provider", "--timeout", "--verbose", "--voice"} {
 		if !strings.Contains(stdout.String(), flag) {
 			t.Errorf("expected help to list %q, got:\n%s", flag, stdout.String())
 		}

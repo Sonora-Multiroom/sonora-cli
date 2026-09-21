@@ -110,10 +110,12 @@ group, creating the ephemeral input and route in one call —
 `outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume, and
 `--display-name NAME` sets the ephemeral input's display name.
 
-`speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language]` requests a TTS
-announcement via the hub's optional TTS extension and returns as soon as the hub accepts it
-(no waiting for playback), printing `announcementId`/`cacheHit`/`queueDepth`. `<text>` may be
-`-` to read from standard input. `get tts-cache` prints TTS audio-cache statistics
+`speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
+a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts
+it (no waiting for playback), printing `announcementId`/`cacheHit`/`queueDepth`. `<text>` may be
+`-` to read from standard input. Responses are bounded at 15s by default; `--timeout <duration>`
+overrides that bound for a hub whose TTS provider takes longer. `get tts-cache` prints TTS
+audio-cache statistics
 (`totalEntries`/`totalSizeBytes`/`maxSizeBytes`/`entriesByProvider`), and `clear tts-cache
 [--provider <name>]` clears all cache entries, or one provider's, printing `cleared` (`all` or
 `provider`, idempotent — clearing an empty cache still succeeds). All three need the hub's TTS

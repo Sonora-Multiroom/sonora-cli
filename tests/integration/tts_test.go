@@ -574,3 +574,28 @@ func TestSpeak_SlowProviderStillReceived(t *testing.T) {
 		t.Errorf("expected the hub's own timeout to answer before the 15s client bound, took %v", elapsed)
 	}
 }
+
+// TestSpeak_TimeoutOverride_SlowProviderStillReceived covers 009-tts-commands
+// US6 (T051, FR-013a): a --timeout above the 15s default lets a hub whose
+// TTS provider timeout exceeds the assumed 10s still answer, rather than the
+// CLI giving up first. Skipped under -short since it takes close to 20s.
+func TestSpeak_TimeoutOverride_SlowProviderStillReceived(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping slow-provider test in -short mode")
+	}
+	srv, m := newMockTTSHub(t)
+	m.speakDelay = 20 * time.Second
+	m.speakStatus = 503
+	m.speakBody = map[string]any{"error": "PROVIDER_TIMEOUT", "message": "provider did not respond in time"}
+
+	start := time.Now()
+	res := runCLI(t, "speak", "Hi", "outputs/kitchen", "--hub-url", srv.URL, "--timeout", "25s")
+	elapsed := time.Since(start)
+
+	if res.exitCode != 10 {
+		t.Fatalf("exit code = %d, want 10; stderr: %s", res.exitCode, res.stderr)
+	}
+	if elapsed >= 25*time.Second {
+		t.Errorf("expected the hub's own timeout to answer before the 25s override, took %v", elapsed)
+	}
+}

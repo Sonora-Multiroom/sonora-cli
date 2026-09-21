@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"sonora-cli/internal/cli/clihelp"
 	"sonora-cli/internal/cli/respath"
@@ -34,6 +35,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	providerFlag := fs.String("provider", "", "TTS provider `NAME` override")
 	voiceFlag := fs.String("voice", "", "provider-specific voice `ID` override")
 	languageFlag := fs.String("language", "", "BCP 47 language `TAG` override")
+	timeoutFlag := fs.String("timeout", "", "override the default 15s response-wait bound")
 
 	if clihelp.Requested(args) {
 		clihelp.PrintUsage(fs, stdout, speakUsage)
@@ -93,6 +95,16 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 	}
 
+	speakTimeout := hub.SpeakTimeout
+	if provided["timeout"] {
+		d, err := time.ParseDuration(*timeoutFlag)
+		if err != nil || d <= 0 {
+			fmt.Fprintln(stderr, "error: --timeout must be a positive duration")
+			return hub.ClassUsage.ExitCode()
+		}
+		speakTimeout = d
+	}
+
 	targetPath, err := respath.Parse(targetArg)
 	if err != nil {
 		fmt.Fprintln(stderr, speakUsage)
@@ -147,7 +159,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		req.Language = languageFlag
 	}
 
-	client := hub.NewClientWithTimeout(hub.SpeakTimeout)
+	client := hub.NewClientWithTimeout(speakTimeout)
 	resp, err := hub.Speak(context.Background(), client, baseURL, req)
 	if err != nil {
 		return ReportError(stderr, err, baseURL, *verbose)
