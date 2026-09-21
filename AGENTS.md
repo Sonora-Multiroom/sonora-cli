@@ -26,6 +26,13 @@
 - Never add "Generated with Claude Code" (or similar attribution) to pull request
   descriptions.
 
+## Build & test
+
+- `make` is not installed in this environment. Run the Makefile's `check` steps directly
+  instead: `gofmt -l .`, `go vet ./...`, `go test ./...` (add `-short` to skip the two
+  slow TTS provider-timeout tests, ~11s and ~20s).
+- Build the binary with `go build -o sonora.exe ./cmd/sonora` (drop `.exe` off Windows).
+
 ## Project context
 
 - Governance and non-negotiable engineering principles live in
