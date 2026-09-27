@@ -22,7 +22,7 @@ const setVolumeUsage = "usage: sonora set outputs/<output-id> volume <0-100> [fl
 // the named output's volume via the hub, and renders the confirmation to
 // stdout. Any failure is reported on stderr, never stdout, so scripts
 // piping stdout never see error text. It returns the process exit code per
-// the exit code classes in internal/hub/errors.go.
+// the exit code classes in internal/cli/exitcode.
 func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("set outputs volume", flag.ContinueOnError)
 	fs.SetOutput(stderr)
