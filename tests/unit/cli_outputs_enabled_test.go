@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/outputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
 )
 
 func TestOutputsRunEnable_MissingIdentifier(t *testing.T) {

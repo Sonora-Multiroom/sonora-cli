@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // Request/response shapes here mirror #/components/schemas/SpeakRequest,

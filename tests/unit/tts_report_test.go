@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/cli/tts"
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // extensionsServer fakes GET /api/v2/extensions, returning status/body and

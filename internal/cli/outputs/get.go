@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const getUsage = "usage: sonora get outputs/<output-id> [flags]"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/cli/outputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
 )
 
 func TestOutputsRunList_Help(t *testing.T) {

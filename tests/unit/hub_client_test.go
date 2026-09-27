@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // Note: hub.NewClient's construction being deferred to command-handler time

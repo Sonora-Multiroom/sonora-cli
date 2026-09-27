@@ -8,11 +8,11 @@ import (
 	"io"
 	"strings"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/cli/respath"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const usage = "usage: sonora play <uri> <outputs|groups>/<id> [flags]"

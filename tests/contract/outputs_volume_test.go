@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // Response/request shapes here mirror #/components/schemas/VolumeRequest,

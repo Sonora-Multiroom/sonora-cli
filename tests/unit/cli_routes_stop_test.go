@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/routes"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
 )
 
 func TestRoutesRunStopAll_Help(t *testing.T) {

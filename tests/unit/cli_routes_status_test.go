@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/cli/routes"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
 )
 
 // The hub's status enum is upper-case, but `--status active` is what the

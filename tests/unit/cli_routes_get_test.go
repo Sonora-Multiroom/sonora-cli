@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/routes"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
 )
 
 func TestRoutesRunGet_Help(t *testing.T) {

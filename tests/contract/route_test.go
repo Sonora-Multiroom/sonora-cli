@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // Request/response shapes here mirror #/components/schemas/CreateRouteRequest,

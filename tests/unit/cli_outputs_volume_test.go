@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/outputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
 )
 
 func TestOutputsRunSetVolume_MissingIdentifier(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 func TestRenderSpeakYAML_ExactFieldsAndOrder(t *testing.T) {

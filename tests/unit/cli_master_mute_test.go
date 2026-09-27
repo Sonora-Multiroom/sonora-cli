@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/mastermute"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/mastermute"
 )
 
 func TestMasterMuteRunGet_TooManyArguments(t *testing.T) {

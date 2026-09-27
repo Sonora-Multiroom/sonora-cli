@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // speakPayload is the flat rendered view of a hub.SpeakAccepted: exactly

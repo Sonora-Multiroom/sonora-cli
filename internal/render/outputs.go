@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 )
 
 // RenderYAML renders outputs as a small, fixed-shape YAML document (the
