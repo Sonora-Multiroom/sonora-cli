@@ -87,13 +87,14 @@ func RunCreate(args []string, stdout, stderr io.Writer) int {
 		return exitcode.Usage
 	}
 
+	enabled := !*disabled
 	client := hub.NewClient()
 	req := hub.CreateInputRequest{
 		InputID:     inputID,
 		DisplayName: *displayName,
 		URI:         uri,
-		Enabled:     !*disabled,
-		AutoRemove:  *autoRemove,
+		Enabled:     &enabled,
+		AutoRemove:  autoRemove,
 	}
 	created, err := hub.CreateInput(context.Background(), client, baseURL, req)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 // InputResponse, and ErrorResponse, and the createInput operation, in
 // api/openapi.json (constitution Principle II).
 
-func TestCreateInput_RequestBody_AlwaysIncludesAllFields(t *testing.T) {
+func TestCreateInput_RequestBody_AlwaysIncludesRequiredFields(t *testing.T) {
 	var gotBody map[string]any
 	var requestCount int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +32,8 @@ func TestCreateInput_RequestBody_AlwaysIncludesAllFields(t *testing.T) {
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true, AutoRemove: false}
+	enabled, autoRemove := true, false
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: &enabled, AutoRemove: &autoRemove}
 	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -42,10 +43,42 @@ func TestCreateInput_RequestBody_AlwaysIncludesAllFields(t *testing.T) {
 		t.Errorf("expected inputId/displayName/uri always present, got body: %+v", gotBody)
 	}
 	if gotBody["enabled"] != true || gotBody["autoRemove"] != false {
-		t.Errorf("expected enabled/autoRemove always present, got body: %+v", gotBody)
+		t.Errorf("expected enabled/autoRemove present when set, got body: %+v", gotBody)
 	}
 	if got := atomic.LoadInt32(&requestCount); got != 1 {
 		t.Errorf("got %d requests, want exactly 1 (no retry)", got)
+	}
+}
+
+// TestCreateInput_RequestBody_OmitsUnsetEnabledAndAutoRemove verifies that
+// leaving Enabled/AutoRemove nil omits them from the JSON body entirely,
+// rather than sending an explicit false, so the hub's documented default of
+// true (api/openapi.json CreateInputRequest.enabled/autoRemove) applies.
+func TestCreateInput_RequestBody_OmitsUnsetEnabledAndAutoRemove(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"inputId": "spotify-1", "displayName": "Spotify Stream", "uri": "u1",
+			"enabled": true, "autoRemove": true, "source": "EPHEMERAL", "createdAt": "2026-01-01T00:00:00Z", "pauseable": true,
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
+	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, ok := gotBody["enabled"]; ok {
+		t.Errorf("expected enabled to be omitted when unset, got body: %+v", gotBody)
+	}
+	if _, ok := gotBody["autoRemove"]; ok {
+		t.Errorf("expected autoRemove to be omitted when unset, got body: %+v", gotBody)
 	}
 }
 
@@ -67,7 +100,7 @@ func TestCreateInput_Success_Decodes(t *testing.T) {
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true, AutoRemove: true}
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
 	resp, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -92,7 +125,7 @@ func testCreateInputErrorStatus(t *testing.T, status int) {
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true}
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
 	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err == nil {
 		t.Fatalf("expected an error for status %d, got nil", status)
@@ -121,7 +154,7 @@ func TestCreateInput_ErrorStatus_NonJSONBodyFallsBackToStatusError(t *testing.T)
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true}
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
 	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err == nil {
 		t.Fatal("expected an error for a non-JSON error body, got nil")
@@ -142,7 +175,7 @@ func TestCreateInput_OtherErrorStatus_IsStatusError(t *testing.T) {
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true}
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
 	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err == nil {
 		t.Fatal("expected an error for a 500 response, got nil")
@@ -165,7 +198,7 @@ func TestCreateInput_MalformedBody_MissingInputID(t *testing.T) {
 	defer srv.Close()
 
 	client := hub.NewClient()
-	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", Enabled: true}
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1"}
 	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
 	if err == nil {
 		t.Fatal("expected an error for a malformed 201 body, got nil")
