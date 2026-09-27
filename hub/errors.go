@@ -13,7 +13,6 @@ type ErrorClass int
 
 const (
 	ClassNone ErrorClass = iota
-	ClassUsage
 	ClassHub
 	ClassNetwork
 	ClassNotFound
@@ -25,41 +24,6 @@ const (
 	ClassTargetNotFound
 	ClassTTSUnavailable
 )
-
-// ExitCode returns the CLI exit code for this error class, per research.md §6.
-// Exit code 7 ("target matches both an output and a group") is retired —
-// path-style target addressing makes that case structurally unreachable
-// (data-model.md) — and is not reused by any other class. Exit code 13
-// (ClassTTSUnavailable) is added by 009-tts-commands (data-model.md's exit
-// code table).
-func (c ErrorClass) ExitCode() int {
-	switch c {
-	case ClassUsage:
-		return 2
-	case ClassHub:
-		return 3
-	case ClassNetwork:
-		return 4
-	case ClassNotFound:
-		return 5
-	case ClassValidation:
-		return 6
-	case ClassRouteFailed:
-		return 8
-	case ClassSourceUnreachable:
-		return 9
-	case ClassServiceUnavailable:
-		return 10
-	case ClassInputNotFound:
-		return 11
-	case ClassTargetNotFound:
-		return 12
-	case ClassTTSUnavailable:
-		return 13
-	default:
-		return 0
-	}
-}
 
 // StatusError indicates the hub responded with a non-2xx HTTP status.
 type StatusError struct {

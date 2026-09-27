@@ -8,6 +8,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
@@ -56,7 +57,7 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 	remaining := args
 	for {
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -72,14 +73,14 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 		} else {
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[1:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	outputID := positional[0]
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -90,7 +91,7 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 		if *verbose {
 			fmt.Fprintf(stderr, "detail: %v\n", err)
 		}
-		return class.ExitCode()
+		return exitcode.For(class)
 	}
 
 	if *jsonOut {

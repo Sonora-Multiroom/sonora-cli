@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
@@ -57,7 +58,7 @@ func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 			continue
 		}
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -74,27 +75,27 @@ func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[3:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	groupID, attr, valueArg := positional[0], positional[1], positional[2]
 
 	if attr != "volume" {
 		fmt.Fprintln(stderr, setVolumeUsage)
 		fmt.Fprintf(stderr, "error: unsupported attribute %q for groups; only volume is supported\n", attr)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	volume, err := strconv.Atoi(valueArg)
 	if err != nil || volume < 0 || volume > 100 {
 		fmt.Fprintln(stderr, setVolumeUsage)
 		fmt.Fprintf(stderr, "error: volume must be an integer between 0 and 100, got %q\n", valueArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -105,7 +106,7 @@ func RunSetVolume(args []string, stdout, stderr io.Writer) int {
 		if *verbose {
 			fmt.Fprintf(stderr, "detail: %v\n", err)
 		}
-		return class.ExitCode()
+		return exitcode.For(class)
 	}
 
 	if *jsonOut {

@@ -12,6 +12,7 @@ import (
 	"io"
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 )
 
 // ReportError is the shared failure path for speak/get tts-cache/clear
@@ -45,7 +46,7 @@ func ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 		}
 		fmt.Fprintf(stderr, "detail: %v\n", detail)
 	}
-	return class.ExitCode()
+	return exitcode.For(class)
 }
 
 // diagnoseUnavailable runs the research.md §5 diagnosis: it calls

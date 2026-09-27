@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
@@ -50,7 +51,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	// appear before, between, or after the two identifiers.
 	positional, err := clihelp.ParsePositional(fs, args)
 	if err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if len(positional) != 2 {
 		fmt.Fprintln(stderr, usage)
@@ -62,25 +63,25 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[2:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	uri, targetArg := positional[0], positional[1]
 
 	if strings.HasSuffix(targetArg, "/") {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	targetPath, err := respath.Parse(targetArg)
 	if err != nil {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if targetPath.ID == "" {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	var targetType string
 	switch targetPath.Kind {
@@ -91,7 +92,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	default:
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "error: play target must be outputs/<id> or groups/<id>, got %q\n", targetArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	targetID := targetPath.ID
 
@@ -103,13 +104,13 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	})
 	if volumeProvided && (*volumeFlag < 0 || *volumeFlag > 100) {
 		fmt.Fprintln(stderr, "error: volume must be between 0 and 100")
-		return hub.ClassValidation.ExitCode()
+		return exitcode.For(hub.ClassValidation)
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	ctx := context.Background()
@@ -146,5 +147,5 @@ func reportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 	if verbose {
 		fmt.Fprintf(stderr, "detail: %v\n", err)
 	}
-	return class.ExitCode()
+	return exitcode.For(class)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
@@ -34,18 +35,18 @@ func RunStopAll(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := fs.Parse(args); err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if rest := fs.Args(); len(rest) > 0 {
 		fmt.Fprintln(stderr, stopAllUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", rest)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -56,7 +57,7 @@ func RunStopAll(args []string, stdout, stderr io.Writer) int {
 		if *verbose {
 			fmt.Fprintf(stderr, "detail: %v\n", err)
 		}
-		return class.ExitCode()
+		return exitcode.For(class)
 	}
 
 	if *jsonOut {

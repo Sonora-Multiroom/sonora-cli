@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
@@ -50,7 +51,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// without confusing it with a preceding flag's own value.
 	positional, err := clihelp.ParsePositional(fs, args)
 	if err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if len(positional) != 2 {
 		fmt.Fprintln(stderr, speakUsage)
@@ -62,7 +63,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[2:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	textArg, targetArg := positional[0], positional[1]
 
@@ -75,7 +76,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		val := map[string]string{"provider": *providerFlag, "voice": *voiceFlag, "language": *languageFlag}[name]
 		if strings.TrimSpace(val) == "" {
 			fmt.Fprintf(stderr, "error: --%s must not be empty\n", name)
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 	}
 
@@ -84,7 +85,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		d, err := time.ParseDuration(*timeoutFlag)
 		if err != nil || d <= 0 {
 			fmt.Fprintln(stderr, "error: --timeout must be a positive duration")
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		speakTimeout = d
 	}
@@ -92,18 +93,18 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if strings.HasSuffix(targetArg, "/") {
 		fmt.Fprintln(stderr, speakUsage)
 		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	targetPath, err := respath.Parse(targetArg)
 	if err != nil {
 		fmt.Fprintln(stderr, speakUsage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if targetPath.ID == "" {
 		fmt.Fprintln(stderr, speakUsage)
 		fmt.Fprintln(stderr, "error: missing required argument: <target-path> must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	var targetType string
 	switch targetPath.Kind {
@@ -114,7 +115,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	default:
 		fmt.Fprintln(stderr, speakUsage)
 		fmt.Fprintf(stderr, "error: speak target must be outputs/<id> or groups/<id>, got %q\n", targetArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	text := textArg
@@ -122,19 +123,19 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		data, err := io.ReadAll(stdin)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: could not read text from standard input: %v\n", err)
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		text = strings.TrimRight(string(data), "\r\n")
 	}
 	if strings.TrimSpace(text) == "" {
 		fmt.Fprintln(stderr, "error: text must not be empty")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	req := hub.SpeakRequest{Text: text, TargetName: targetPath.ID, TargetType: targetType}

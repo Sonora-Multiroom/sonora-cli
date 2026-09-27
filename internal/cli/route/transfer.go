@@ -9,6 +9,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
@@ -53,7 +54,7 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 	remaining := args
 	for {
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -72,7 +73,7 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[2:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	routeArg, targetArg := positional[0], positional[1]
 
@@ -80,17 +81,17 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if routePath.Kind != respath.Routes {
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintf(stderr, "error: route path must start with routes/ or rt/, got %q\n", routeArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if routePath.ID == "" {
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintln(stderr, "error: route path must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	routeID := routePath.ID
 
@@ -98,7 +99,7 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	var targetType string
 	switch targetPath.Kind {
@@ -109,19 +110,19 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 	default:
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintf(stderr, "error: transfer target must be outputs/<id> or groups/<id>, got %q\n", targetArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if targetPath.ID == "" {
 		fmt.Fprintln(stderr, transferUsage)
 		fmt.Fprintln(stderr, "error: target path must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	targetID := targetPath.ID
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	ctx := context.Background()
