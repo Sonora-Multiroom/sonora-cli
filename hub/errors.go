@@ -7,8 +7,9 @@ import (
 	"net"
 )
 
-// ErrorClass classifies a failure into one of the exit-code classes the CLI
-// must distinguish (constitution Principle V).
+// ErrorClass classifies a failure returned by a hub API call into a coarse
+// category, so a caller can decide how to react without inspecting the
+// underlying error type directly.
 type ErrorClass int
 
 const (
@@ -35,7 +36,7 @@ func (e *StatusError) Error() string {
 }
 
 // DecodeError indicates the hub's response body did not match the expected
-// shape (FR-013): missing/extra-typed fields, or a required field empty.
+// shape: missing/extra-typed fields, or a required field empty.
 type DecodeError struct {
 	Err error
 }
@@ -47,8 +48,7 @@ func (e *DecodeError) Error() string {
 func (e *DecodeError) Unwrap() error { return e.Err }
 
 // NotFoundError indicates the hub responded 404 for a specific resource
-// identifier (e.g. "output", "input"), distinct from a generic StatusError
-// (FR-012).
+// identifier (e.g. "output", "input"), distinct from a generic StatusError.
 type NotFoundError struct {
 	Resource string
 	ID       string
@@ -59,8 +59,7 @@ func (e *NotFoundError) Error() string {
 }
 
 // APIError indicates the hub responded with a non-2xx status and a decodable
-// #/components/schemas/ErrorResponse body (FR-009): 400/422/502/503 for
-// POST /api/v2/play.
+// #/components/schemas/ErrorResponse body.
 type APIError struct {
 	StatusCode int
 	Title      string
@@ -74,18 +73,17 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("hub returned HTTP %d: %s", e.StatusCode, e.Title)
 }
 
-// ClassifyError maps an error from a hub API call to its exit-code class
+// ClassifyError maps an error from a hub API call to a coarse ErrorClass
 // and a short, friendly, user-facing message. The underlying error remains
-// available to the caller for --verbose output.
+// available via the standard errors package (errors.As, errors.Unwrap) for
+// callers that want to log or display more detail.
 func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	if err == nil {
 		return ClassNone, ""
 	}
 
-	// TTS branches (009-tts-commands, research.md §3), checked before the
-	// existing branches: *TTSUnavailableError and *TTSError are new types
-	// introduced by this feature and can't be produced by any pre-existing
-	// code path, so this ordering changes no existing classification.
+	// TTS branches: *TTSUnavailableError and *TTSError are checked first,
+	// since neither can be produced by any of the branches below.
 	var unavailErr *TTSUnavailableError
 	if errors.As(err, &unavailErr) {
 		if unavailErr.Diagnosis == DiagnosisHubAddress {

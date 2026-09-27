@@ -12,20 +12,18 @@ import (
 	"time"
 )
 
-// SpeakTimeout bounds a `speak` request (15s = the hub's 10s default
-// provider timeout + 5s margin, research.md §6), longer than the standard
-// 5s requestTimeout so the hub's own provider-timeout error arrives before
-// the CLI's request bound does (SC-003).
+// SpeakTimeout bounds a `speak` request. It is longer than the standard 5s
+// client timeout so the hub's own provider-timeout error arrives before this
+// client's request bound does.
 const SpeakTimeout = 15 * time.Second
 
-// maxTTSErrorBody bounds how much of a non-2xx TTS response body is read,
-// so an oversized proxy error page can't flood memory or the terminal
-// (research.md §4).
+// maxTTSErrorBody bounds how much of a non-2xx TTS response body is read, so
+// an oversized proxy error page can't flood memory.
 const maxTTSErrorBody = 64 * 1024
 
 // SpeakRequest mirrors #/components/schemas/SpeakRequest in api/openapi.json
-// field-for-field (constitution Principle II). ProviderName/Voice/Language
-// are sent only when supplied (omitempty).
+// field-for-field. ProviderName/Voice/Language are sent only when supplied
+// (omitempty).
 type SpeakRequest struct {
 	Text         string  `json:"text"`
 	TargetName   string  `json:"targetName"`
@@ -36,7 +34,7 @@ type SpeakRequest struct {
 }
 
 // SpeakAccepted mirrors #/components/schemas/SpeakAcceptedResponse in
-// api/openapi.json (constitution Principle II), decoded from a 202.
+// api/openapi.json, decoded from a 202.
 type SpeakAccepted struct {
 	AnnouncementID string `json:"announcementId"`
 	CacheHit       bool   `json:"cacheHit"`
@@ -45,7 +43,7 @@ type SpeakAccepted struct {
 
 // speakWire is the decode target for a 202 body: pointer fields distinguish
 // "absent" from "zero value" so a missing or empty announcementId, or a
-// missing cacheHit/queueDepth, is rejected as a *DecodeError (FR-005a).
+// missing cacheHit/queueDepth, is rejected as a *DecodeError.
 type speakWire struct {
 	AnnouncementID *string `json:"announcementId"`
 	CacheHit       *bool   `json:"cacheHit"`
@@ -60,8 +58,7 @@ type ttsErrorShape struct {
 }
 
 // coreErrorShape is the core API's problem-details shape, used as a
-// fallback message source when a TTS error body isn't TTS-shaped
-// (research.md §4).
+// fallback message source when a TTS error body isn't TTS-shaped.
 type coreErrorShape struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
@@ -83,7 +80,7 @@ func SingleLine(s string) string {
 // decodeTTSError reads a non-2xx, non-404 TTS response body (at most
 // maxTTSErrorBody) and builds a *TTSError from it: the {error, message}
 // shape when present, else the core problem-details detail/title as a
-// message with an empty code (research.md §4).
+// message with an empty code.
 func decodeTTSError(resp *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxTTSErrorBody))
 
@@ -108,7 +105,7 @@ func decodeTTSError(resp *http.Response) error {
 // a TTS announcement. A 404 is returned as *TTSNotOfferedError; any other
 // non-2xx goes through decodeTTSError. A 2xx decodes into SpeakAccepted,
 // rejected as a *DecodeError if announcementId is missing/empty or
-// cacheHit/queueDepth are missing (FR-005a).
+// cacheHit/queueDepth are missing.
 func Speak(ctx context.Context, client *http.Client, baseURL string, req SpeakRequest) (*SpeakAccepted, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -145,9 +142,8 @@ func Speak(ctx context.Context, client *http.Client, baseURL string, req SpeakRe
 }
 
 // TTSCacheStats mirrors #/components/schemas/CacheStats in api/openapi.json
-// field-for-field (constitution Principle II). EntriesByProvider is never
-// nil after decoding: an absent or null value is normalised to an empty map
-// (data-model.md).
+// field-for-field. EntriesByProvider is never nil after decoding: an absent
+// or null value is normalised to an empty map.
 type TTSCacheStats struct {
 	TotalEntries      int32
 	TotalSizeBytes    int64
@@ -156,7 +152,7 @@ type TTSCacheStats struct {
 }
 
 // cacheStatsWire is the decode target for a 200 body: pointer fields on the
-// three required totals distinguish "absent" from "zero" (FR-005a).
+// three required totals distinguish "absent" from "zero".
 type cacheStatsWire struct {
 	TotalEntries      *int32           `json:"totalEntries"`
 	TotalSizeBytes    *int64           `json:"totalSizeBytes"`
@@ -210,8 +206,8 @@ func GetTTSCacheStats(ctx context.Context, client *http.Client, baseURL string) 
 // "clearCache"), clearing all cache entries, or one provider's when
 // provider is non-nil (added as a URL-encoded providerName query
 // parameter). A 404 is returned as *TTSNotOfferedError; any other non-2xx
-// goes through decodeTTSError. A 204 returns nil (FR-008: idempotent —
-// clearing an already-empty cache still succeeds).
+// goes through decodeTTSError. A 204 returns nil; clearing an already-empty
+// cache still succeeds.
 func ClearTTSCache(ctx context.Context, client *http.Client, baseURL string, provider *string) error {
 	reqURL := strings.TrimRight(baseURL, "/") + "/api/tts/cache"
 	if provider != nil {
@@ -241,10 +237,9 @@ func ClearTTSCache(ctx context.Context, client *http.Client, baseURL string, pro
 }
 
 // TTSVoice mirrors #/components/schemas/TtsVoiceDescriptor in
-// api/openapi.json field-for-field (constitution Principle II). Every field
-// is optional there, and the hub omits null fields (a google-gemini voice
-// has no language, and gender may be missing), so pointers keep "absent"
-// distinct from "empty".
+// api/openapi.json field-for-field. Every field is optional there, and the
+// hub omits null fields (a google-gemini voice has no language, and gender
+// may be missing), so pointers keep "absent" distinct from "empty".
 type TTSVoice struct {
 	ShortName *string `json:"shortName"`
 	FullName  *string `json:"fullName"`
@@ -254,9 +249,8 @@ type TTSVoice struct {
 }
 
 // TTSVoiceList mirrors #/components/schemas/TtsVoiceListResponse in
-// api/openapi.json field-for-field (constitution Principle II). Voices is
-// never nil after decoding: an absent or null value is normalised to an
-// empty slice.
+// api/openapi.json field-for-field. Voices is never nil after decoding: an
+// absent or null value is normalised to an empty slice.
 type TTSVoiceList struct {
 	ProviderName *string    `json:"providerName"`
 	Voices       []TTSVoice `json:"voices"`
@@ -311,16 +305,16 @@ func ListTTSVoices(ctx context.Context, client *http.Client, baseURL, provider s
 
 // TTSError indicates the hub's TTS extension rejected a request (400) or
 // hit a provider failure (503), decoded from #/components/schemas/
-// TtsErrorResponse in api/openapi.json (constitution Principle II). Code may
-// be empty when the body wasn't TTS-shaped (research.md §4).
+// TtsErrorResponse in api/openapi.json. Code may be empty when the body
+// wasn't TTS-shaped.
 type TTSError struct {
 	StatusCode int
 	Code       string
 	Message    string
 }
 
-// Error renders the failure message exactly as contracts/cli-tts.md's
-// "Failure messages" table specifies it.
+// Error renders the failure message: "<code>: <message>" when Code is set,
+// otherwise a message built from the HTTP status and any Message present.
 func (e *TTSError) Error() string {
 	if e.Code != "" {
 		return fmt.Sprintf("%s: %s", e.Code, e.Message)
@@ -332,17 +326,19 @@ func (e *TTSError) Error() string {
 }
 
 // TTSNotOfferedError indicates a TTS operation answered 404: the hub isn't
-// serving that endpoint at all. It is never shown to the user directly;
-// tts.ReportError converts it into a *TTSUnavailableError via one
-// ListExtensions lookup (research.md §5).
+// serving that endpoint at all. Callers that want a user-facing reason
+// should follow up with one ListExtensions call and build a
+// *TTSUnavailableError from the result, rather than surfacing this error
+// directly.
 type TTSNotOfferedError struct{}
 
 func (e *TTSNotOfferedError) Error() string {
 	return "the hub's TTS extension is not offering this operation"
 }
 
-// TTSDiagnosis explains why the TTS extension is unavailable, per the
-// inventory lookup research.md §5 runs after a 404.
+// TTSDiagnosis explains why the TTS extension is unavailable, as determined
+// by inspecting the hub's extension inventory (ListExtensions) after a
+// *TTSNotOfferedError.
 type TTSDiagnosis int
 
 const (
@@ -356,9 +352,10 @@ const (
 )
 
 // TTSUnavailableError is the user-facing "TTS not available" failure. It
-// carries why, per research.md §5, and is built by tts.ReportError, never by
-// a hub.* API function directly (so the success path never triggers the
-// inventory lookup).
+// carries the diagnosed reason (Diagnosis) and is meant to be built by a
+// caller that has already run the ListExtensions diagnosis, not returned
+// directly by a hub API call — the success path never triggers that
+// diagnosis.
 type TTSUnavailableError struct {
 	Diagnosis       TTSDiagnosis
 	Reason          string
@@ -367,8 +364,8 @@ type TTSUnavailableError struct {
 	Cause           error
 }
 
-// Error renders the failure message exactly as contracts/cli-tts.md's
-// "Failure messages" table specifies it for each diagnosis.
+// Error renders a message describing why TTS is unavailable, specific to
+// the diagnosis.
 func (e *TTSUnavailableError) Error() string {
 	if e.Diagnosis == DiagnosisHubAddress {
 		return fmt.Sprintf("%s is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded", e.BaseURL)

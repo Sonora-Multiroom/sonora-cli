@@ -12,9 +12,7 @@ import (
 )
 
 // Route mirrors #/components/schemas/RouteResponse in api/openapi.json
-// field-for-field (constitution Principle II). `routes list` renders only
-// RouteID/InputID/TargetID/TargetType/Status; `routes get` renders all ten
-// fields — see data-model.md.
+// field-for-field.
 type Route struct {
 	RouteID      string  `json:"routeId"`
 	InputID      string  `json:"inputId"`
@@ -29,7 +27,7 @@ type Route struct {
 }
 
 // CreateRouteRequest mirrors #/components/schemas/CreateRouteRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type CreateRouteRequest struct {
 	InputID    string `json:"inputId"`
 	TargetID   string `json:"targetId"`
@@ -37,16 +35,15 @@ type CreateRouteRequest struct {
 }
 
 // TransferRequest mirrors #/components/schemas/TransferRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type TransferRequest struct {
 	TargetID   string `json:"targetId"`
 	TargetType string `json:"targetType"`
 }
 
 // StoppedRouteEntry mirrors #/components/schemas/StoppedRouteEntry in
-// api/openapi.json field-for-field (constitution Principle II). StopReason is
-// nullable in the schema (omitted for the stop-all endpoint), hence the
-// pointer.
+// api/openapi.json field-for-field. StopReason is nullable in the schema
+// (omitted for the stop-all endpoint), hence the pointer.
 type StoppedRouteEntry struct {
 	RouteID    string  `json:"routeId"`
 	TargetType string  `json:"targetType"`
@@ -55,10 +52,10 @@ type StoppedRouteEntry struct {
 }
 
 // BulkStopResponse mirrors #/components/schemas/BulkStopResponse in
-// api/openapi.json field-for-field (constitution Principle II). Returned by
-// StopAllRoutes, and (from outputs.go/groups.go) StopRoutesForOutput/
-// StopRoutesForGroup, so it lives here alongside the rest of the route
-// domain rather than being duplicated per caller.
+// api/openapi.json field-for-field. Returned by StopAllRoutes, and (from
+// outputs.go/groups.go) StopRoutesForOutput/StopRoutesForGroup, so it lives
+// here alongside the rest of the route domain rather than being duplicated
+// per caller.
 type BulkStopResponse struct {
 	StoppedCount  int                 `json:"stoppedCount"`
 	StoppedRoutes []StoppedRouteEntry `json:"stoppedRoutes"`
@@ -79,7 +76,7 @@ func decodeBulkStopResponse(body io.Reader) (*BulkStopResponse, error) {
 }
 
 // PauseRequest mirrors #/components/schemas/PauseRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type PauseRequest struct {
 	Paused bool `json:"paused"`
 }
@@ -229,14 +226,13 @@ func DeleteRoute(ctx context.Context, client *http.Client, baseURL, routeID stri
 // CreateRoute calls POST {baseURL}/api/v2/routes (operationId "createRoute"),
 // connecting an existing input to an existing output/group. On 201, the
 // decoded Route is returned, validated via the existing validateRoute
-// helper (malformed body → *DecodeError, FR-011). A 404 is returned as a
-// *NotFoundError naming the target (data-model.md: the pre-checks in
-// route.Run give the input/target distinction its real meaning; this is a
-// same-shape backstop for the rare race where a resource vanishes between
-// the pre-checks and this call, mirroring Playback's own 404 handling). A
-// 400/422 attempts to decode the body as an errorResponse into an
-// *APIError, falling back to a *StatusError if that decode fails; any other
-// non-2xx status is a *StatusError.
+// helper (malformed body → *DecodeError). A 404 is returned as a
+// *NotFoundError naming the target — a backstop for the rare race where a
+// resource vanishes between a caller's own pre-checks and this call,
+// mirroring Playback's own 404 handling. A 400/422 attempts to decode the
+// body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails; any other non-2xx status is a
+// *StatusError.
 func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req CreateRouteRequest) (*Route, error) {
 	body, err := json.Marshal(req)
 	if err != nil {

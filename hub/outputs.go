@@ -12,7 +12,7 @@ import (
 )
 
 // Output mirrors #/components/schemas/OutputResponse in api/openapi.json
-// field-for-field (constitution Principle II).
+// field-for-field.
 type Output struct {
 	OutputID    string `json:"outputId"`
 	DisplayName string `json:"displayName"`
@@ -209,7 +209,7 @@ func SetOutputMuted(ctx context.Context, client *http.Client, baseURL, outputID 
 }
 
 // OutputVolume mirrors #/components/schemas/OutputVolumeResponse in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type OutputVolume struct {
 	OutputID  string `json:"outputId"`
 	Volume    int    `json:"volume"`

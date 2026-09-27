@@ -12,7 +12,7 @@ import (
 )
 
 // Input mirrors #/components/schemas/InputResponse in api/openapi.json
-// field-for-field (constitution Principle II).
+// field-for-field.
 type Input struct {
 	InputID     string  `json:"inputId"`
 	DisplayName string  `json:"displayName"`
@@ -25,7 +25,7 @@ type Input struct {
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type CreateInputRequest struct {
 	InputID     string `json:"inputId"`
 	DisplayName string `json:"displayName"`

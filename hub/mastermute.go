@@ -9,7 +9,7 @@ import (
 )
 
 // MasterMute mirrors #/components/schemas/MasterMuteResponse in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type MasterMute struct {
 	Muted bool `json:"muted"`
 }

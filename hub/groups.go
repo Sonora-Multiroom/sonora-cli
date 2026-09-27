@@ -12,8 +12,7 @@ import (
 )
 
 // Group mirrors #/components/schemas/GroupResponse in api/openapi.json
-// field-for-field (constitution Principle II). `groups list` and `groups
-// get` render the same five fields — see data-model.md.
+// field-for-field.
 type Group struct {
 	GroupID     string   `json:"groupId"`
 	DisplayName string   `json:"displayName"`
@@ -209,7 +208,7 @@ func SetGroupMuted(ctx context.Context, client *http.Client, baseURL, groupID st
 }
 
 // GroupVolume mirrors #/components/schemas/GroupVolumeResponse in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type GroupVolume struct {
 	GroupID   string `json:"groupId"`
 	Volume    int    `json:"volume"`
