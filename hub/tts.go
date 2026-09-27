@@ -371,7 +371,7 @@ type TTSUnavailableError struct {
 // "Failure messages" table specifies it for each diagnosis.
 func (e *TTSUnavailableError) Error() string {
 	if e.Diagnosis == DiagnosisHubAddress {
-		return fmt.Sprintf("%s is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file", e.BaseURL)
+		return fmt.Sprintf("%s is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded", e.BaseURL)
 	}
 
 	const head = "text-to-speech is not available on this hub"
@@ -391,7 +391,7 @@ func (e *TTSUnavailableError) Error() string {
 	case DiagnosisInert:
 		return head + ": the TTS extension is loaded but inactive"
 	case DiagnosisVersionMismatch:
-		return head + ": the hub's TTS API does not match this CLI version"
+		return head + ": the hub's TTS API does not match this client version"
 	default: // DiagnosisUnknown
 		return head
 	}
