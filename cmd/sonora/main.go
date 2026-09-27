@@ -47,6 +47,7 @@ Commands:
   set groups/<id> volume <0-100>      Set a group's volume level
   get tts-cache                       Fetch TTS audio-cache statistics
   clear tts-cache                     Clear the TTS audio cache
+  list tts-voices --provider NAME     List a TTS provider's voices
   help                                Show this help
 
   <resource>  inputs (in), outputs (out), groups (gr), routes (rt)
@@ -91,6 +92,7 @@ Examples:
   sonora unmute all
   sonora get tts-cache
   sonora clear tts-cache --provider openai
+  sonora list tts-voices --provider google --language uk-UA
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
 e.g. 'sonora get routes --help'.
@@ -532,6 +534,21 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return tts.RunGetCache(args[1:], stdout, stderr)
+	}
+	// tts-voices is a collection keyed by --provider, not a resource/id path:
+	// only a bare `list tts-voices` is valid.
+	if len(args) > 0 && (args[0] == "tts-voices" || strings.HasPrefix(args[0], "tts-voices/")) {
+		if args[0] != "tts-voices" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: tts-voices takes no id; use 'sonora list tts-voices --provider NAME' instead")
+			return 2
+		}
+		if verb == "get" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: get does not support tts-voices; use 'sonora list tts-voices --provider NAME' instead")
+			return 2
+		}
+		return tts.RunListVoices(args[1:], stdout, stderr)
 	}
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)

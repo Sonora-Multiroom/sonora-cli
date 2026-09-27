@@ -127,3 +127,66 @@ func TestRenderTTSCacheStatsYAML_LargeSizeRendersExactly(t *testing.T) {
 		t.Errorf("got:\n%q\nwant:\n%q", got, want)
 	}
 }
+
+func sampleVoiceList() hub.TTSVoiceList {
+	return hub.TTSVoiceList{
+		ProviderName: strPtr("google"),
+		Voices: []hub.TTSVoice{
+			{ShortName: strPtr("Charon"), FullName: strPtr("uk-UA-Chirp3-HD-Charon"), Engine: strPtr("Chirp3-HD"), Language: strPtr("uk-UA"), Gender: strPtr("MALE")},
+			{ShortName: strPtr("Achernar"), FullName: strPtr("Achernar"), Engine: strPtr("gemini-2.5-flash-tts")},
+		},
+	}
+}
+
+func TestRenderTTSVoicesYAML_AllFieldsAbsentAsNull(t *testing.T) {
+	got := render.RenderTTSVoicesYAML(sampleVoiceList())
+	want := "providerName: \"google\"\n" +
+		"voices:\n" +
+		"  - shortName: \"Charon\"\n" +
+		"    fullName: \"uk-UA-Chirp3-HD-Charon\"\n" +
+		"    engine: \"Chirp3-HD\"\n" +
+		"    language: \"uk-UA\"\n" +
+		"    gender: \"MALE\"\n" +
+		"  - shortName: \"Achernar\"\n" +
+		"    fullName: \"Achernar\"\n" +
+		"    engine: \"gemini-2.5-flash-tts\"\n" +
+		"    language: null\n" +
+		"    gender: null\n"
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestRenderTTSVoicesYAML_Empty(t *testing.T) {
+	got := render.RenderTTSVoicesYAML(hub.TTSVoiceList{ProviderName: strPtr("google")})
+	want := "providerName: \"google\"\n# no voices found\nvoices: []\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestRenderTTSVoicesYAML_AbsentProviderName(t *testing.T) {
+	got := render.RenderTTSVoicesYAML(hub.TTSVoiceList{Voices: []hub.TTSVoice{}})
+	want := "providerName: null\n# no voices found\nvoices: []\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestRenderTTSVoicesJSON_AllKeysAbsentAsNull(t *testing.T) {
+	got := render.RenderTTSVoicesJSON(sampleVoiceList())
+	want := `{"providerName":"google","voices":[` +
+		`{"shortName":"Charon","fullName":"uk-UA-Chirp3-HD-Charon","engine":"Chirp3-HD","language":"uk-UA","gender":"MALE"},` +
+		`{"shortName":"Achernar","fullName":"Achernar","engine":"gemini-2.5-flash-tts","language":null,"gender":null}]}` + "\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestRenderTTSVoicesJSON_EmptyIsArrayNotNull(t *testing.T) {
+	got := render.RenderTTSVoicesJSON(hub.TTSVoiceList{ProviderName: strPtr("google")})
+	want := `{"providerName":"google","voices":[]}` + "\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

@@ -1,4 +1,4 @@
-.PHONY: build docker-build test fmt vet check
+.PHONY: build docker-build test fmt vet check openapi
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
@@ -22,3 +22,7 @@ vet:
 # Baseline check before commit/merge (Development Workflow in the constitution).
 # golangci-lint is not yet installed in this repo; add it here if/when it is.
 check: fmt vet test
+
+# Refreshes api/openapi.json from a running hub (override with OPENAPI_URL=...).
+openapi:
+	./scripts/update-openapi.sh $(OPENAPI_URL)

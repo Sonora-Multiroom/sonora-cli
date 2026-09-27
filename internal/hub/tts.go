@@ -240,6 +240,75 @@ func ClearTTSCache(ctx context.Context, client *http.Client, baseURL string, pro
 	return nil
 }
 
+// TTSVoice mirrors #/components/schemas/TtsVoiceDescriptor in
+// api/openapi.json field-for-field (constitution Principle II). Every field
+// is optional there, and the hub omits null fields (a google-gemini voice
+// has no language, and gender may be missing), so pointers keep "absent"
+// distinct from "empty".
+type TTSVoice struct {
+	ShortName *string `json:"shortName"`
+	FullName  *string `json:"fullName"`
+	Engine    *string `json:"engine"`
+	Language  *string `json:"language"`
+	Gender    *string `json:"gender"`
+}
+
+// TTSVoiceList mirrors #/components/schemas/TtsVoiceListResponse in
+// api/openapi.json field-for-field (constitution Principle II). Voices is
+// never nil after decoding: an absent or null value is normalised to an
+// empty slice.
+type TTSVoiceList struct {
+	ProviderName *string    `json:"providerName"`
+	Voices       []TTSVoice `json:"voices"`
+}
+
+// ListTTSVoices calls GET {baseURL}/api/tts/providers/{provider}/voices
+// (operationId "listVoices"), with the path-escaped provider name and the
+// language/engine query parameters added only when non-nil. A 404 is
+// returned as *TTSNotOfferedError; any other non-2xx goes through
+// decodeTTSError. The 200 is published as */*, so the body is decoded as
+// JSON whatever its Content-Type; an undecodable body is a *DecodeError.
+func ListTTSVoices(ctx context.Context, client *http.Client, baseURL, provider string, language, engine *string) (*TTSVoiceList, error) {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/tts/providers/" + url.PathEscape(provider) + "/voices"
+	q := url.Values{}
+	if language != nil {
+		q.Set("language", *language)
+	}
+	if engine != nil {
+		q.Set("engine", *engine)
+	}
+	if len(q) > 0 {
+		reqURL += "?" + q.Encode()
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &TTSNotOfferedError{}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, decodeTTSError(resp)
+	}
+
+	var list TTSVoiceList
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if list.Voices == nil {
+		list.Voices = []TTSVoice{}
+	}
+	return &list, nil
+}
+
 // TTSError indicates the hub's TTS extension rejected a request (400) or
 // hit a provider failure (503), decoded from #/components/schemas/
 // TtsErrorResponse in api/openapi.json (constitution Principle II). Code may

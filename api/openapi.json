@@ -14,7 +14,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8080",
+      "url": "http://multiroom.lan:8080",
       "description": "Generated server url"
     }
   ],
@@ -1740,6 +1740,73 @@
         }
       }
     },
+    "/api/tts/providers/{providerName}/voices": {
+      "get": {
+        "tags": [
+          "tts-voice-controller"
+        ],
+        "summary": "List the voices a provider offers",
+        "operationId": "listVoices",
+        "parameters": [
+          {
+            "name": "providerName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "engine",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching voices; google-cloud: sorted by language, engine, then short name; google-gemini: sorted by name",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsVoiceListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown provider, a type that does not list voices, or a malformed filter",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The voice catalogue cannot be fetched now",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tts/cache/stats": {
       "get": {
         "tags": [
@@ -2713,6 +2780,20 @@
           },
           "language": {
             "type": "string"
+          },
+          "engine": {
+            "type": "string"
+          },
+          "pitch": {
+            "type": "number",
+            "format": "double"
+          },
+          "speakingRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "stylePrompt": {
+            "type": "string"
           }
         },
         "required": [
@@ -2923,6 +3004,40 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Extension"
+            }
+          }
+        }
+      },
+      "TtsVoiceDescriptor": {
+        "type": "object",
+        "properties": {
+          "shortName": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "engine": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          }
+        }
+      },
+      "TtsVoiceListResponse": {
+        "type": "object",
+        "properties": {
+          "providerName": {
+            "type": "string"
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TtsVoiceDescriptor"
             }
           }
         }

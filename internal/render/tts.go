@@ -131,6 +131,56 @@ func RenderTTSCacheClearedYAML(provider *string) string {
 	return b.String()
 }
 
+// writeOptionalString writes `key: "value"`, or a bare, unquoted `key: null`
+// when value is absent, so an absent field is never mistaken for an empty
+// one.
+func writeOptionalString(b *bytes.Buffer, indent, key string, value *string) {
+	if value == nil {
+		fmt.Fprintf(b, "%s%s: null\n", indent, key)
+		return
+	}
+	fmt.Fprintf(b, "%s%s: %q\n", indent, key, *value)
+}
+
+// RenderTTSVoicesYAML renders a provider's voices as a small, fixed-shape
+// YAML document: providerName, then a voices: list. Every field of every
+// voice is always emitted, an absent one (e.g. a google-gemini voice's
+// language) as a bare null; an empty list is an explicit `voices: []`.
+func RenderTTSVoicesYAML(l hub.TTSVoiceList) string {
+	var b bytes.Buffer
+	writeOptionalString(&b, "", "providerName", l.ProviderName)
+	if len(l.Voices) == 0 {
+		b.WriteString("# no voices found\n")
+		b.WriteString("voices: []\n")
+		return b.String()
+	}
+	b.WriteString("voices:\n")
+	for _, v := range l.Voices {
+		writeOptionalString(&b, "  - ", "shortName", v.ShortName)
+		writeOptionalString(&b, "    ", "fullName", v.FullName)
+		writeOptionalString(&b, "    ", "engine", v.Engine)
+		writeOptionalString(&b, "    ", "language", v.Language)
+		writeOptionalString(&b, "    ", "gender", v.Gender)
+	}
+	return b.String()
+}
+
+// RenderTTSVoicesJSON renders a provider's voices as strict JSON with the
+// same fields as RenderTTSVoicesYAML: absent fields are null, never omitted,
+// and voices is always an array, never null.
+func RenderTTSVoicesJSON(l hub.TTSVoiceList) string {
+	if l.Voices == nil {
+		l.Voices = []hub.TTSVoice{}
+	}
+	data, err := json.Marshal(l)
+	if err != nil {
+		// TTSVoiceList's fields are plain *string/[]TTSVoice — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
+
 // RenderTTSCacheClearedJSON renders a `clear tts-cache` result as a strict
 // JSON object: `{"cleared":"all"}` or `{"cleared":"provider","provider":"<name>"}`.
 func RenderTTSCacheClearedJSON(provider *string) string {

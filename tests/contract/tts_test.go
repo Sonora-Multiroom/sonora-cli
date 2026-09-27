@@ -623,3 +623,199 @@ func TestSpeak_404_NotOffered(t *testing.T) {
 		t.Fatalf("expected a *hub.TTSNotOfferedError, got %T: %v", err, err)
 	}
 }
+
+// ListTTSVoices contract tests. Request/response shapes mirror the
+// listVoices operation and the TtsVoiceListResponse/TtsVoiceDescriptor
+// schemas in api/openapi.json (constitution Principle II).
+
+// voicesServer answers every request with a 200 and body, recording the
+// request's escaped path and query.
+func voicesServer(t *testing.T, body string, gotPath *string, gotQuery *url.Values) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if gotPath != nil {
+			*gotPath = r.URL.EscapedPath()
+		}
+		if gotQuery != nil {
+			*gotQuery = r.URL.Query()
+		}
+		// The hub publishes this operation's 200 as */*, so the client must
+		// not depend on a JSON Content-Type.
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+const emptyVoicesBody = `{"providerName":"google","voices":[]}`
+
+func TestListTTSVoices_NoFilters_NoQueryString(t *testing.T) {
+	var gotPath string
+	var gotQuery url.Values
+	srv := voicesServer(t, emptyVoicesBody, &gotPath, &gotQuery)
+
+	if _, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/api/tts/providers/google/voices" {
+		t.Errorf("got path %q, want /api/tts/providers/google/voices", gotPath)
+	}
+	if len(gotQuery) != 0 {
+		t.Errorf("got query %v, want none", gotQuery)
+	}
+}
+
+func TestListTTSVoices_Filters_SetQueryParams(t *testing.T) {
+	var gotQuery url.Values
+	srv := voicesServer(t, emptyVoicesBody, nil, &gotQuery)
+
+	if _, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", strPtr("uk-UA"), strPtr("chirp3-hd")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := gotQuery.Get("language"); got != "uk-UA" {
+		t.Errorf("got language %q, want uk-UA", got)
+	}
+	if got := gotQuery.Get("engine"); got != "chirp3-hd" {
+		t.Errorf("got engine %q, want chirp3-hd", got)
+	}
+}
+
+func TestListTTSVoices_OnlyLanguage_OmitsEngine(t *testing.T) {
+	var gotQuery url.Values
+	srv := voicesServer(t, emptyVoicesBody, nil, &gotQuery)
+
+	if _, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", strPtr("uk-UA"), nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := gotQuery["engine"]; ok {
+		t.Errorf("expected no engine param, got query %v", gotQuery)
+	}
+}
+
+func TestListTTSVoices_ProviderWithSpecialChars_PathEscaped(t *testing.T) {
+	var gotPath string
+	srv := voicesServer(t, emptyVoicesBody, &gotPath, nil)
+
+	if _, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "a b/c", nil, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/api/tts/providers/a%20b%2Fc/voices" {
+		t.Errorf("got path %q, want /api/tts/providers/a%%20b%%2Fc/voices", gotPath)
+	}
+}
+
+func TestListTTSVoices_GoogleCloud_DecodesAllFields(t *testing.T) {
+	srv := voicesServer(t, `{"providerName":"google","voices":[
+		{"shortName":"Charon","fullName":"uk-UA-Chirp3-HD-Charon","engine":"Chirp3-HD","language":"uk-UA","gender":"MALE"}]}`, nil, nil)
+
+	list, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if list.ProviderName == nil || *list.ProviderName != "google" {
+		t.Errorf("got providerName %v, want google", list.ProviderName)
+	}
+	if len(list.Voices) != 1 {
+		t.Fatalf("got %d voices, want 1", len(list.Voices))
+	}
+	v := list.Voices[0]
+	for want, got := range map[string]*string{
+		"Charon": v.ShortName, "uk-UA-Chirp3-HD-Charon": v.FullName, "Chirp3-HD": v.Engine, "uk-UA": v.Language, "MALE": v.Gender,
+	} {
+		if got == nil || *got != want {
+			t.Errorf("got %v, want %q", got, want)
+		}
+	}
+}
+
+func TestListTTSVoices_GeminiShaped_AbsentFieldsStayNil(t *testing.T) {
+	srv := voicesServer(t, `{"providerName":"gemini","voices":[
+		{"shortName":"Achernar","fullName":"Achernar","engine":"gemini-2.5-flash-tts"}]}`, nil, nil)
+
+	list, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "gemini", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(list.Voices) != 1 {
+		t.Fatalf("got %d voices, want 1", len(list.Voices))
+	}
+	if list.Voices[0].Language != nil || list.Voices[0].Gender != nil {
+		t.Errorf("expected nil language and gender, got %+v", list.Voices[0])
+	}
+}
+
+func testListTTSVoicesEmpty(t *testing.T, body string) {
+	t.Helper()
+	srv := voicesServer(t, body, nil, nil)
+
+	list, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if list.Voices == nil || len(list.Voices) != 0 {
+		t.Errorf("expected a non-nil empty voices slice, got %#v", list.Voices)
+	}
+}
+
+func TestListTTSVoices_AbsentVoices_YieldsEmptySlice(t *testing.T) {
+	testListTTSVoicesEmpty(t, `{"providerName":"google"}`)
+}
+func TestListTTSVoices_NullVoices_YieldsEmptySlice(t *testing.T) {
+	testListTTSVoicesEmpty(t, `{"providerName":"google","voices":null}`)
+}
+
+func TestListTTSVoices_MalformedBody(t *testing.T) {
+	srv := voicesServer(t, `<html>not json</html>`, nil, nil)
+
+	_, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil)
+	var decodeErr *hub.DecodeError
+	if !errors.As(err, &decodeErr) {
+		t.Fatalf("expected a *hub.DecodeError, got %T: %v", err, err)
+	}
+}
+
+func testListTTSVoicesTTSErrorStatus(t *testing.T, status int, code string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": code, "message": "details"})
+	}))
+	defer srv.Close()
+
+	_, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil)
+	var ttsErr *hub.TTSError
+	if !errors.As(err, &ttsErr) {
+		t.Fatalf("expected a *hub.TTSError, got %T: %v", err, err)
+	}
+	if ttsErr.StatusCode != status || ttsErr.Code != code || ttsErr.Message != "details" {
+		t.Errorf("unexpected TTSError: %+v", ttsErr)
+	}
+}
+
+func TestListTTSVoices_400_InvalidRequest(t *testing.T) {
+	testListTTSVoicesTTSErrorStatus(t, 400, "INVALID_REQUEST")
+}
+func TestListTTSVoices_400_ProviderNotFound(t *testing.T) {
+	testListTTSVoicesTTSErrorStatus(t, 400, "PROVIDER_NOT_FOUND")
+}
+func TestListTTSVoices_503_VoiceCatalogueUnavailable(t *testing.T) {
+	testListTTSVoicesTTSErrorStatus(t, 503, "VOICE_CATALOGUE_UNAVAILABLE")
+}
+func TestListTTSVoices_503_ProviderError(t *testing.T) {
+	testListTTSVoicesTTSErrorStatus(t, 503, "PROVIDER_ERROR")
+}
+
+func TestListTTSVoices_404_NotOffered(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	_, err := hub.ListTTSVoices(context.Background(), hub.NewClient(), srv.URL, "google", nil, nil)
+	var notOffered *hub.TTSNotOfferedError
+	if !errors.As(err, &notOffered) {
+		t.Fatalf("expected a *hub.TTSNotOfferedError, got %T: %v", err, err)
+	}
+}

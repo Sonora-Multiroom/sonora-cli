@@ -54,6 +54,7 @@ table, common flags, and examples from the terminal.
 | `speak <text|-> <resource>/<id>` | `outputs`, `groups` (hub TTS extension) | `out`, `gr` |
 | `get tts-cache` | TTS audio-cache statistics (hub TTS extension) | — |
 | `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
+| `list tts-voices --provider <name>` | a TTS provider's voices (hub TTS extension) | — |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -118,8 +119,12 @@ overrides that bound for a hub whose TTS provider takes longer. `get tts-cache` 
 audio-cache statistics
 (`totalEntries`/`totalSizeBytes`/`maxSizeBytes`/`entriesByProvider`), and `clear tts-cache
 [--provider <name>]` clears all cache entries, or one provider's, printing `cleared` (`all` or
-`provider`, idempotent — clearing an empty cache still succeeds). All three need the hub's TTS
-extension to be installed and active; if it isn't, the CLI diagnoses why and exits 13.
+`provider`, idempotent — clearing an empty cache still succeeds). `list tts-voices --provider
+<name> [--language <code>] [--engine <name>]` lists the voices a `google-cloud` or `google-gemini`
+provider offers (`shortName`/`fullName`/`engine`/`language`/`gender`, with an absent field as
+`null`: a Gemini voice has no `language`). Pass a voice's `fullName` to `speak --voice`. All four
+need the hub's TTS extension to be installed and active; if it isn't, the CLI diagnoses why and
+exits 13.
 
 Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
 (override the hub base URL), and `--verbose` (print underlying error detail on failure).
@@ -145,6 +150,7 @@ sonora stop groups/<id>
 sonora speak "Dinner is ready" outputs/kitchen
 sonora get tts-cache
 sonora clear tts-cache --provider openai
+sonora list tts-voices --provider google --language uk-UA
 ```
 
 ## Exit codes

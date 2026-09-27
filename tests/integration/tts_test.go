@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// mockTTSHub fakes /api/tts/speak, /api/tts/cache/stats, /api/tts/cache, and
-// /api/v2/extensions, recording per-path request counts and the last
+// mockTTSHub fakes /api/tts/speak, /api/tts/cache/stats, /api/tts/cache,
+// /api/tts/providers/{name}/voices, and /api/v2/extensions, recording per-path request counts and the last
 // request bodies/queries so tests can assert exactly what the CLI sent
 // (SC-005a: one request per successful command, one extra on a 404).
 type mockTTSHub struct {
@@ -31,11 +31,16 @@ type mockTTSHub struct {
 	clearStatus int // 0 -> default 204
 	clearBody   map[string]any
 
+	voicesStatus int // 0 -> default 200 with voicesBody
+	voicesBody   map[string]any
+
 	extStatus int // 0 -> default 200 empty inventory
 	extBody   map[string]any
 
 	lastSpeakBody  map[string]any
 	lastClearQuery url.Values
+	lastVoicesPath string
+	lastVoicesQry  url.Values
 	counts         map[string]int
 }
 
@@ -104,6 +109,20 @@ func newMockTTSHub(t *testing.T) (*httptest.Server, *mockTTSHub) {
 				return
 			}
 			w.WriteHeader(http.StatusNoContent)
+
+		case strings.HasPrefix(r.URL.Path, "/api/tts/providers/") && strings.HasSuffix(r.URL.Path, "/voices"):
+			m.mu.Lock()
+			m.lastVoicesPath, m.lastVoicesQry = r.URL.EscapedPath(), r.URL.Query()
+			status, respBody := m.voicesStatus, m.voicesBody
+			m.mu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			if status == 0 {
+				status = http.StatusOK
+			}
+			w.WriteHeader(status)
+			if respBody != nil {
+				_ = json.NewEncoder(w).Encode(respBody)
+			}
 
 		case r.URL.Path == "/api/v2/extensions":
 			m.mu.Lock()
@@ -597,5 +616,119 @@ func TestSpeak_TimeoutOverride_SlowProviderStillReceived(t *testing.T) {
 	}
 	if elapsed >= 25*time.Second {
 		t.Errorf("expected the hub's own timeout to answer before the 25s override, took %v", elapsed)
+	}
+}
+
+// list tts-voices integration tests (specs/tiny/list-tts-voices-command.md).
+
+func TestListTTSVoices_Success(t *testing.T) {
+	srv, m := newMockTTSHub(t)
+	m.voicesBody = map[string]any{
+		"providerName": "google",
+		"voices": []map[string]any{
+			{"shortName": "Charon", "fullName": "uk-UA-Chirp3-HD-Charon", "engine": "Chirp3-HD", "language": "uk-UA", "gender": "MALE"},
+		},
+	}
+
+	res := runCLI(t, "list", "tts-voices", "--provider", "google", "--language", "uk-UA", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	for _, want := range []string{`providerName: "google"`, `fullName: "uk-UA-Chirp3-HD-Charon"`, `gender: "MALE"`} {
+		if !strings.Contains(res.stdout, want) {
+			t.Errorf("expected stdout to contain %q, got:\n%s", want, res.stdout)
+		}
+	}
+	if m.lastVoicesPath != "/api/tts/providers/google/voices" {
+		t.Errorf("got path %q", m.lastVoicesPath)
+	}
+	if got := m.lastVoicesQry.Get("language"); got != "uk-UA" {
+		t.Errorf("got language %q, want uk-UA", got)
+	}
+	if got := m.requestCount("/api/v2/extensions"); got != 0 {
+		t.Errorf("expected no inventory lookup on success, got %d", got)
+	}
+}
+
+func TestListTTSVoices_JSON_GeminiNulls(t *testing.T) {
+	srv, m := newMockTTSHub(t)
+	m.voicesBody = map[string]any{
+		"providerName": "gemini",
+		"voices":       []map[string]any{{"shortName": "Kore", "fullName": "Kore", "engine": "gemini-2.5-flash-tts"}},
+	}
+
+	res := runCLI(t, "list", "tts-voices", "--provider", "gemini", "--json", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	want := `{"providerName":"gemini","voices":[{"shortName":"Kore","fullName":"Kore","engine":"gemini-2.5-flash-tts","language":null,"gender":null}]}` + "\n"
+	if res.stdout != want {
+		t.Errorf("stdout = %q, want %q", res.stdout, want)
+	}
+}
+
+func TestListTTSVoices_EngineOnGemini_Rejected(t *testing.T) {
+	srv, m := newMockTTSHub(t)
+	m.voicesStatus = http.StatusBadRequest
+	m.voicesBody = map[string]any{"error": "INVALID_REQUEST", "message": "engine is fixed by the entry"}
+
+	res := runCLI(t, "list", "tts-voices", "--provider", "gemini", "--engine", "x", "--hub-url", srv.URL)
+
+	if res.exitCode != 6 {
+		t.Fatalf("exit code = %d, want 6; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "INVALID_REQUEST: engine is fixed by the entry") {
+		t.Errorf("expected the hub's message on stderr, got: %s", res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
+	}
+}
+
+func TestListTTSVoices_404_InventoryShowsDisabled(t *testing.T) {
+	srv, m := newMockTTSHub(t)
+	m.voicesStatus = http.StatusNotFound
+	m.extBody = map[string]any{"extensions": []map[string]any{{"id": "tts", "status": "DISABLED"}}}
+
+	res := runCLI(t, "list", "tts-voices", "--provider", "google", "--hub-url", srv.URL)
+
+	if res.exitCode != 13 {
+		t.Fatalf("exit code = %d, want 13; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "disabled") {
+		t.Errorf("expected the disabled diagnosis, got: %s", res.stderr)
+	}
+}
+
+func TestListTTSVoices_MissingProvider_NoRequest(t *testing.T) {
+	srv, m := newMockTTSHub(t)
+
+	res := runCLI(t, "list", "tts-voices", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "--provider is required") {
+		t.Errorf("expected the missing-provider message, got: %s", res.stderr)
+	}
+	if m.lastVoicesPath != "" {
+		t.Errorf("expected no request, got one to %q", m.lastVoicesPath)
+	}
+}
+
+func TestGetTTSVoices_UsageError(t *testing.T) {
+	for _, args := range [][]string{{"get", "tts-voices"}, {"list", "tts-voices/google"}, {"get", "tts-voices/google"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			res := runCLI(t, args...)
+
+			if res.exitCode != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+			}
+			if !strings.Contains(res.stderr, "use 'sonora list tts-voices --provider NAME'") {
+				t.Errorf("expected stderr to point at 'sonora list tts-voices', got: %s", res.stderr)
+			}
+		})
 	}
 }
