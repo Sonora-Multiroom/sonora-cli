@@ -48,8 +48,10 @@ classify a failure — with no access to anything under this repo's internal pac
    builds with no replace directives, workspace files or private-module settings.
 2. **Given** an external project using the client, **When** a hub call fails (hub
    unreachable, timeout, 404, 4xx/5xx, malformed response), **Then** the project can obtain
-   the same error class and friendly message the CLI shows, without depending on any
-   CLI-specific concept such as exit codes.
+   the error class and friendly message the client's classifier produces — the same
+   classification the CLI starts from — without depending on any CLI-specific concept
+   such as exit codes. (A caller may refine a generic not-found class with its own context,
+   as the CLI's route commands do.)
 3. **Given** the client package, **When** a developer reads its package documentation,
    **Then** every exported identifier is documented in terms that make sense without access
    to this repo's specs, research notes or constitution.
@@ -129,13 +131,16 @@ module proxy, and build a consumer against it.
   succeeds silently but the version stays at the default — this MUST be caught by a test or
   release check (US2 scenario 2).
 - A stray reference to the old module path or the old internal client location remains in
-  code, tests, scripts or docs: the build or a search check MUST fail/flag it.
+  code, tests, scripts or docs: an automated test MUST fail on it.
 - A CLI-only concept (exit codes, flags, rendering, config discovery) is still reachable from
   the public client: this is a boundary violation and MUST be removed before release.
 - A consumer tries to import CLI internals (config discovery, renderers): this MUST remain
   impossible; only the client package and published spec are public.
 - The error-classification messages must stay free of CLI-specific wording (flags, exit
-  codes) so they read correctly when surfaced by a non-CLI consumer such as an AI assistant.
+  codes, environment variables, config files, "this CLI") so they read correctly when
+  surfaced by a non-CLI consumer such as an AI assistant. Today the TTS "hub address" and
+  "version mismatch" messages break this rule; the CLI must add that wording itself instead
+  (FR-015).
 - Contract tests move with the client: they MUST keep running in this repo as the
   conformance gate, not be dropped during the move.
 
@@ -146,14 +151,15 @@ module proxy, and build a consumer against it.
 - **FR-001**: The module MUST be addressable by its public repository import path
   (`github.com/Sonora-Multiroom/sonora-cli`), and every internal reference to the old
   module path MUST be updated, including build-time version injection in `Makefile`,
-  `build.sh`, `release.sh` and `scripts/`.
+  `build.sh` and `.goreleaser.yaml` (`release.sh` and `scripts/` must be checked too).
 - **FR-002**: The Multiroom Audio Hub API client MUST be moved from its internal location to
   a public package at the module root (`hub/`), preserving its file history.
 - **FR-003**: The public client MUST contain only hub protocol concerns: request/response
   types, HTTP calls, timeouts, error types, error classification and friendly error messages.
 - **FR-004**: The mapping from error class to CLI exit code MUST move out of the public
-  client into a CLI-internal package; all CLI call sites MUST use the new mapping and
-  produce the same exit codes as before.
+  client into a CLI-internal package, together with any error class that only the CLI uses
+  (the usage-error class); all CLI call sites MUST use the new mapping and produce the same
+  exit codes as before.
 - **FR-005**: Error classification and its friendly messages MUST remain in the public
   client so non-CLI consumers can present the same classification.
 - **FR-006**: Helpers the client itself uses to build error messages (e.g. single-line
@@ -174,6 +180,10 @@ module proxy, and build a consumer against it.
   CLI and MUST NOT be made public by this feature.
 - **FR-014**: After merge, a release tag containing the public client (and published spec)
   MUST be created; published tags MUST never be moved or re-created.
+- **FR-015**: Messages produced by the public client (`ClassifyError` and the `Error()`
+  methods of its error types) MUST NOT mention CLI flags, environment variables, config
+  files, exit codes or "the CLI". Where the CLI shows such hints today, the CLI MUST add
+  them itself so its output stays identical (FR-010).
 
 ### Key Entities
 
@@ -195,11 +205,18 @@ module proxy, and build a consumer against it.
   one read call, one write call and one error classification against a fake hub, with zero
   workarounds (no replace directives, workspace files or private-module settings).
 - **SC-002**: 100% of existing tests pass on both Windows and Linux after the refactor, with
-  no test weakened or removed.
+  no test weakened. Tests that assert exit codes through the client move to the CLI-internal
+  mapping with the same assertions; tests of hub message text change only where FR-015
+  removes CLI wording, and the CLI tests that check that wording stay unchanged.
 - **SC-003**: For every existing command, output and exit code are identical before and
-  after the refactor across the success path and each error class.
+  after the refactor across the success path and each error class. Evidence: the existing
+  unit, integration and contract suites pass unchanged in intent (they cover every command
+  and error class), supplemented by a manual before/after comparison of representative
+  commands.
 - **SC-004**: 0 references to the old module path or the old internal client location remain
-  in code, tests, build/release scripts or docs.
+  in code, tests, build/release scripts or current docs (README, CONTRIBUTING, AGENTS.md).
+  Historical records — earlier feature specs under `specs/`, `docs/reviews/`, and the
+  constitution's Sync Impact Report in `.specify/` — are excluded.
 - **SC-005**: 100% of the public client's exported identifiers have documentation, and 0 of
   those docs reference internal spec artifacts or constitution principles.
 - **SC-006**: The public client pulls in 0 third-party dependencies.
@@ -220,8 +237,8 @@ module proxy, and build a consumer against it.
   an existing `v0.x` tag sequence dictates the next patch/minor number.
 - Publishing the spec (FR-012 / US3) is recommended by the source plan; it is in scope but
   may be dropped at planning time without blocking US1/US2.
-- Counts from the source plan (111 files importing the module path, 77 importing the
-  internal client, 34 files using exit-code mapping) were verified against the repo on
-  2026-09-27 and bound the scope of mechanical changes.
+- Counts from the source plan were verified against the repo on 2026-09-27 and bound the
+  scope of mechanical changes: 111 files import the module path and 77 import the internal
+  client; 30 CLI files use the exit-code mapping (the source plan said 34).
 - Out of scope: the sonora-mcp rewrite, new hub operations, new CLI commands, making
   config discovery public, and splitting the client into its own repository (option 2b).

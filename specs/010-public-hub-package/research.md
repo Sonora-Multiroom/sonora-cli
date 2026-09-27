@@ -45,7 +45,7 @@ All findings were checked against the repository on 2026-09-27 (branch
 
 - **Decision**: `git mv internal/hub hub`; package name stays `hub`. Update the 77 files
   importing `…/internal/hub` (CLI packages, `tests/contract`, `tests/integration`,
-  `tests/unit`, `cmd/sonora`).
+  `tests/unit`; `cmd/sonora` does not import it).
 - **Rationale**: `git mv` keeps `git log --follow` history (FR-002). The package name is
   unchanged, so call sites only change their import line.
 - **Alternatives considered**: `hub/` under `pkg/` — adds a path segment with no meaning in
@@ -61,7 +61,8 @@ All findings were checked against the repository on 2026-09-27 (branch
     6, 8, 9, 10, 11, 12, 13; 0 for `ClassNone`; 7 stays retired).
   - Delete `ErrorClass.ExitCode()` **and** `hub.ClassUsage` from `hub`.
   - Call sites: `hub.ClassUsage.ExitCode()` → `exitcode.Usage`; `class.ExitCode()` →
-    `exitcode.For(class)` (34 CLI files).
+    `exitcode.For(class)` (30 CLI files, 157 calls, 128 of them
+    `hub.ClassUsage.ExitCode()`; the source plan said 34 files).
   - Existing exit-code tests in `tests/unit/hub_client_test.go` (mapping table, "no code
     reused", "7 retired") move to `tests/unit/exitcode_test.go` and assert the same numbers
     against `exitcode.For`/`exitcode.Usage`.
@@ -85,10 +86,33 @@ All findings were checked against the repository on 2026-09-27 (branch
   `TTSUnavailableError`, `TTSNotOfferedError`, `TTSDiagnosis`), `SingleLine`,
   `NewClient`, `NewClientWithTimeout`, `SpeakTimeout`, and every operation function and
   type. No signature changes.
-- **Rationale**: `ClassifyError` messages contain no flag names or exit codes (verified);
-  sonora-mcp needs them for `isError` results. `SingleLine` is used by `hub/tts.go` itself
-  and by `internal/cli/tts/report.go`. Keeping signatures unchanged keeps this a pure move
-  (FR-010) and keeps the diff reviewable.
+- **Rationale**: sonora-mcp needs `ClassifyError` messages for `isError` results.
+  `SingleLine` is used by `hub/tts.go` itself and by `internal/cli/tts/report.go`.
+  Keeping signatures unchanged keeps this a pure move (FR-010) and keeps the diff
+  reviewable.
+- **Exception found in analysis — CLI wording in TTS messages (FR-015)**:
+  `TTSUnavailableError.Error()`, which `ClassifyError` returns as its message, has two
+  CLI-specific strings:
+  - `DiagnosisHubAddress`: ends with "; set the correct address with --hub-url,
+    MULTIROOM_URL, or the config file".
+  - `DiagnosisVersionMismatch`: "the hub's TTS API does not match this CLI version".
+
+  **Decision**: in `hub`, drop the hint suffix from the hub-address message and say "this
+  client version" in the version-mismatch message. In `internal/cli/tts.ReportError`, the
+  CLI builds its own text for these two diagnoses: it appends the same hint suffix and
+  uses "this CLI version", so stderr stays byte-identical (FR-010). The hub-level
+  expectations in `tests/unit/hub_client_test.go` (`TestClassifyError_TTSUnavailableError_ByDiagnosis`)
+  change to the neutral text. The CLI-level tests (`tests/unit/tts_report_test.go`,
+  `tests/unit/cli_tts_voices_test.go`) stay unchanged and prove the CLI output did not
+  change. Today only the hub-level test pins the full hub-address text, so a CLI-level
+  characterization test in `tts_report_test.go` must first assert the exact current
+  `ReportError` stderr for `DiagnosisHubAddress`. It passes before the change and must
+  still pass after.
+  **Guard**: a unit test runs `ClassifyError` over one error of every kind (each typed
+  error, each `TTSDiagnosis`, network, timeout, decode) and fails if a message contains
+  `--`, `MULTIROOM_URL`, `config file`, `exit code` or the word `CLI`.
+  **Alternative considered**: leave the hints and document them. Rejected — sonora-mcp
+  would show an AI assistant flags it cannot use.
 - **Alternatives considered**: reshaping the API into a `Client` struct with methods
   (`c.ListOutputs(ctx)`) instead of `(ctx, *http.Client, baseURL, …)` functions — nicer for
   consumers, but a large behavior-neutral churn across every CLI call site. Out of scope;
@@ -105,7 +129,7 @@ All findings were checked against the repository on 2026-09-27 (branch
   the no-retry/timeout behavior.
 - **Guard**: a test (in `tests/unit`) that parses `hub/*.go` comments with `go/parser` and
   fails on the patterns above, plus asserts every exported identifier has a doc comment
-  (SC-005). Runs in milliseconds.
+  (SC-005), exempting `Error`/`Unwrap`/`String` methods. Runs in milliseconds.
 - **Distribution**: client.go 4, errors.go 8, extensions.go 4, groups.go 3, inputs.go 2,
   mastermute.go 1, outputs.go 2, play.go 4, routes.go 9, tts.go 20.
 - **Alternatives considered**: manual review only — regresses silently the next time a
@@ -134,8 +158,8 @@ All findings were checked against the repository on 2026-09-27 (branch
   `go.mod`). Never move or re-create a pushed tag.
 - **Rationale**: a minor bump signals the new public surface; `release.sh` already
   refuses to reuse an existing tag.
-- **Consumer check**: after the tag is pushed, run quickstart §4 (scratch module, `go get
-  …@v0.1.0` with `GOFLAGS=-mod=mod`, `GOWORK=off`).
+- **Consumer check**: after the tag is pushed, run quickstart §5 post-tag steps (scratch
+  module, `rm go.work`, `GOWORK=off go get …@v0.1.0`, `GOWORK=off go run .`).
 
 ## §9 Out-of-repo references
 
@@ -145,5 +169,14 @@ All findings were checked against the repository on 2026-09-27 (branch
   that is a dated record and stays as written.
   Leave `specs/001–009/**` and `docs/reviews/**` untouched — they are historical records
   of earlier features. `.idea/` and `sonora.exe` are untracked local files.
+- **Guard**: `tests/unit/stray_refs_test.go` walks the live files — every `.go` file
+  outside `specs/`, plus `Makefile`, `build.sh`, `release.sh`, `.goreleaser.yaml`,
+  `scripts/*`, `.github/workflows/*`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md` — and
+  fails on `"sonora-cli/`, `X sonora-cli/` or `internal/hub`, reporting `file:line`. It
+  builds these patterns by string concatenation so it does not flag itself. It runs in CI
+  with the rest of `go test ./...`, so a regression fails the build rather than depending
+  on someone remembering the grep. Leftover non-import comments (e.g.
+  `internal/cli/groups/volume.go:24` naming `internal/hub/errors.go`) are expected first
+  hits.
 - **Rationale**: SC-004 targets code, tests, build/release scripts, and current docs;
   rewriting history documents would misstate what those features did.

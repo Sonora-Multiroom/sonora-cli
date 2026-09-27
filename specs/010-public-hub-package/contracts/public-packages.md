@@ -44,15 +44,21 @@ unchanged.
 | Identifier | Contract |
 |------------|----------|
 | `ErrorClass`, `Class*` constants | See [data-model.md](../data-model.md). `ClassUsage` is **not** part of the public API. |
-| `ClassifyError(err) (ErrorClass, string)` | Total: every non-nil error maps to a class and a one-line, CLI-agnostic message. `nil` → `ClassNone, ""`. |
+| `ClassifyError(err) (ErrorClass, string)` | Total: every non-nil error maps to a class and a one-line, CLI-agnostic message (no flags, environment variables, config files, exit codes or "CLI"). `nil` → `ClassNone, ""`. |
 | `StatusError`, `DecodeError`, `NotFoundError`, `APIError`, `TTSError`, `TTSUnavailableError`, `TTSNotOfferedError`, `TTSDiagnosis` | Typed errors usable with `errors.As`. |
 | `SingleLine(s string) string` | Collapses `\r\n`, `\n`, `\r` into single spaces. |
 
 **Removed** (was in `internal/hub`, never public): `ErrorClass.ExitCode()`, `ClassUsage`.
 
+**Changed message text** (was in `internal/hub`, never public): `TTSUnavailableError` with
+`DiagnosisHubAddress` no longer ends with the "set the correct address with --hub-url, …"
+hint, and `DiagnosisVersionMismatch` says "this client version" instead of "this CLI
+version". The `sonora` CLI adds its own wording, so its output is unchanged.
+
 ### Documentation
 
-Every exported identifier has a doc comment. No doc comment references `research.md`,
+Every exported identifier has a doc comment (`Error`, `Unwrap` and `String` methods
+excepted, per Go convention). No doc comment references `research.md`,
 `data-model.md`, `FR-`/`SC-` IDs, `§` sections, feature numbers, or constitution
 principles.
 

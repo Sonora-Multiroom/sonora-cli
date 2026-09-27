@@ -20,8 +20,9 @@ Repeat on Linux (CI `test.yml` runs on `ubuntu-latest`).
 ## 2. No stray references (SC-004)
 
 ```sh
+go test ./tests/unit -run StrayRefs                                  # automated guard
 git grep -n '"sonora-cli/' -- ':!specs' ':!docs/reviews'            # expect nothing
-git grep -n 'internal/hub' -- ':!specs' ':!docs/reviews'            # expect nothing
+git grep -n 'internal/hub' -- ':!specs' ':!docs/reviews' ':!.specify'  # expect nothing
 git grep -n 'X sonora-cli/' -- ':!specs'                            # expect nothing
 ```
 
@@ -85,9 +86,10 @@ Covered by the unchanged-in-intent unit/integration/contract suites. Optional ma
 check against a real hub with the previous release binary and the new build:
 
 ```sh
-for c in "get outputs" "get outputs --json" "get routes" "get outputs/no-such-id" "set outputs/no-such-id volume 10"; do
+for c in "--help" "--version" "get" "get outputs" "get outputs --json" "get routes" "get outputs/no-such-id" "set outputs/no-such-id volume 10"; do
   old/sonora $c; echo "exit=$?"; ./sonora.exe $c; echo "exit=$?"
 done
 ```
 
-Expect identical output and exit codes.
+Expect identical output and exit codes. `--version` differs only in the version string
+itself.

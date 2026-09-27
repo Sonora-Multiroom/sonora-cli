@@ -25,8 +25,10 @@ Category of a hub-call failure, produced by `hub.ClassifyError(err) (ErrorClass,
 
 - **Removed from `hub`**: `ClassUsage` (never produced by `ClassifyError`) and the method
   `ErrorClass.ExitCode()`. See [research.md §4](research.md).
-- **Validation rules**: `ClassifyError` messages MUST NOT mention flags, commands, or exit
-  codes. Exit code 7 stays retired and is never returned. No two classes share an exit
+- **Validation rules**: `ClassifyError` messages (and error types' `Error()` text) MUST NOT
+  mention flags, environment variables, config files, exit codes or "the CLI" (FR-015;
+  research §5 — the TTS hub-address and version-mismatch messages are fixed by this
+  feature and the CLI adds its hints itself). Exit code 7 stays retired and is never returned. No two classes share an exit
   code.
 
 ## Exit-code mapping (internal, `internal/cli/exitcode`)
