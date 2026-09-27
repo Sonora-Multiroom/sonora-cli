@@ -2,7 +2,7 @@
 
 **Branch**: feature/list-tts-voices-command
 **Date**: 2026-09-27
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -57,15 +57,15 @@ accept aliases on the hub, so the CLI passes them through verbatim and does no l
 
 ## Tasks
 
-- [ ] Contract tests for `hub.ListTTSVoices` (fail first), then implement it in `internal/hub/tts.go`
-- [ ] Render tests, then `RenderTTSVoicesYAML`/`JSON` in `internal/render/tts.go`
-- [ ] Unit tests, then `RunListVoices` in `internal/cli/tts/voices.go`
-- [ ] Integration tests, then wire `tts-voices` into `dispatchGetList` and `helpText`
-- [ ] Update `README.md` and `docs/cli-command-landscape.md`
-- [ ] Run `gofmt -l .`, `go vet ./...`, `go test ./...`; smoke-test against `multiroom.lan`
+- [x] Contract tests for `hub.ListTTSVoices` (fail first), then implement it in `internal/hub/tts.go`
+- [x] Render tests, then `RenderTTSVoicesYAML`/`JSON` in `internal/render/tts.go`
+- [x] Unit tests, then `RunListVoices` in `internal/cli/tts/voices.go`
+- [x] Integration tests, then wire `tts-voices` into `dispatchGetList` and `helpText`
+- [x] Update `README.md` and `docs/cli-command-landscape.md`
+- [x] Run `gofmt -l .`, `go vet ./...`, `go test ./...`; smoke-test against `multiroom.lan`
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `go test ./...` passes; `go vet ./...` and `gofmt -l .` clean
-- [ ] `sonora list tts-voices --provider <real provider>` returns voices from the live hub
+- [x] All tasks checked off
+- [x] `go test ./...` passes; `go vet ./...` and `gofmt -l .` clean
+- [x] `sonora list tts-voices --provider <real provider>` returns voices from the live hub

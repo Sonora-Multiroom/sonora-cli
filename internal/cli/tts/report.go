@@ -1,6 +1,6 @@
-// Package tts implements `sonora speak`, `sonora get tts-cache`, and
-// `sonora clear tts-cache`, the CLI commands that wrap the hub's optional
-// TTS extension. All three share one failure path: the extension's own
+// Package tts implements `sonora speak`, `sonora get tts-cache`, `sonora
+// clear tts-cache`, and `sonora list tts-voices`, the CLI commands that wrap
+// the hub's optional TTS extension. All four share one failure path: the extension's own
 // {error, message} shape, and a 404 meaning "not offered", diagnosed via
 // one inventory lookup (research.md §1, §5).
 package tts
@@ -15,7 +15,7 @@ import (
 )
 
 // ReportError is the shared failure path for speak/get tts-cache/clear
-// tts-cache (research.md §5). On a *hub.TTSNotOfferedError it makes exactly
+// tts-cache/list tts-voices (research.md §5). On a *hub.TTSNotOfferedError it makes exactly
 // one hub.ListExtensions call to diagnose why TTS is unavailable, building a
 // *hub.TTSUnavailableError from the result. Any error is then classified
 // with hub.ClassifyError and printed to stderr as `error: <msg> (hub URL:
