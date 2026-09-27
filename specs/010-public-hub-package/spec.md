@@ -150,8 +150,9 @@ module proxy, and build a consumer against it.
 
 - **FR-001**: The module MUST be addressable by its public repository import path
   (`github.com/Sonora-Multiroom/sonora-cli`), and every internal reference to the old
-  module path MUST be updated, including build-time version injection in `Makefile`,
-  `build.sh` and `.goreleaser.yaml` (`release.sh` and `scripts/` must be checked too).
+  module path MUST be updated, including build-time version injection in `Makefile` and
+  `.goreleaser.yaml` (`release.sh` and `scripts/` must be checked too). The maintainer's
+  local, untracked `build.sh` helper is updated too but is not part of the repository.
 - **FR-002**: The Multiroom Audio Hub API client MUST be moved from its internal location to
   a public package at the module root (`hub/`), preserving its file history.
 - **FR-003**: The public client MUST contain only hub protocol concerns: request/response

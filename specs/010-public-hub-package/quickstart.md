@@ -33,6 +33,9 @@ v=$(git describe --tags --always --dirty)
 sh build.sh && ./sonora.exe --version     # expect "$v", not "dev"
 ```
 
+`build.sh` is the maintainer's local, untracked helper; without it, run
+`go build -ldflags "-X github.com/Sonora-Multiroom/sonora-cli/internal/version.Version=$v" -o sonora.exe ./cmd/sonora`.
+
 The automated guards are the tests described in [research.md §2](research.md).
 
 ## 4. Public API reads self-contained (US1 scenario 3, SC-005)

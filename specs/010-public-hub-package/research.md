@@ -19,18 +19,21 @@ All findings were checked against the repository on 2026-09-27 (branch
 
 ## §2 Version injection sites
 
-- **Decision**: Update all four places that inject the version with
+- **Decision**: Update all three tracked places that inject the version with
   `-X sonora-cli/internal/version.Version=…`:
   1. `Makefile` target `build`
   2. `Makefile` target `docker-build`
-  3. `build.sh`
-  4. `.goreleaser.yaml` `builds[0].ldflags` (**not listed in the source plan** — this is the
+  3. `.goreleaser.yaml` `builds[0].ldflags` (**not listed in the source plan** — this is the
      one that produces published release binaries)
+
+  The maintainer's `build.sh` has the same `-X` flag but is a local, untracked helper
+  (excluded via `.git/info/exclude`): it is updated locally, never committed, and not
+  checked by any test, since it does not exist in CI checkouts.
 
   `release.sh`, `scripts/update-openapi.sh` and `.github/workflows/*.yml` do not contain the
   module path (checked).
 - **Guard (FR-011)**: a unit test in `cmd/sonora` that reads the module path from `go.mod`
-  and asserts each of the files above contains `-X <module>/internal/version.Version=`,
+  and asserts each of the tracked files above contains `-X <module>/internal/version.Version=`,
   and contains no `-X` with any other module prefix. It runs in milliseconds, needs no
   toolchain invocation, and fails the next time the module path and a build config drift.
   A second test builds the binary with `-ldflags -X <module>/internal/version.Version=
@@ -163,14 +166,15 @@ All findings were checked against the repository on 2026-09-27 (branch
 
 ## §9 Out-of-repo references
 
-- **Decision**: Update live references only: `Makefile`, `build.sh`, `.goreleaser.yaml`,
+- **Decision**: Update live references only: `Makefile`, `.goreleaser.yaml` (plus the
+  local untracked `build.sh`),
   and README/CONTRIBUTING if they mention the old path (they currently don't). The
   constitution's Sync Impact Report mentions `internal/hub` as the pre-merge location;
   that is a dated record and stays as written.
   Leave `specs/001–009/**` and `docs/reviews/**` untouched — they are historical records
   of earlier features. `.idea/` and `sonora.exe` are untracked local files.
 - **Guard**: `tests/unit/stray_refs_test.go` walks the live files — every `.go` file
-  outside `specs/`, plus `Makefile`, `build.sh`, `release.sh`, `.goreleaser.yaml`,
+  outside `specs/`, plus `Makefile`, `release.sh`, `.goreleaser.yaml`,
   `scripts/*`, `.github/workflows/*`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md` — and
   fails on `"sonora-cli/`, `X sonora-cli/` or `internal/hub`, reporting `file:line`. It
   builds these patterns by string concatenation so it does not flag itself. It runs in CI

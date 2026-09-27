@@ -11,9 +11,10 @@ changing CLI behavior. Rename the module to `github.com/Sonora-Multiroom/sonora-
 `git mv internal/hub hub`, move exit-code mapping (and the CLI-only `ClassUsage`) into a
 new `internal/cli/exitcode` package, move the CLI-specific hints out of `hub`'s TTS error
 messages into `internal/cli/tts` (FR-015), rewrite `hub` godoc to be self-contained,
-publish `api/openapi.json` as `api.Spec` via `go:embed`, fix all four `-ldflags -X` version
-sites (including `.goreleaser.yaml`), add guard tests for the version injection, the godoc
-rules, CLI-neutral messages and stray old-path references, then tag `v0.1.0`.
+publish `api/openapi.json` as `api.Spec` via `go:embed`, fix all three tracked `-ldflags -X`
+version sites (including `.goreleaser.yaml`) plus the local untracked `build.sh`, add guard
+tests for the version injection, the godoc rules, CLI-neutral messages and stray old-path
+references, then tag `v0.1.0`.
 
 ## Technical Context
 
@@ -39,7 +40,7 @@ import `api`, so the embedded spec does not enter the binary
 
 **Scale/Scope**: 111 `.go` files change import path; 77 import the client; 30 CLI files
 (157 calls) call `ExitCode()`; ~137 `hub.ClassUsage` references; 57 godoc lines to rewrite across
-10 `hub` files; 4 build configs
+10 `hub` files; 3 tracked build-config sites (+ local `build.sh`)
 
 ## Constitution Check
 
@@ -83,7 +84,7 @@ specs/010-public-hub-package/
 ```text
 go.mod                         # module github.com/Sonora-Multiroom/sonora-cli
 Makefile                       # -X …/internal/version.Version (build, docker-build)
-build.sh                       # -X …/internal/version.Version
+build.sh                       # local, untracked helper (never committed): -X …/internal/version.Version
 .goreleaser.yaml               # -X …/internal/version.Version (release binaries)
 
 api/
@@ -129,7 +130,7 @@ everything CLI-specific stays under `internal/`. Existing test layout (`tests/un
    the CLI-neutral-message test, version-injection tests in `cmd/sonora/main_test.go` —
    they compile (via small stubs where needed) and fail on their assertions, so the rest
    of the suite keeps running.
-2. **Module rename** (`go.mod` + 111 files + 4 build configs) → build, full tests green.
+2. **Module rename** (`go.mod` + 111 files + 3 build-config sites + local `build.sh`) → build, full tests green.
 3. **`git mv internal/hub hub`** + 77 import updates → green. Commit separately so history
    shows a pure rename.
 4. **`internal/cli/exitcode`**; replace `ExitCode()`/`ClassUsage` call sites; delete them
@@ -145,7 +146,8 @@ everything CLI-specific stays under `internal/`. Existing test layout (`tests/un
    quickstart §5 (post-tag) and §6.
 
 Commits follow Conventional Commits with this repo's types (CONTRIBUTING.md): `refactor!`
-for the module rename and exit-code move, `refactor` for the `git mv` and godoc, `feat` for
+for the module rename (including its `Makefile`/`.goreleaser.yaml` edits, which must land
+atomically with `go.mod`) and exit-code move, `refactor` for the `git mv` and godoc, `feat` for
 `api.Spec`, `spec` for release notes. Guard tests ship in the commit they guard.
 
 ## Complexity Tracking
