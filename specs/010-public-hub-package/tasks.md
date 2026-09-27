@@ -358,6 +358,10 @@ with no second copy (research §7).
       Principles I, III, IV and VI (adapt plan.md's Constitution Check rows: no startup
       work added, no new dependencies, timeouts/no-retry unchanged, guard tests written
       first). Do not add AI attribution to the PR description
+      **Status**: branch pushed and PR opened —
+      https://github.com/Sonora-Multiroom/sonora-cli/pull/19 (with the required Constitution
+      self-review in its description). Merge is pending review/green CI and maintainer
+      go-ahead.
 - [ ] T046 [US4] On `main` after merge, run `./release.sh --minor` (expects `v0.0.17` →
       `v0.1.0`; `--minor` skips the version prompt, but the script still asks
       "Continue? [y/N]" before tagging and pushing — answer only after maintainer approval); paste T044's notes into the GitHub release body. Confirm with the
