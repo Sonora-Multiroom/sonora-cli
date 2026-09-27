@@ -47,10 +47,10 @@ atomically with the `go.mod` rename (otherwise T003 is red in between).
 
 **Purpose**: Establish a green baseline and a reference binary for behavior comparison.
 
-- [ ] T001 Run `gofmt -l .`, `go vet ./...`, `go test ./...` on branch `010-public-hub-package`
+- [X] T001 Run `gofmt -l .`, `go vet ./...`, `go test ./...` on branch `010-public-hub-package`
       and confirm all green before any change; note any pre-existing failures in this file
       under "Notes" instead of fixing them here
-- [ ] T002 Build the pre-refactor reference binary with `sh build.sh` and copy `sonora.exe`
+- [X] T002 Build the pre-refactor reference binary with `sh build.sh` and copy `sonora.exe`
       to the session scratchpad as `sonora-before.exe` (used by T038); do not commit it
 
 ---
@@ -62,14 +62,14 @@ version-injection site (research §2). Nothing public can be imported until this
 
 ### Guard tests (write first)
 
-- [ ] T003 Add `TestBuildConfigsInjectVersionForModulePath` to `cmd/sonora/main_test.go`:
+- [X] T003 Add `TestBuildConfigsInjectVersionForModulePath` to `cmd/sonora/main_test.go`:
       read the `module` line from `../../go.mod`; for each of `../../Makefile` and
       `../../.goreleaser.yaml` (tracked files only — not the untracked `build.sh`), find every
       `-X <path>/internal/version.Version=` occurrence and assert there is at least one and
       every `<path>` equals the module path. Expect: `Makefile` has 2 occurrences,
       `.goreleaser.yaml` 1. (Passes on the current tree —
       it turns red in T006.)
-- [ ] T004 Add `TestVersionFlagReportsInjectedVersion` to `cmd/sonora/main_test.go`: skip when
+- [X] T004 Add `TestVersionFlagReportsInjectedVersion` to `cmd/sonora/main_test.go`: skip when
       `testing.Short()`; `go build -o <t.TempDir()>/sonora[.exe] -ldflags "-X
       <module>/internal/version.Version=test-sentinel-010" .` (module path read from
       `go.mod` as in T003), run the binary with `--version`, assert stdout is exactly
@@ -79,26 +79,26 @@ version-injection site (research §2). Nothing public can be imported until this
 
 ### Rename
 
-- [ ] T005 Change `go.mod` line 1 from `module sonora-cli` to
+- [X] T005 Change `go.mod` line 1 from `module sonora-cli` to
       `module github.com/Sonora-Multiroom/sonora-cli`
-- [ ] T006 Run `go test ./cmd/sonora -run TestBuildConfigsInjectVersionForModulePath` and
+- [X] T006 Run `go test ./cmd/sonora -run TestBuildConfigsInjectVersionForModulePath` and
       confirm it FAILS for both config files (red)
-- [ ] T007 Rewrite every Go import of `"sonora-cli/` to
+- [X] T007 Rewrite every Go import of `"sonora-cli/` to
       `"github.com/Sonora-Multiroom/sonora-cli/` across all `.go` files (111 files:
       `cmd/`, `internal/`, `tests/`), e.g.
       `git grep -l '"sonora-cli/' -- '*.go' | xargs sed -i 's#"sonora-cli/#"github.com/Sonora-Multiroom/sonora-cli/#g'`,
       then `gofmt -w` the changed files (import grouping may reorder)
-- [ ] T008 [P] Update both `-X sonora-cli/internal/version.Version=` occurrences in
+- [X] T008 [P] Update both `-X sonora-cli/internal/version.Version=` occurrences in
       `Makefile` (targets `build` and `docker-build`) to
       `-X github.com/Sonora-Multiroom/sonora-cli/internal/version.Version=`
-- [ ] T009 [P] Same replacement in the local, untracked `build.sh` (not committed; keeps
+- [X] T009 [P] Same replacement in the local, untracked `build.sh` (not committed; keeps
       local builds such as T035 reporting the right version)
-- [ ] T010 [P] Same replacement in `.goreleaser.yaml` (`builds[0].ldflags`) — this is the
+- [X] T010 [P] Same replacement in `.goreleaser.yaml` (`builds[0].ldflags`) — this is the
       file that builds published release binaries
-- [ ] T011 Run `gofmt -l .`, `go vet ./...`, `go test ./...` (without `-short`, so T004
+- [X] T011 Run `gofmt -l .`, `go vet ./...`, `go test ./...` (without `-short`, so T004
       runs) — all green; `git grep -n 'sonora-cli/' -- ':!specs' ':!docs/reviews'
       ':!.specify'` returns only `github.com/Sonora-Multiroom/sonora-cli/...` matches
-- [ ] T012 Commit: `refactor!: rename module to github.com/Sonora-Multiroom/sonora-cli`
+- [X] T012 Commit: `refactor!: rename module to github.com/Sonora-Multiroom/sonora-cli`
       (T003–T011 except the untracked `build.sh`; body notes the three `-ldflags` sites and the
       new guard tests)
 
@@ -115,7 +115,7 @@ stdlib-only, and self-documented (contracts/public-packages.md).
 
 ### Guard tests (write first)
 
-- [ ] T013 [P] [US1] Create a compile-only stub `internal/cli/exitcode/exitcode.go`
+- [X] T013 [P] [US1] Create a compile-only stub `internal/cli/exitcode/exitcode.go`
       (`package exitcode`; `const Usage = 0`; `func For(c hub.ErrorClass) int { return -1 }`,
       importing the client at its current path `.../internal/hub` — T016's import rewrite
       updates it) so the test below compiles and the rest of `tests/unit` keeps running.
@@ -130,7 +130,7 @@ stdlib-only, and self-documented (contracts/public-packages.md).
         pairwise distinct and none equals 7 (retired)
       Red: compiles, fails on assertions against the stub. `go test ./tests/unit` must
       still compile and run every other unit test.
-- [ ] T014 [P] [US1] Create `tests/unit/hub_godoc_test.go` that parses every non-test
+- [X] T014 [P] [US1] Create `tests/unit/hub_godoc_test.go` that parses every non-test
       `.go` file in `../../hub` with `go/parser` (`parser.ParseComments`) and asserts:
       - the package has a package doc comment;
       - every exported top-level func, type, method on an exported type, and exported
@@ -143,7 +143,7 @@ stdlib-only, and self-documented (contracts/public-packages.md).
       Report each violation with `file:line`. Red: `../../hub` does not exist yet (the test
       fails at runtime, not at compile time, so the package still builds); after T016 it
       fails on the godoc violations until T029.
-- [ ] T015 [P] [US1] CLI-neutral message guards (FR-015, research §5):
+- [X] T015 [P] [US1] CLI-neutral message guards (FR-015, research §5):
       - In `tests/unit/tts_report_test.go` add `TestReportError_HubAddress_ExactStderr`:
         `ReportError` with `&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress,
         BaseURL: u}` writes exactly `error: <u> is not serving the Multiroom Audio Hub API:
@@ -166,32 +166,32 @@ stdlib-only, and self-documented (contracts/public-packages.md).
 
 ### Implementation
 
-- [ ] T016 [US1] `git mv internal/hub hub`; rewrite all imports of
+- [X] T016 [US1] `git mv internal/hub hub`; rewrite all imports of
       `"github.com/Sonora-Multiroom/sonora-cli/internal/hub"` to
       `"github.com/Sonora-Multiroom/sonora-cli/hub"` (77 files incl. `tests/contract`,
       `tests/integration`, `tests/unit`, `internal/cli/**`, plus the T013 stub = 78 files);
       `go build ./... && go vet ./... && go test ./...` — every test compiles; the only
       failing tests allowed are T013's `TestExitcode*`, T014's `TestHubGodoc*`, T015's two
       hub message tests, and T039's test if US3 is in progress (red by design)
-- [ ] T017 [US1] Commit the move on its own: `refactor: move internal/hub to public hub
+- [X] T017 [US1] Commit the move on its own: `refactor: move internal/hub to public hub
       package` (no content edits besides import lines, so `git log --follow hub/` shows
       history)
-- [ ] T018 [US1] Replace the T013 stub in `internal/cli/exitcode/exitcode.go`: package doc ("maps hub error
+- [X] T018 [US1] Replace the T013 stub in `internal/cli/exitcode/exitcode.go`: package doc ("maps hub error
       classes to the process exit codes of the `sonora` command"); `const Usage = 2`; `func For(c
       hub.ErrorClass) int` with the switch from `hub/errors.go` `ExitCode()` minus the
       `ClassUsage` case; T013 turns green; keep the explanatory comment about retired code 7 (internal code
       may cite spec artifacts)
-- [ ] T019 [US1] In `internal/cli/**`, replace every `hub.ClassUsage.ExitCode()` with
+- [X] T019 [US1] In `internal/cli/**`, replace every `hub.ClassUsage.ExitCode()` with
       `exitcode.Usage` and add the `exitcode` import (sed across the 128 calls, then
       `goimports`-style fix by hand or `gofmt`); also replace any other `hub.ClassUsage`
       use (e.g. passed to a helper that later calls `.ExitCode()`) with the equivalent
       `exitcode.Usage` flow — `git grep -n 'ClassUsage' internal/` must be empty afterward
-- [ ] T020 [US1] In `internal/cli/**`, replace every remaining `<expr>.ExitCode()` on a
+- [X] T020 [US1] In `internal/cli/**`, replace every remaining `<expr>.ExitCode()` on a
       `hub.ErrorClass` value with `exitcode.For(<expr>)` (e.g. `class.ExitCode()` →
       `exitcode.For(class)`, `hub.ClassNotFound.ExitCode()` → `exitcode.For(hub.ClassNotFound)`);
       `git grep -n '\.ExitCode()' internal/` must be empty afterward (30 files, 157 calls in
       total across T019 and this task)
-- [ ] T021 [US1] In `tests/unit/hub_client_test.go`, delete `TestErrorClass_ExitCodes`,
+- [X] T021 [US1] In `tests/unit/hub_client_test.go`, delete `TestErrorClass_ExitCodes`,
       `TestErrorClass_NewExitCodes`, `TestErrorClass_AllExitCodesDistinct`,
       `TestErrorClass_RouteExitCodes` (and any other test calling `.ExitCode()` on a class —
       15 call sites today; now covered by T013), and in `TestClassifyError_NotFound` drop
@@ -199,14 +199,14 @@ stdlib-only, and self-documented (contracts/public-packages.md).
       other file under `tests/` with the matching `exitcode.Usage` assertion. Do NOT touch
       `exec.ExitError.ExitCode()` calls in `tests/integration/outputs_list_test.go` and
       `tests/integration/tts_test.go`
-- [ ] T022 [US1] In `hub/errors.go`, delete the `ExitCode()` method and the `ClassUsage`
+- [X] T022 [US1] In `hub/errors.go`, delete the `ExitCode()` method and the `ClassUsage`
       constant (research §4); run `go build ./... && go vet ./... && go test ./...` — all
       green except T014 (godoc), which stays red until T029, and T015's hub message tests,
       which stay red until T024
-- [ ] T023 [US1] Commit: `refactor!: move exit-code mapping out of hub into internal/cli/exitcode`
+- [X] T023 [US1] Commit: `refactor!: move exit-code mapping out of hub into internal/cli/exitcode`
       (body: `hub.ClassUsage` and `ErrorClass.ExitCode()` removed; later `ErrorClass`
       integer values shift; no exit code changes)
-- [ ] T024 [US1] Make hub TTS messages CLI-neutral (FR-015, research §5):
+- [X] T024 [US1] Make hub TTS messages CLI-neutral (FR-015, research §5):
       - In `hub/tts.go` `TTSUnavailableError.Error()`, end the `DiagnosisHubAddress`
         message after "…is not installed or not loaded", and change `DiagnosisVersionMismatch`
         to "…does not match this client version".
@@ -220,32 +220,32 @@ stdlib-only, and self-documented (contracts/public-packages.md).
 
       T015 goes green. `tests/unit/tts_report_test.go` and `tests/unit/cli_tts_voices_test.go`
       pass without edits. `go test ./...` is green except T014.
-- [ ] T025 [US1] Commit: `refactor: keep CLI hints out of hub TTS error messages` (body:
+- [X] T025 [US1] Commit: `refactor: keep CLI hints out of hub TTS error messages` (body:
       `hub` messages are CLI-neutral; `internal/cli/tts` adds the hints back, so CLI
       output is unchanged)
-- [ ] T026 [P] [US1] Create `hub/doc.go` with the package comment: what the package is
+- [X] T026 [P] [US1] Create `hub/doc.go` with the package comment: what the package is
       (Multiroom Audio Hub API client for `api/openapi.json`), the call shape
       (`NewClient()` or `NewClientWithTimeout`, then `Op(ctx, client, baseURL, …)`), one
       HTTP request per call with no retries, typed errors and `ClassifyError` for a
       class plus one-line user-facing message, standard library only. Touch only
       `hub/doc.go`; T029 removes the old package comment from `hub/client.go`
-- [ ] T027 [P] [US1] Rewrite godoc in `hub/tts.go` (20 flagged lines): replace citations
+- [X] T027 [P] [US1] Rewrite godoc in `hub/tts.go` (20 flagged lines): replace citations
       of `research.md`, `data-model.md`, `FR-…`, `§…`, `009-tts-commands`, constitution
       principles with a direct statement of the behavior; keep `#/components/schemas/...`
       and `api/openapi.json` references
-- [ ] T028 [P] [US1] Same godoc rewrite in `hub/routes.go` (9), `hub/play.go` (4),
+- [X] T028 [P] [US1] Same godoc rewrite in `hub/routes.go` (9), `hub/play.go` (4),
       `hub/extensions.go` (4)
-- [ ] T029 [P] [US1] Same godoc rewrite in `hub/errors.go` (8), `hub/client.go` (4),
+- [X] T029 [P] [US1] Same godoc rewrite in `hub/errors.go` (8), `hub/client.go` (4),
       `hub/groups.go` (3), `hub/inputs.go` (2), `hub/outputs.go` (2), `hub/mastermute.go`
       (1); remove the one-line package comment from `hub/client.go` (T026's `hub/doc.go`
       replaces it); add doc comments to any exported identifier T014 reports as undocumented
       (e.g. the `Class*` const group, `DiagnosisUnknown` group; `Error`/`Unwrap`/`String`
       methods are exempt); then `go test ./tests/unit -run HubGodoc` green and `go test ./...` green
-- [ ] T030 [US1] Review `go doc -all ./hub` end to end: it must read as a self-contained
+- [X] T030 [US1] Review `go doc -all ./hub` end to end: it must read as a self-contained
       client API (quickstart §4); fix wording that assumes CLI context (e.g. "command",
       "--verbose", "exit") in exported docs
-- [ ] T031 [US1] Commit: `refactor: make hub godoc self-contained for external consumers`
-- [ ] T032 [US1] External-consumer check, pre-release (quickstart §5): in the session
+- [X] T031 [US1] Commit: `refactor: make hub godoc self-contained for external consumers`
+- [X] T032 [US1] External-consumer check, pre-release (quickstart §5): in the session
       scratchpad create module `example.com/hubconsumer` with `go.work` pointing at it and
       this repo; `main.go` uses `httptest.Server` to serve `GET /api/v2/outputs` and
       `PUT /api/v2/master-mute` (check paths in `hub/outputs.go`, `hub/mastermute.go`),
@@ -266,7 +266,7 @@ stdlib-only, and self-documented (contracts/public-packages.md).
 
 (Guard tests T003/T004 and T013 already cover version injection and the exit-code table.)
 
-- [ ] T033 [US2] Create `tests/unit/stray_refs_test.go` (`TestStrayRefs`, research §9).
+- [X] T033 [US2] Create `tests/unit/stray_refs_test.go` (`TestStrayRefs`, research §9).
       Walk `../..`, skipping a hard-coded list of directories: `.git`, `specs`,
       `docs/reviews`, `.specify`, `.idea`, `.claude`, `trash`. Scan every `.go` file, plus
       `Makefile`, `release.sh`, `.goreleaser.yaml`, `scripts/*`, `.github/workflows/*`, `README.md`,
@@ -275,27 +275,37 @@ stdlib-only, and self-documented (contracts/public-packages.md).
       `"internal/" + "hub"`) so the test does not match itself.
       Red: expected hits are non-import comments such as
       `internal/cli/groups/volume.go:24`, which names `internal/hub/errors.go`.
-- [ ] T034 [US2] Fix every hit T033 reports (code, tests, scripts, README, CONTRIBUTING)
+- [X] T034 [US2] Fix every hit T033 reports (code, tests, scripts, README, CONTRIBUTING)
       until `go test ./tests/unit -run StrayRefs` is green. Cross-check with the
       quickstart §2 greps (`git grep -n '"sonora-cli/' -- ':!specs' ':!docs/reviews'`,
       `git grep -n 'internal/hub' -- ':!specs' ':!docs/reviews' ':!.specify'`,
       `git grep -n 'X sonora-cli/' -- ':!specs'`) — all empty. Commit T033 and T034
       together: `refactor: drop leftover internal/hub references and guard against them`
-- [ ] T035 [US2] Quickstart §3: `sh build.sh && ./sonora.exe --version` prints
+- [X] T035 [US2] Quickstart §3: `sh build.sh && ./sonora.exe --version` prints
       `git describe --tags --always --dirty` output, not `dev`
-- [ ] T036 [US2] Linux check: `go test ./...` on Linux — push the branch and confirm the
+- [X] T036 [US2] Linux check: `go test ./...` on Linux — push the branch and confirm the
       `test.yml` workflow is green, or run `docker run --rm -v "$PWD":/app -w /app
       golang:1.27-alpine go test ./...` locally
-- [ ] T037 [US2] GoReleaser config check: if `goreleaser` is available run
+- [X] T037 [US2] GoReleaser config check: if `goreleaser` is available run
       `goreleaser build --snapshot --clean --single-target` and confirm the built binary's
       `--version` is not `dev`; otherwise rely on T003 and note it here
-- [ ] T038 [US2] Behavior spot check (quickstart §7) against a reachable hub if one is
+      **Note**: `goreleaser` is not installed on this dev machine (`command not found`).
+      Relying on T003's guard test (`TestBuildConfigsInjectVersionForModulePath`), which
+      asserts `.goreleaser.yaml`'s one `-X .../internal/version.Version=` occurrence targets
+      the current module path — the same mechanism GoReleaser's `ldflags` templating uses.
+- [X] T038 [US2] Behavior spot check (quickstart §7) against a reachable hub if one is
       available: compare `sonora-before.exe` (T002) and the new `sonora.exe` for
       `--help`, `--version` (only the version string may differ), `get outputs`, `get outputs --json`, `get routes`, `get outputs/no-such-id`,
       `set outputs/no-such-id volume 10`, and a usage error (`sonora get`) — identical
       stdout/stderr and exit codes. If no hub is reachable, run the usage-error and
       unreachable-hub cases (`--hub-url` / config pointing at a closed port) only and record
       that here
+      **Note**: no hub reachable in this dev environment (no `MULTIROOM_URL`, no config
+      file). Ran `--help`, `--version`, the usage error (`sonora get`), and the
+      unreachable-hub case (`sonora get outputs --hub-url http://127.0.0.1:1`) against
+      `sonora-before.exe` and the new `sonora.exe`: stdout/stderr byte-identical and exit
+      codes identical (2 and 4 respectively) in every case; `--version` differed only in the
+      version string itself, as expected.
 
 **Checkpoint**: no observable CLI change on Windows and Linux.
 
@@ -308,20 +318,20 @@ with no second copy (research §7).
 
 **Independent Test**: T039 green; quickstart §5 consumer prints `len(api.Spec) > 0`.
 
-- [ ] T039 [P] [US3] Create a compile-only stub `api/spec.go` (`package api`;
+- [X] T039 [P] [US3] Create a compile-only stub `api/spec.go` (`package api`;
       `var Spec []byte`, no embed yet), then `tests/unit/api_spec_test.go`: `api.Spec` is
       byte-identical to `os.ReadFile("../../api/openapi.json")`, non-empty, and
       `json.Unmarshal` into `map[string]any` yields a string `openapi` field. Red: compiles,
       fails on the empty `Spec`
-- [ ] T040 [US3] Complete `api/spec.go`: package doc, `import _ "embed"`,
+- [X] T040 [US3] Complete `api/spec.go`: package doc, `import _ "embed"`,
       `//go:embed openapi.json` above `var Spec []byte`, godoc stating it is the exact
       Multiroom Audio Hub API spec the `hub` package at the same module version is
       tested against and that callers must not modify it; T039 green
-- [ ] T041 [US3] Confirm the CLI binary does not link `api`:
+- [X] T041 [US3] Confirm the CLI binary does not link `api`:
       `go list -deps ./cmd/sonora | grep -x 'github.com/Sonora-Multiroom/sonora-cli/api'`
       prints nothing
-- [ ] T042 [US3] Extend the T032 scratch consumer to print `len(api.Spec) > 0` (true)
-- [ ] T043 [US3] Commit: `feat: publish hub OpenAPI spec as api.Spec`
+- [X] T042 [US3] Extend the T032 scratch consumer to print `len(api.Spec) > 0` (true)
+- [X] T043 [US3] Commit: `feat: publish hub OpenAPI spec as api.Spec`
 
 **Checkpoint**: consumers can import the spec at the client's version.
 
@@ -333,7 +343,7 @@ with no second copy (research §7).
 
 **Independent Test**: quickstart §5 (post-tag, `GOWORK=off`) and §6.
 
-- [ ] T044 [US4] Write release notes in `specs/010-public-hub-package/release-notes.md`
+- [X] T044 [US4] Write release notes in `specs/010-public-hub-package/release-notes.md`
       for `v0.1.0`: module path is now `github.com/Sonora-Multiroom/sonora-cli`; new public
       packages `hub` and `api` (link contracts/public-packages.md); not in the public API:
       `ErrorClass.ExitCode()`, `ClassUsage`; `TTSUnavailableError` messages are
@@ -363,9 +373,9 @@ with no second copy (research §7).
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T048 [P] Add a short "Using the hub client from Go" section to `README.md`
+- [X] T048 [P] Add a short "Using the hub client from Go" section to `README.md`
       (`go get …@v0.1.0`, import `…/hub`, 5-line example, link to `go doc`); commit `docs:`
-- [ ] T049 Final gate: `gofmt -l .` (no output), `go vet ./...`, `go test ./...` green;
+- [X] T049 Final gate: `gofmt -l .` (no output), `go vet ./...`, `go test ./...` green;
       mark all tasks above `[X]`
 - [ ] T050 [P] Tick the Phase 2 checklist items in
       `D:\projects-sonora\sonora-mcp\docs\future\go-rewrite-shared-hub-client.md`
