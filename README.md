@@ -51,7 +51,7 @@ table, common flags, and examples from the terminal.
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
-| `speak <text|-> <resource>/<id>` | `outputs`, `groups` (hub TTS extension) | `out`, `gr` |
+| `speak <text\|-> <resource>/<id>` | `outputs`, `groups` (hub TTS extension) | `out`, `gr` |
 | `get tts-cache` | TTS audio-cache statistics (hub TTS extension) | — |
 | `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
 | `list tts-voices --provider <name>` | a TTS provider's voices (hub TTS extension) | — |
