@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 func writeOutputIDs(b *bytes.Buffer, indent string, outputIDs []string) {

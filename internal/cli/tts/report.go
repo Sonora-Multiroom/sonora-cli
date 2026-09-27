@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // ReportError is the shared failure path for speak/get tts-cache/clear

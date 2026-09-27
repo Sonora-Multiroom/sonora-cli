@@ -3,14 +3,16 @@ package unit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // Note: hub.NewClient's construction being deferred to command-handler time
@@ -424,7 +426,7 @@ func TestClassifyError_TTSUnavailableError_ByDiagnosis(t *testing.T) {
 			"version mismatch",
 			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisVersionMismatch},
 			hub.ClassTTSUnavailable,
-			head + ": the hub's TTS API does not match this CLI version",
+			head + ": the hub's TTS API does not match this client version",
 		},
 		{
 			"unknown",
@@ -436,7 +438,7 @@ func TestClassifyError_TTSUnavailableError_ByDiagnosis(t *testing.T) {
 			"hub address",
 			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: "http://example.invalid"},
 			hub.ClassNetwork,
-			"http://example.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file",
+			"http://example.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded",
 		},
 	}
 	for _, c := range cases {
@@ -485,6 +487,60 @@ func TestNewClientWithTimeout_EnforcesGivenTimeout(t *testing.T) {
 	}
 	if elapsed > 250*time.Millisecond {
 		t.Errorf("client did not abort at timeout: took %v", elapsed)
+	}
+}
+
+// cliHintPattern flags a hub.ClassifyError message that leaks a CLI-specific
+// hint — a flag name, an environment variable, "config file", "exit code", or
+// the word "CLI" — into what is meant to be a protocol-only, CLI-agnostic
+// message (constitution Principle VII). The CLI adds its own hints back on
+// top in internal/cli/tts.ReportError.
+var cliHintPattern = regexp.MustCompile(`--|MULTIROOM_URL|config file|exit code|\bCLI\b`)
+
+// TestClassifyError_MessagesAreCLIAgnostic guards FR-015: hub.ClassifyError's
+// messages must read sensibly to any consumer, not just this CLI, so none of
+// them may mention a flag, an environment variable, "config file", "exit
+// code", or "CLI" itself.
+func TestClassifyError_MessagesAreCLIAgnostic(t *testing.T) {
+	errs := map[string]error{}
+	for _, status := range []int{400, 404, 422, 500, 502, 503} {
+		errs[fmt.Sprintf("StatusError %d", status)] = &hub.StatusError{StatusCode: status}
+	}
+	errs["APIError"] = &hub.APIError{StatusCode: 500, Title: "Error", Detail: "detail"}
+	errs["DecodeError"] = &hub.DecodeError{Err: errors.New("boom")}
+	errs["NotFoundError"] = &hub.NotFoundError{Resource: "output", ID: "x"}
+	for _, code := range []string{
+		"TARGET_NOT_FOUND", "INVALID_REQUEST", "PROVIDER_NOT_FOUND",
+		"PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED", "PROVIDER_ERROR",
+		"FORMAT_NORMALIZATION_FAILED",
+	} {
+		errs["TTSError "+code] = &hub.TTSError{StatusCode: 400, Code: code, Message: "boom"}
+	}
+	errs["TTSNotOfferedError"] = &hub.TTSNotOfferedError{}
+	for _, d := range []struct {
+		name string
+		d    hub.TTSDiagnosis
+	}{
+		{"Unknown", hub.DiagnosisUnknown},
+		{"NotInstalled", hub.DiagnosisNotInstalled},
+		{"Disabled", hub.DiagnosisDisabled},
+		{"Rejected", hub.DiagnosisRejected},
+		{"Inert", hub.DiagnosisInert},
+		{"VersionMismatch", hub.DiagnosisVersionMismatch},
+		{"HubAddress", hub.DiagnosisHubAddress},
+	} {
+		errs["TTSUnavailableError "+d.name] = &hub.TTSUnavailableError{Diagnosis: d.d, BaseURL: "http://example.invalid"}
+	}
+	errs["network error"] = &opErrStub{}
+	errs["context.DeadlineExceeded"] = context.DeadlineExceeded
+
+	for name, err := range errs {
+		t.Run(name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(err)
+			if cliHintPattern.MatchString(msg) {
+				t.Errorf("class %v: message %q leaks a CLI-specific hint", class, msg)
+			}
+		})
 	}
 }
 

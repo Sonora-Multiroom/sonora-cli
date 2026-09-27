@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
-	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 

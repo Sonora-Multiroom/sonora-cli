@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Sonora-Multiroom/sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
