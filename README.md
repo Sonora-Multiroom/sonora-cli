@@ -181,8 +181,10 @@ The hub base URL is resolved in order of precedence:
 
 ## Status
 
-Early development. The project follows a spec-first workflow: features are specified,
-planned, and implemented one at a time — see [`specs/`](specs/) for what's in progress.
+Actively developed and usable day to day, covering inputs, outputs, groups, routes, playback,
+and TTS. Still pre-1.0, so command output and flags may change between releases. The project
+follows a spec-first workflow: features are specified, planned, and implemented one at a time
+— see [`specs/`](specs/) for the history and what's in progress.
 
 ## Design principles
 
