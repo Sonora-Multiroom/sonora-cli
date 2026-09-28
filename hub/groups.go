@@ -155,14 +155,22 @@ func SetGroupEnabled(ctx context.Context, client *http.Client, baseURL, groupID 
 	return &group, nil
 }
 
+// GroupMute mirrors #/components/schemas/GroupMuteResponse in
+// api/openapi.json field-for-field.
+type GroupMute struct {
+	GroupID   string `json:"groupId"`
+	Muted     bool   `json:"muted"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 // SetGroupMuted calls PUT {baseURL}/api/v2/groups/{groupId}/mute
 // (operationId "setGroupMuted") with {"muted": muted}. On success (200), the
-// decoded, updated Group is returned (malformed body → *DecodeError). A 404
+// decoded GroupMute confirmation is returned (malformed body → *DecodeError). A 404
 // is returned as a *NotFoundError naming the group. A 400 attempts to decode
 // the body as an errorResponse into an *APIError, falling back to a
 // *StatusError if that decode fails (mirroring SetGroupEnabled's 400
 // handling); any other non-2xx status is a *StatusError.
-func SetGroupMuted(ctx context.Context, client *http.Client, baseURL, groupID string, muted bool) (*Group, error) {
+func SetGroupMuted(ctx context.Context, client *http.Client, baseURL, groupID string, muted bool) (*GroupMute, error) {
 	body, err := json.Marshal(struct {
 		Muted bool `json:"muted"`
 	}{Muted: muted})
@@ -197,14 +205,14 @@ func SetGroupMuted(ctx context.Context, client *http.Client, baseURL, groupID st
 		return nil, &StatusError{StatusCode: resp.StatusCode}
 	}
 
-	var group Group
-	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
+	var m GroupMute
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
 		return nil, &DecodeError{Err: err}
 	}
-	if group.GroupID == "" || group.DisplayName == "" {
-		return nil, &DecodeError{Err: fmt.Errorf("group missing required groupId/displayName")}
+	if m.GroupID == "" {
+		return nil, &DecodeError{Err: fmt.Errorf("group mute response missing required groupId")}
 	}
-	return &group, nil
+	return &m, nil
 }
 
 // GroupVolume mirrors #/components/schemas/GroupVolumeResponse in

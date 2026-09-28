@@ -25,10 +25,10 @@ func RunUnmute(args []string, stdout, stderr io.Writer) int {
 
 // runSetMuted implements the shared body of RunMute/RunUnmute: it defines
 // and parses this command's flags, resolves the hub URL, sets the named
-// group's muted state via the hub, and renders the updated group to stdout.
-// Any failure is reported on stderr, never stdout, so scripts piping stdout
-// never see error text. It returns the process exit code per the exit code
-// classes in data-model.md's exit code table.
+// group's muted state via the hub, and renders the hub's mute confirmation
+// to stdout. Any failure is reported on stderr, never stdout, so scripts
+// piping stdout never see error text. It returns the process exit code per
+// the exit code classes in data-model.md's exit code table.
 func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Writer) int {
 	usage := fmt.Sprintf("usage: sonora %s groups/<group-id> [flags]", verb)
 
@@ -95,9 +95,9 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 	}
 
 	if *jsonOut {
-		fmt.Fprint(stdout, render.RenderGroupJSON(*group))
+		fmt.Fprint(stdout, render.RenderGroupMuteJSON(*group))
 	} else {
-		fmt.Fprint(stdout, render.RenderGroupYAML(*group))
+		fmt.Fprint(stdout, render.RenderGroupMuteYAML(*group))
 	}
 	return 0
 }

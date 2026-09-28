@@ -25,7 +25,7 @@ func RunUnmute(args []string, stdout, stderr io.Writer) int {
 
 // runSetMuted implements the shared body of RunMute/RunUnmute: it defines
 // and parses this command's flags, resolves the hub URL, sets the named
-// output's muted state via the hub, and renders the updated output to
+// output's muted state via the hub, and renders the hub's mute confirmation to
 // stdout. Any failure is reported on stderr, never stdout, so scripts piping
 // stdout never see error text. It returns the process exit code per the exit
 // code classes in data-model.md's exit code table.
@@ -95,9 +95,9 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 	}
 
 	if *jsonOut {
-		fmt.Fprint(stdout, render.RenderOutputJSON(*output))
+		fmt.Fprint(stdout, render.RenderOutputMuteJSON(*output))
 	} else {
-		fmt.Fprint(stdout, render.RenderOutputYAML(*output))
+		fmt.Fprint(stdout, render.RenderOutputMuteYAML(*output))
 	}
 	return 0
 }

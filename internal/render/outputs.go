@@ -100,3 +100,25 @@ func RenderJSON(outputs []hub.Output) string {
 	}
 	return string(data) + "\n"
 }
+
+// RenderOutputMuteYAML renders a single output-mute confirmation as a bare
+// YAML record, used by `mute outputs/<id>` and `unmute outputs/<id>`.
+func RenderOutputMuteYAML(m hub.OutputMute) string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "outputId: %q\n", m.OutputID)
+	fmt.Fprintf(&b, "muted: %t\n", m.Muted)
+	fmt.Fprintf(&b, "updatedAt: %q\n", m.UpdatedAt)
+	return b.String()
+}
+
+// RenderOutputMuteJSON renders a single output-mute confirmation as a strict
+// JSON object, used by `mute outputs/<id> --json` and `unmute outputs/<id> --json`.
+func RenderOutputMuteJSON(m hub.OutputMute) string {
+	data, err := json.Marshal(m)
+	if err != nil {
+		// hub.OutputMute's fields are all plain scalars — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}

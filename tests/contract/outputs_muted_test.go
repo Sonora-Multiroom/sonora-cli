@@ -12,7 +12,7 @@ import (
 )
 
 // Response/request shapes here mirror #/components/schemas/MutedRequest,
-// #/components/schemas/OutputResponse, and the setOutputMuted operation in
+// #/components/schemas/OutputMuteResponse, and the setOutputMuted operation in
 // api/openapi.json (constitution Principle II).
 
 func TestSetOutputMuted_Mute_RequestAndDecodeContract(t *testing.T) {
@@ -23,8 +23,7 @@ func TestSetOutputMuted_Mute_RequestAndDecodeContract(t *testing.T) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"outputId": "office-speaker", "displayName": "Office Speaker",
-			"volume": 40, "muted": true, "available": true, "enabled": true,
+			"outputId": "office-speaker", "muted": true, "updatedAt": "2026-06-22T14:30:00Z",
 		})
 	}))
 	defer srv.Close()
@@ -44,8 +43,8 @@ func TestSetOutputMuted_Mute_RequestAndDecodeContract(t *testing.T) {
 	if gotBody["muted"] != true {
 		t.Errorf("got request body %+v, want muted=true", gotBody)
 	}
-	if output.OutputID != "office-speaker" || !output.Muted {
-		t.Errorf("unexpected decoded output: %+v", output)
+	if output.OutputID != "office-speaker" || !output.Muted || output.UpdatedAt != "2026-06-22T14:30:00Z" {
+		t.Errorf("unexpected decoded mute confirmation: %+v", output)
 	}
 }
 
@@ -55,8 +54,7 @@ func TestSetOutputMuted_Unmute_RequestBody(t *testing.T) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"outputId": "office-speaker", "displayName": "Office Speaker",
-			"volume": 40, "muted": false, "available": true, "enabled": true,
+			"outputId": "office-speaker", "muted": false, "updatedAt": "2026-06-22T14:30:00Z",
 		})
 	}))
 	defer srv.Close()
@@ -138,7 +136,7 @@ func TestSetOutputMuted_HubErrorStatus(t *testing.T) {
 func TestSetOutputMuted_MalformedBodyRejected(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"displayName":"Office Speaker","volume":40,"muted":true,"available":true,"enabled":true}`))
+		_, _ = w.Write([]byte(`{"muted":true,"updatedAt":"2026-06-22T14:30:00Z"}`))
 	}))
 	defer srv.Close()
 

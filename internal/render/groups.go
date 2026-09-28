@@ -118,3 +118,25 @@ func RenderGroupVolumeJSON(gv hub.GroupVolume) string {
 	}
 	return string(data) + "\n"
 }
+
+// RenderGroupMuteYAML renders a single group-mute confirmation as a bare
+// YAML record, used by `mute groups/<id>` and `unmute groups/<id>`.
+func RenderGroupMuteYAML(m hub.GroupMute) string {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "groupId: %q\n", m.GroupID)
+	fmt.Fprintf(&b, "muted: %t\n", m.Muted)
+	fmt.Fprintf(&b, "updatedAt: %q\n", m.UpdatedAt)
+	return b.String()
+}
+
+// RenderGroupMuteJSON renders a single group-mute confirmation as a strict
+// JSON object, used by `mute groups/<id> --json` and `unmute groups/<id> --json`.
+func RenderGroupMuteJSON(m hub.GroupMute) string {
+	data, err := json.Marshal(m)
+	if err != nil {
+		// hub.GroupMute's fields are all plain scalars — Marshal cannot
+		// fail for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
