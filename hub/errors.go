@@ -2,9 +2,12 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"strings"
 )
 
 // ErrorClass classifies a failure returned by a hub API call into a coarse
@@ -169,4 +172,21 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	}
 
 	return ClassNetwork, "could not reach the hub"
+}
+
+// notFoundFromBody returns the *NotFoundError for a 404 from an operation
+// whose 404 can mean more than one missing resource (createRoute: input or
+// target; transferRoute: route or target). The hub's problem detail names
+// the missing one as "<Resource> not found: <id>" (e.g. "Output not found:
+// kitchen"); fallback is returned when the body has no such detail.
+func notFoundFromBody(body io.Reader, fallback NotFoundError) *NotFoundError {
+	var errBody errorResponse
+	if err := json.NewDecoder(body).Decode(&errBody); err != nil {
+		return &fallback
+	}
+	resource, id, ok := strings.Cut(errBody.Detail, " not found: ")
+	if !ok || resource == "" || id == "" || strings.ContainsAny(resource, " ,") {
+		return &fallback
+	}
+	return &NotFoundError{Resource: strings.ToLower(resource), ID: id}
 }

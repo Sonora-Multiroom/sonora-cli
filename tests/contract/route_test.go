@@ -652,3 +652,85 @@ func TestSetPauseState_MalformedSuccessBody(t *testing.T) {
 		t.Fatalf("expected a *hub.DecodeError, got %T: %v", err, err)
 	}
 }
+
+// notFoundProblem is the hub's 404 problem body, as returned by the live hub:
+// its detail names the resource that is actually missing.
+func notFoundProblem(detail string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"type": "urn:multiroom:error:not-found", "title": "Resource Not Found",
+			"detail": detail, "status": 404,
+		})
+	}
+}
+
+func TestCreateRoute_404_NamesTheMissingResource(t *testing.T) {
+	tests := []struct {
+		detail, resource, id string
+	}{
+		{"Input not found: no-such-input", "input", "no-such-input"},
+		{"Output not found: no-such-output", "output", "no-such-output"},
+		{"Group not found: no-such-group", "group", "no-such-group"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.resource, func(t *testing.T) {
+			srv := httptest.NewServer(notFoundProblem(tt.detail))
+			defer srv.Close()
+
+			req := hub.CreateRouteRequest{InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT"}
+			_, err := hub.CreateRoute(context.Background(), hub.NewClient(), srv.URL, req)
+			var notFoundErr *hub.NotFoundError
+			if !errors.As(err, &notFoundErr) {
+				t.Fatalf("expected a *hub.NotFoundError, got %T: %v", err, err)
+			}
+			if notFoundErr.Resource != tt.resource || notFoundErr.ID != tt.id {
+				t.Errorf("NotFoundError = %+v, want resource %q id %q", notFoundErr, tt.resource, tt.id)
+			}
+			if class, _ := hub.ClassifyError(err); class != hub.ClassNotFound {
+				t.Errorf("ClassifyError class = %v, want ClassNotFound", class)
+			}
+		})
+	}
+}
+
+func TestTransferRoute_404_NamesTheMissingResource(t *testing.T) {
+	tests := []struct {
+		detail, resource, id string
+	}{
+		{"Route not found: missing-route", "route", "missing-route"},
+		{"Output not found: no-such-output", "output", "no-such-output"},
+		{"Group not found: no-such-group", "group", "no-such-group"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.resource, func(t *testing.T) {
+			srv := httptest.NewServer(notFoundProblem(tt.detail))
+			defer srv.Close()
+
+			req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+			_, err := hub.TransferRoute(context.Background(), hub.NewClient(), srv.URL, "route_abc123", req)
+			var notFoundErr *hub.NotFoundError
+			if !errors.As(err, &notFoundErr) {
+				t.Fatalf("expected a *hub.NotFoundError, got %T: %v", err, err)
+			}
+			if notFoundErr.Resource != tt.resource || notFoundErr.ID != tt.id {
+				t.Errorf("NotFoundError = %+v, want resource %q id %q", notFoundErr, tt.resource, tt.id)
+			}
+		})
+	}
+}
+
+func TestTransferRoute_404_EmptyBodyFallsBackToRoute(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	req := hub.TransferRequest{TargetID: "bedroom-speaker", TargetType: "SINGLE_OUTPUT"}
+	_, err := hub.TransferRoute(context.Background(), hub.NewClient(), srv.URL, "missing-route", req)
+	var notFoundErr *hub.NotFoundError
+	if !errors.As(err, &notFoundErr) || notFoundErr.Resource != "route" || notFoundErr.ID != "missing-route" {
+		t.Fatalf("expected route NotFoundError, got %T: %v", err, err)
+	}
+}

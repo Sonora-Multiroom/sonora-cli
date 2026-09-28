@@ -227,9 +227,9 @@ func DeleteRoute(ctx context.Context, client *http.Client, baseURL, routeID stri
 // connecting an existing input to an existing output/group. On 201, the
 // decoded Route is returned, validated via the existing validateRoute
 // helper (malformed body → *DecodeError). A 404 is returned as a
-// *NotFoundError naming the target — a backstop for the rare race where a
-// resource vanishes between a caller's own pre-checks and this call,
-// mirroring Playback's own 404 handling. A 400/422 attempts to decode the
+// *NotFoundError naming the missing input or target, as the hub's problem
+// detail reports it ("Input not found: <id>", "Output not found: <id>",
+// "Group not found: <id>"); without such a detail it names the target. A 400/422 attempts to decode the
 // body as an errorResponse into an *APIError, falling back to a
 // *StatusError if that decode fails; any other non-2xx status is a
 // *StatusError.
@@ -252,7 +252,7 @@ func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req C
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, &NotFoundError{Resource: "target", ID: req.TargetID}
+		return nil, notFoundFromBody(resp.Body, NotFoundError{Resource: "target", ID: req.TargetID})
 	}
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
@@ -359,7 +359,8 @@ func StopAllRoutes(ctx context.Context, client *http.Client, baseURL string) (*B
 // playback to a new target. The hub replaces the old route with a new one,
 // so on success (200) the decoded and validated *new* Route is returned,
 // mirroring CreateRoute's success handling. A 404 is returned as a
-// *NotFoundError naming the route. A 400/422 attempts to decode the body as
+// *NotFoundError naming the missing route or target, as the hub's problem
+// detail reports it; without such a detail it names the route. A 400/422 attempts to decode the body as
 // an errorResponse into an *APIError, falling back to a *StatusError if
 // that decode fails (mirroring CreateRoute's 400/422 handling); any other
 // non-2xx status is a *StatusError.
@@ -383,7 +384,7 @@ func TransferRoute(ctx context.Context, client *http.Client, baseURL, routeID st
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, &NotFoundError{Resource: "route", ID: routeID}
+		return nil, notFoundFromBody(resp.Body, NotFoundError{Resource: "route", ID: routeID})
 	}
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
