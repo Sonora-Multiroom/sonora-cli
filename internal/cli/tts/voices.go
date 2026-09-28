@@ -7,10 +7,11 @@ import (
 	"io"
 	"strings"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const listVoicesUsage = "usage: sonora list tts-voices --provider NAME [flags]"
@@ -47,12 +48,12 @@ func RunListVoices(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if err := fs.Parse(args); err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if rest := fs.Args(); len(rest) > 0 {
 		fmt.Fprintln(stderr, listVoicesUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", rest)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	supplied := map[string]bool{}
@@ -61,7 +62,7 @@ func RunListVoices(args []string, stdout, stderr io.Writer) int {
 	if !supplied["provider"] {
 		fmt.Fprintln(stderr, listVoicesUsage)
 		fmt.Fprintln(stderr, "error: --provider is required")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	optional := func(name string, value *string) (*string, bool) {
 		if !supplied[name] {
@@ -74,21 +75,21 @@ func RunListVoices(args []string, stdout, stderr io.Writer) int {
 		return value, true
 	}
 	if _, ok := optional("provider", providerFlag); !ok {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	language, ok := optional("language", languageFlag)
 	if !ok {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	engine, ok := optional("engine", engineFlag)
 	if !ok {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()

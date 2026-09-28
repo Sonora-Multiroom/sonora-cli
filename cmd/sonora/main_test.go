@@ -2,11 +2,101 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/version"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/version"
 )
+
+// modulePath reads the module path declared in go.mod, so the version-
+// injection guards below stay correct across a module rename.
+func modulePath(t *testing.T) string {
+	t.Helper()
+
+	data, err := os.ReadFile("../../go.mod")
+	if err != nil {
+		t.Fatalf("reading go.mod: %v", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if after, ok := strings.CutPrefix(line, "module "); ok {
+			return strings.TrimSpace(after)
+		}
+	}
+	t.Fatal("go.mod has no module line")
+	return ""
+}
+
+// TestBuildConfigsInjectVersionForModulePath guards every build-config
+// -ldflags site that injects internal/version.Version: each occurrence must
+// reference the module's actual path, so a module rename cannot silently
+// leave a build config injecting the version into a nonexistent package
+// (which internal/version.Version would then report as "dev").
+func TestBuildConfigsInjectVersionForModulePath(t *testing.T) {
+	module := modulePath(t)
+	pattern := regexp.MustCompile(`-X\s+(\S+)/internal/version\.Version=`)
+
+	cases := []struct {
+		file string
+		want int
+	}{
+		{"../../Makefile", 2},
+		{"../../.goreleaser.yaml", 1},
+	}
+
+	for _, c := range cases {
+		data, err := os.ReadFile(c.file)
+		if err != nil {
+			t.Fatalf("reading %s: %v", c.file, err)
+		}
+		matches := pattern.FindAllStringSubmatch(string(data), -1)
+		if len(matches) != c.want {
+			t.Errorf("%s: found %d version-injection occurrence(s), want %d", c.file, len(matches), c.want)
+		}
+		for _, m := range matches {
+			if m[1] != module {
+				t.Errorf("%s: version-injection path %q, want %q", c.file, m[1], module)
+			}
+		}
+	}
+}
+
+// TestVersionFlagReportsInjectedVersion is a regression guard: it builds the
+// binary the same way the build configs do (-ldflags -X
+// <module>/internal/version.Version=...) and confirms --version reports
+// exactly that value rather than falling back to "dev". This passes both
+// before and after the module rename; it only catches a wrong module path in
+// the ldflags target.
+func TestVersionFlagReportsInjectedVersion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping build-and-run test in -short mode")
+	}
+
+	module := modulePath(t)
+	bin := filepath.Join(t.TempDir(), "sonora")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+
+	const wantVersion = "test-sentinel-010"
+	ldflags := "-X " + module + "/internal/version.Version=" + wantVersion
+	build := exec.Command("go", "build", "-o", bin, "-ldflags", ldflags, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v\n%s", err, out)
+	}
+
+	out, err := exec.Command(bin, "--version").Output()
+	if err != nil {
+		t.Fatalf("running built binary: %v", err)
+	}
+	if string(out) != wantVersion+"\n" {
+		t.Errorf("--version output = %q, want %q", out, wantVersion+"\n")
+	}
+}
 
 func TestRunHelp(t *testing.T) {
 	cases := [][]string{

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 // A group with no member outputs decodes to a nil OutputIDs. Every renderer

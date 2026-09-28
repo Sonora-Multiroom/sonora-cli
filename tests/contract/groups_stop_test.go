@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // Response shapes here mirror #/components/schemas/BulkStopResponse and the

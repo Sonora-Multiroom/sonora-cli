@@ -10,7 +10,7 @@ import (
 )
 
 // PlaybackRequest mirrors #/components/schemas/PlaybackRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type PlaybackRequest struct {
 	URI         string  `json:"uri"`
 	TargetID    string  `json:"targetId"`
@@ -20,8 +20,8 @@ type PlaybackRequest struct {
 }
 
 // PlaybackResponse mirrors #/components/schemas/PlaybackResponse in
-// api/openapi.json field-for-field (constitution Principle II). Route
-// decodes into the existing hub.Route struct (internal/hub/routes.go).
+// api/openapi.json field-for-field. Route decodes into the Route struct
+// defined in routes.go.
 type PlaybackResponse struct {
 	InputID string `json:"inputId"`
 	Route   Route  `json:"route"`
@@ -29,8 +29,8 @@ type PlaybackResponse struct {
 }
 
 // errorResponse mirrors #/components/schemas/ErrorResponse in
-// api/openapi.json (constitution Principle II) — only the fields Playback
-// needs to construct an *APIError.
+// api/openapi.json — only the fields Playback needs to construct an
+// *APIError.
 type errorResponse struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
@@ -39,8 +39,8 @@ type errorResponse struct {
 // Playback calls POST {baseURL}/api/v2/play (operationId "playback"),
 // creating an ephemeral input and route in one hub round trip. On 200, the
 // decoded PlaybackResponse is returned, rejected as a *DecodeError if
-// InputID, Route.RouteID, or Route.Status is empty (FR-012). A 404 is
-// returned as a *NotFoundError naming the target; a 400/422/502/503 attempts
+// InputID, Route.RouteID, or Route.Status is empty. A 404 is returned as a
+// *NotFoundError naming the target; a 400/422/502/503 attempts
 // to decode the body as an ErrorResponse into a *APIError, falling back to a
 // *StatusError if that decode fails; any other non-2xx status is a
 // *StatusError.
@@ -89,10 +89,10 @@ func Playback(ctx context.Context, client *http.Client, baseURL string, req Play
 
 // ResolveTarget verifies that a target of the given, already-known type
 // (targetType "SINGLE_OUTPUT" or "OUTPUT_GROUP") exists, by calling the
-// matching GetOutput/GetGroup. The CLI's resource-path parsing
-// (internal/cli/respath) determines targetType before this is ever called —
-// from a path like `outputs/<id>` or `groups/<id>` — so there is no
-// auto-detect/ambiguity branch: exactly one endpoint is called.
+// matching GetOutput/GetGroup. The caller is expected to already know
+// targetType — for example, from the kind of path or identifier the target
+// was addressed by — so there is no auto-detect/ambiguity branch here:
+// exactly one endpoint is called.
 func ResolveTarget(ctx context.Context, client *http.Client, baseURL, targetID, targetType string) error {
 	if targetType == "OUTPUT_GROUP" {
 		_, err := GetGroup(ctx, client, baseURL, targetID)

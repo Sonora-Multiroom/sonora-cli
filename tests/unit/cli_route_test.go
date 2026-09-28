@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/route"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/route"
 )
 
 // countingRouteHub is a fake hub that counts every request it receives, so

@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/cli/tts"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
 )
 
 // voicesHub answers every request with status and body, recording the last

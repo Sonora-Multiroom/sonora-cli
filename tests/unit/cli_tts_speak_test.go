@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/tts"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
 )
 
 // countingSpeakHub is a fake hub that counts every request and returns 404

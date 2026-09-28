@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 func writeCreatedAt(b *bytes.Buffer, indent string, createdAt *string) {

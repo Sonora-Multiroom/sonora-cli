@@ -3,14 +3,16 @@ package unit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // Note: hub.NewClient's construction being deferred to command-handler time
@@ -110,21 +112,6 @@ func TestClassifyError_DecodeMismatch(t *testing.T) {
 	}
 }
 
-func TestErrorClass_ExitCodes(t *testing.T) {
-	cases := map[hub.ErrorClass]int{
-		hub.ClassNone:     0,
-		hub.ClassUsage:    2,
-		hub.ClassHub:      3,
-		hub.ClassNetwork:  4,
-		hub.ClassNotFound: 5,
-	}
-	for class, want := range cases {
-		if got := class.ExitCode(); got != want {
-			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
-		}
-	}
-}
-
 func TestClassifyError_NotFound(t *testing.T) {
 	class, msg := hub.ClassifyError(&hub.NotFoundError{Resource: "output", ID: "x"})
 	if class != hub.ClassNotFound {
@@ -143,18 +130,6 @@ func TestClassifyError_NotFound(t *testing.T) {
 	}
 	if inputMsg != "input not found: x" {
 		t.Errorf("expected %q, got %q", "input not found: x", inputMsg)
-	}
-
-	distinct := map[hub.ErrorClass]bool{hub.ClassUsage: true, hub.ClassHub: true, hub.ClassNetwork: true}
-	if distinct[hub.ClassNotFound] {
-		t.Fatalf("test setup error: ClassNotFound must not equal ClassUsage/ClassHub/ClassNetwork")
-	}
-	codes := map[int]bool{}
-	for _, c := range []hub.ErrorClass{hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound} {
-		if codes[c.ExitCode()] {
-			t.Errorf("exit code %d reused across classes", c.ExitCode())
-		}
-		codes[c.ExitCode()] = true
 	}
 }
 
@@ -177,63 +152,6 @@ func TestClassifyError_APIError_StatusMappings(t *testing.T) {
 		if msg == "" {
 			t.Errorf("status %d: expected a non-empty friendly message", c.status)
 		}
-	}
-}
-
-func TestErrorClass_NewExitCodes(t *testing.T) {
-	cases := map[hub.ErrorClass]int{
-		hub.ClassValidation:         6,
-		hub.ClassRouteFailed:        8,
-		hub.ClassSourceUnreachable:  9,
-		hub.ClassServiceUnavailable: 10,
-	}
-	for class, want := range cases {
-		if got := class.ExitCode(); got != want {
-			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
-		}
-	}
-}
-
-func TestErrorClass_AllExitCodesDistinct(t *testing.T) {
-	all := []hub.ErrorClass{
-		hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound,
-		hub.ClassValidation, hub.ClassRouteFailed,
-		hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
-	}
-	codes := map[int]hub.ErrorClass{}
-	for _, c := range all {
-		if prev, ok := codes[c.ExitCode()]; ok {
-			t.Errorf("exit code %d reused: %v and %v", c.ExitCode(), prev, c)
-		}
-		codes[c.ExitCode()] = c
-	}
-}
-
-func TestErrorClass_RouteExitCodes(t *testing.T) {
-	cases := map[hub.ErrorClass]int{
-		hub.ClassInputNotFound:  11,
-		hub.ClassTargetNotFound: 12,
-	}
-	for class, want := range cases {
-		if got := class.ExitCode(); got != want {
-			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
-		}
-	}
-}
-
-func TestErrorClass_AllExitCodesDistinct_IncludingRoute(t *testing.T) {
-	all := []hub.ErrorClass{
-		hub.ClassUsage, hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound,
-		hub.ClassValidation, hub.ClassRouteFailed,
-		hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
-		hub.ClassInputNotFound, hub.ClassTargetNotFound,
-	}
-	codes := map[int]hub.ErrorClass{}
-	for _, c := range all {
-		if prev, ok := codes[c.ExitCode()]; ok {
-			t.Errorf("exit code %d reused: %v and %v", c.ExitCode(), prev, c)
-		}
-		codes[c.ExitCode()] = c
 	}
 }
 
@@ -262,39 +180,6 @@ func (e *opErrStub) Temporary() bool { return false }
 
 // --- 009-tts-commands: ClassTTSUnavailable, TTSError/TTSUnavailableError
 // classification, and the configurable client timeout (T002). ---
-
-func TestErrorClass_TTSUnavailableExitCode(t *testing.T) {
-	if got := hub.ClassTTSUnavailable.ExitCode(); got != 13 {
-		t.Errorf("ClassTTSUnavailable.ExitCode() = %d, want 13", got)
-	}
-}
-
-func TestErrorClass_AllExitCodesDistinct_IncludingTTS(t *testing.T) {
-	cases := map[hub.ErrorClass]int{
-		hub.ClassUsage:              2,
-		hub.ClassHub:                3,
-		hub.ClassNetwork:            4,
-		hub.ClassNotFound:           5,
-		hub.ClassValidation:         6,
-		hub.ClassRouteFailed:        8,
-		hub.ClassSourceUnreachable:  9,
-		hub.ClassServiceUnavailable: 10,
-		hub.ClassInputNotFound:      11,
-		hub.ClassTargetNotFound:     12,
-		hub.ClassTTSUnavailable:     13,
-	}
-	seen := map[int]hub.ErrorClass{}
-	for class, want := range cases {
-		got := class.ExitCode()
-		if got != want {
-			t.Errorf("class %v: got exit code %d, want %d", class, got, want)
-		}
-		if prev, ok := seen[got]; ok {
-			t.Errorf("exit code %d reused: %v and %v", got, prev, class)
-		}
-		seen[got] = class
-	}
-}
 
 func TestClassifyError_TTSError_ByCode(t *testing.T) {
 	cases := []struct {
@@ -424,7 +309,7 @@ func TestClassifyError_TTSUnavailableError_ByDiagnosis(t *testing.T) {
 			"version mismatch",
 			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisVersionMismatch},
 			hub.ClassTTSUnavailable,
-			head + ": the hub's TTS API does not match this CLI version",
+			head + ": the hub's TTS API does not match this client version",
 		},
 		{
 			"unknown",
@@ -436,7 +321,7 @@ func TestClassifyError_TTSUnavailableError_ByDiagnosis(t *testing.T) {
 			"hub address",
 			&hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: "http://example.invalid"},
 			hub.ClassNetwork,
-			"http://example.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file",
+			"http://example.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded",
 		},
 	}
 	for _, c := range cases {
@@ -485,6 +370,60 @@ func TestNewClientWithTimeout_EnforcesGivenTimeout(t *testing.T) {
 	}
 	if elapsed > 250*time.Millisecond {
 		t.Errorf("client did not abort at timeout: took %v", elapsed)
+	}
+}
+
+// cliHintPattern flags a hub.ClassifyError message that leaks a CLI-specific
+// hint — a flag name, an environment variable, "config file", "exit code", or
+// the word "CLI" — into what is meant to be a protocol-only, CLI-agnostic
+// message (constitution Principle VII). The CLI adds its own hints back on
+// top in internal/cli/tts.ReportError.
+var cliHintPattern = regexp.MustCompile(`--|MULTIROOM_URL|config file|exit code|\bCLI\b`)
+
+// TestClassifyError_MessagesAreCLIAgnostic guards FR-015: hub.ClassifyError's
+// messages must read sensibly to any consumer, not just this CLI, so none of
+// them may mention a flag, an environment variable, "config file", "exit
+// code", or "CLI" itself.
+func TestClassifyError_MessagesAreCLIAgnostic(t *testing.T) {
+	errs := map[string]error{}
+	for _, status := range []int{400, 404, 422, 500, 502, 503} {
+		errs[fmt.Sprintf("StatusError %d", status)] = &hub.StatusError{StatusCode: status}
+	}
+	errs["APIError"] = &hub.APIError{StatusCode: 500, Title: "Error", Detail: "detail"}
+	errs["DecodeError"] = &hub.DecodeError{Err: errors.New("boom")}
+	errs["NotFoundError"] = &hub.NotFoundError{Resource: "output", ID: "x"}
+	for _, code := range []string{
+		"TARGET_NOT_FOUND", "INVALID_REQUEST", "PROVIDER_NOT_FOUND",
+		"PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED", "PROVIDER_ERROR",
+		"FORMAT_NORMALIZATION_FAILED",
+	} {
+		errs["TTSError "+code] = &hub.TTSError{StatusCode: 400, Code: code, Message: "boom"}
+	}
+	errs["TTSNotOfferedError"] = &hub.TTSNotOfferedError{}
+	for _, d := range []struct {
+		name string
+		d    hub.TTSDiagnosis
+	}{
+		{"Unknown", hub.DiagnosisUnknown},
+		{"NotInstalled", hub.DiagnosisNotInstalled},
+		{"Disabled", hub.DiagnosisDisabled},
+		{"Rejected", hub.DiagnosisRejected},
+		{"Inert", hub.DiagnosisInert},
+		{"VersionMismatch", hub.DiagnosisVersionMismatch},
+		{"HubAddress", hub.DiagnosisHubAddress},
+	} {
+		errs["TTSUnavailableError "+d.name] = &hub.TTSUnavailableError{Diagnosis: d.d, BaseURL: "http://example.invalid"}
+	}
+	errs["network error"] = &opErrStub{}
+	errs["context.DeadlineExceeded"] = context.DeadlineExceeded
+
+	for name, err := range errs {
+		t.Run(name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(err)
+			if cliHintPattern.MatchString(msg) {
+				t.Errorf("class %v: message %q leaks a CLI-specific hint", class, msg)
+			}
+		})
 	}
 }
 

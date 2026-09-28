@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 // RunMute implements `sonora mute outputs/<output-id>`.
@@ -24,7 +25,7 @@ func RunUnmute(args []string, stdout, stderr io.Writer) int {
 
 // runSetMuted implements the shared body of RunMute/RunUnmute: it defines
 // and parses this command's flags, resolves the hub URL, sets the named
-// output's muted state via the hub, and renders the updated output to
+// output's muted state via the hub, and renders the hub's mute confirmation to
 // stdout. Any failure is reported on stderr, never stdout, so scripts piping
 // stdout never see error text. It returns the process exit code per the exit
 // code classes in data-model.md's exit code table.
@@ -56,7 +57,7 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 	remaining := args
 	for {
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -72,14 +73,14 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 		} else {
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[1:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	outputID := positional[0]
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -90,13 +91,13 @@ func runSetMuted(verb string, muted bool, args []string, stdout, stderr io.Write
 		if *verbose {
 			fmt.Fprintf(stderr, "detail: %v\n", err)
 		}
-		return class.ExitCode()
+		return exitcode.For(class)
 	}
 
 	if *jsonOut {
-		fmt.Fprint(stdout, render.RenderOutputJSON(*output))
+		fmt.Fprint(stdout, render.RenderOutputMuteJSON(*output))
 	} else {
-		fmt.Fprint(stdout, render.RenderOutputYAML(*output))
+		fmt.Fprint(stdout, render.RenderOutputMuteYAML(*output))
 	}
 	return 0
 }

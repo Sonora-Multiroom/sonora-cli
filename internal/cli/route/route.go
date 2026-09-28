@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"io"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/cli/respath"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const usage = "usage: sonora route inputs/<input-id> <outputs|groups>/<target-id> [flags]"
@@ -52,7 +53,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	remaining := args
 	for {
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -71,7 +72,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		default:
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[2:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	inputArg, targetArg := positional[0], positional[1]
 
@@ -79,17 +80,17 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if inputPath.Kind != respath.Inputs {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "error: input path must start with inputs/ or in/, got %q\n", inputArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if inputPath.ID == "" {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: input path must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	inputID := inputPath.ID
 
@@ -97,7 +98,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	var targetType string
 	switch targetPath.Kind {
@@ -108,19 +109,19 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	default:
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintf(stderr, "error: route target must be outputs/<id> or groups/<id>, got %q\n", targetArg)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if targetPath.ID == "" {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, "error: target path must include an id")
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	targetID := targetPath.ID
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	ctx := context.Background()
@@ -166,7 +167,7 @@ func reportNotFound(stderr io.Writer, notFoundErr *hub.NotFoundError, baseURL st
 	if verbose {
 		fmt.Fprintf(stderr, "detail: %v\n", notFoundErr)
 	}
-	return class.ExitCode()
+	return exitcode.For(class)
 }
 
 func reportError(stderr io.Writer, err error, baseURL string, verbose bool) int {
@@ -175,5 +176,5 @@ func reportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 	if verbose {
 		fmt.Fprintf(stderr, "detail: %v\n", err)
 	}
-	return class.ExitCode()
+	return exitcode.For(class)
 }

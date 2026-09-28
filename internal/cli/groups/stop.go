@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const stopUsage = "usage: sonora stop groups/<group-id> [flags]"
@@ -47,7 +48,7 @@ func RunStop(args []string, stdout, stderr io.Writer) int {
 	remaining := args
 	for {
 		if err := fs.Parse(remaining); err != nil {
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		rest := fs.Args()
 		if len(rest) == 0 {
@@ -63,14 +64,14 @@ func RunStop(args []string, stdout, stderr io.Writer) int {
 		} else {
 			fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", positional[1:])
 		}
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	groupID := positional[0]
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -81,7 +82,7 @@ func RunStop(args []string, stdout, stderr io.Writer) int {
 		if *verbose {
 			fmt.Fprintf(stderr, "detail: %v\n", err)
 		}
-		return class.ExitCode()
+		return exitcode.For(class)
 	}
 
 	if *jsonOut {

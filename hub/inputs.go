@@ -12,7 +12,7 @@ import (
 )
 
 // Input mirrors #/components/schemas/InputResponse in api/openapi.json
-// field-for-field (constitution Principle II).
+// field-for-field.
 type Input struct {
 	InputID     string  `json:"inputId"`
 	DisplayName string  `json:"displayName"`
@@ -25,13 +25,16 @@ type Input struct {
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field. Enabled and AutoRemove are optional
+// (nil omits them from the request body, letting the hub apply its
+// documented default of true for each); a non-nil pointer sends that
+// value explicitly.
 type CreateInputRequest struct {
 	InputID     string `json:"inputId"`
 	DisplayName string `json:"displayName"`
 	URI         string `json:"uri"`
-	Enabled     bool   `json:"enabled"`
-	AutoRemove  bool   `json:"autoRemove"`
+	Enabled     *bool  `json:"enabled,omitempty"`
+	AutoRemove  *bool  `json:"autoRemove,omitempty"`
 }
 
 func validateInput(i Input) error {

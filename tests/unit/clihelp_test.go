@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 )
 
 func TestSetUsage(t *testing.T) {

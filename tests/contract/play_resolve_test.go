@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // fakeResolveHub serves GET /api/v2/outputs/{id} and GET /api/v2/groups/{id},

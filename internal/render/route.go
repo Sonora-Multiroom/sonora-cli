@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // routeCreatedPayload is the flat rendered view of a route-creation result:

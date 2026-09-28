@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
 // Response/request shapes here mirror #/components/schemas/MutedRequest,
-// #/components/schemas/GroupResponse, and the setGroupMuted operation in
+// #/components/schemas/GroupMuteResponse, and the setGroupMuted operation in
 // api/openapi.json (constitution Principle II).
 
 func TestSetGroupMuted_Mute_RequestAndDecodeContract(t *testing.T) {
@@ -23,8 +23,7 @@ func TestSetGroupMuted_Mute_RequestAndDecodeContract(t *testing.T) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"groupId": "living-room", "displayName": "Living Room",
-			"outputIds": []string{"office-speaker"}, "muted": true, "enabled": true,
+			"groupId": "living-room", "muted": true, "updatedAt": "2026-06-22T14:30:00Z",
 		})
 	}))
 	defer srv.Close()
@@ -44,8 +43,8 @@ func TestSetGroupMuted_Mute_RequestAndDecodeContract(t *testing.T) {
 	if gotBody["muted"] != true {
 		t.Errorf("got request body %+v, want muted=true", gotBody)
 	}
-	if group.GroupID != "living-room" || !group.Muted {
-		t.Errorf("unexpected decoded group: %+v", group)
+	if group.GroupID != "living-room" || !group.Muted || group.UpdatedAt != "2026-06-22T14:30:00Z" {
+		t.Errorf("unexpected decoded mute confirmation: %+v", group)
 	}
 }
 
@@ -55,8 +54,7 @@ func TestSetGroupMuted_Unmute_RequestBody(t *testing.T) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"groupId": "living-room", "displayName": "Living Room",
-			"outputIds": []string{"office-speaker"}, "muted": false, "enabled": true,
+			"groupId": "living-room", "muted": false, "updatedAt": "2026-06-22T14:30:00Z",
 		})
 	}))
 	defer srv.Close()
@@ -138,7 +136,7 @@ func TestSetGroupMuted_HubErrorStatus(t *testing.T) {
 func TestSetGroupMuted_MalformedBodyRejected(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"displayName":"Living Room","outputIds":[],"muted":true,"enabled":true}`))
+		_, _ = w.Write([]byte(`{"muted":true,"updatedAt":"2026-06-22T14:30:00Z"}`))
 	}))
 	defer srv.Close()
 

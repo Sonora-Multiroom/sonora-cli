@@ -8,9 +8,9 @@ import (
 )
 
 // Extension mirrors #/components/schemas/Extension in api/openapi.json
-// field-for-field (constitution Principle II), decoding only the fields the
-// TTS "not available" diagnosis needs (research.md §5): name, version,
-// requiredApiVersion, and connectionState are not decoded.
+// field-for-field, decoding only the fields a TTS-availability diagnosis
+// needs: name, version, requiredApiVersion, and connectionState are not
+// decoded.
 type Extension struct {
 	ID              string  `json:"id"`
 	Status          string  `json:"status"`
@@ -18,18 +18,17 @@ type Extension struct {
 }
 
 // ExtensionInventory mirrors #/components/schemas/ExtensionInventory in
-// api/openapi.json field-for-field (constitution Principle II).
-// extensionsDirectory is not decoded, because nothing uses it.
+// api/openapi.json field-for-field. extensionsDirectory is not decoded,
+// because nothing uses it.
 type ExtensionInventory struct {
 	LoadingEnabled *bool       `json:"loadingEnabled"`
 	Extensions     []Extension `json:"extensions"`
 }
 
 // ListExtensions calls GET {baseURL}/api/v2/extensions (operationId
-// "listExtensions") and returns the decoded inventory. It is used
-// internally only, by the TTS "not available" diagnosis in
-// internal/cli/tts/report.go, never surfaced as its own command
-// (research.md §5). Any non-2xx status is a *StatusError, and an
+// "listExtensions") and returns the decoded inventory. Callers use it to
+// diagnose why a TTS operation returned *TTSNotOfferedError, by checking the
+// "tts" extension's status. Any non-2xx status is a *StatusError, and an
 // undecodable body is a *DecodeError. A missing extensions array decodes as
 // a nil (empty) slice, which range treats identically to an empty one.
 func ListExtensions(ctx context.Context, client *http.Client, baseURL string) (*ExtensionInventory, error) {

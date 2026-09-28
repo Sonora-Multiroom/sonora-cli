@@ -12,7 +12,7 @@ import (
 )
 
 // Output mirrors #/components/schemas/OutputResponse in api/openapi.json
-// field-for-field (constitution Principle II).
+// field-for-field.
 type Output struct {
 	OutputID    string `json:"outputId"`
 	DisplayName string `json:"displayName"`
@@ -156,14 +156,22 @@ func SetOutputEnabled(ctx context.Context, client *http.Client, baseURL, outputI
 	return &output, nil
 }
 
+// OutputMute mirrors #/components/schemas/OutputMuteResponse in
+// api/openapi.json field-for-field.
+type OutputMute struct {
+	OutputID  string `json:"outputId"`
+	Muted     bool   `json:"muted"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 // SetOutputMuted calls PUT {baseURL}/api/v2/outputs/{outputId}/mute
 // (operationId "setOutputMuted") with {"muted": muted}. On success (200),
-// the decoded, updated Output is returned (malformed body → *DecodeError). A
+// the decoded OutputMute confirmation is returned (malformed body → *DecodeError). A
 // 404 is returned as a *NotFoundError naming the output. A 400 attempts to
 // decode the body as an errorResponse into an *APIError, falling back to a
 // *StatusError if that decode fails (mirroring SetOutputEnabled's 400
 // handling); any other non-2xx status is a *StatusError.
-func SetOutputMuted(ctx context.Context, client *http.Client, baseURL, outputID string, muted bool) (*Output, error) {
+func SetOutputMuted(ctx context.Context, client *http.Client, baseURL, outputID string, muted bool) (*OutputMute, error) {
 	body, err := json.Marshal(struct {
 		Muted bool `json:"muted"`
 	}{Muted: muted})
@@ -198,18 +206,18 @@ func SetOutputMuted(ctx context.Context, client *http.Client, baseURL, outputID 
 		return nil, &StatusError{StatusCode: resp.StatusCode}
 	}
 
-	var output Output
-	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+	var m OutputMute
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
 		return nil, &DecodeError{Err: err}
 	}
-	if output.OutputID == "" || output.DisplayName == "" {
-		return nil, &DecodeError{Err: fmt.Errorf("output missing required outputId/displayName")}
+	if m.OutputID == "" {
+		return nil, &DecodeError{Err: fmt.Errorf("output mute response missing required outputId")}
 	}
-	return &output, nil
+	return &m, nil
 }
 
 // OutputVolume mirrors #/components/schemas/OutputVolumeResponse in
-// api/openapi.json field-for-field (constitution Principle II).
+// api/openapi.json field-for-field.
 type OutputVolume struct {
 	OutputID  string `json:"outputId"`
 	Volume    int    `json:"volume"`

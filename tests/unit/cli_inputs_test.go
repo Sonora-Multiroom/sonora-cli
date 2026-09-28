@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/inputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/inputs"
 )
 
 func TestInputsRunList_Help(t *testing.T) {

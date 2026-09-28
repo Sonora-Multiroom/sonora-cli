@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/cli/respath"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 )
 
 func TestParse_CanonicalNamesOnly(t *testing.T) {

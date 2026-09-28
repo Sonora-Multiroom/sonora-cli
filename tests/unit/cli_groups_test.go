@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/groups"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/groups"
 )
 
 func TestGroupsRunList_Help(t *testing.T) {

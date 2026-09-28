@@ -7,10 +7,11 @@ import (
 	"io"
 	"strings"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/config"
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 const getCacheUsage = "usage: sonora get tts-cache [flags]"
@@ -33,18 +34,18 @@ func RunGetCache(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if err := fs.Parse(args); err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if rest := fs.Args(); len(rest) > 0 {
 		fmt.Fprintln(stderr, getCacheUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", rest)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()
@@ -84,12 +85,12 @@ func RunClearCache(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if err := fs.Parse(args); err != nil {
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 	if rest := fs.Args(); len(rest) > 0 {
 		fmt.Fprintln(stderr, clearCacheUsage)
 		fmt.Fprintf(stderr, "error: unexpected argument(s): %v\n", rest)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	var providerSupplied bool
@@ -102,7 +103,7 @@ func RunClearCache(args []string, stdout, stderr io.Writer) int {
 	if providerSupplied {
 		if strings.TrimSpace(*providerFlag) == "" {
 			fmt.Fprintln(stderr, "error: --provider must not be empty")
-			return hub.ClassUsage.ExitCode()
+			return exitcode.Usage
 		}
 		provider = providerFlag
 	}
@@ -110,7 +111,7 @@ func RunClearCache(args []string, stdout, stderr io.Writer) int {
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return hub.ClassUsage.ExitCode()
+		return exitcode.Usage
 	}
 
 	client := hub.NewClient()

@@ -11,17 +11,30 @@ import (
 	"fmt"
 	"io"
 
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 )
+
+// hubAddressHint tells the user how to fix a wrong hub address; hub's own
+// message (hub.TTSUnavailableError, DiagnosisHubAddress) is CLI-neutral, so
+// this CLI-specific hint is appended here instead.
+const hubAddressHint = "; set the correct address with --hub-url, MULTIROOM_URL, or the config file"
+
+// versionMismatchMsg replaces hub's CLI-neutral DiagnosisVersionMismatch
+// message with this CLI's own wording, naming the CLI rather than a generic
+// "client".
+const versionMismatchMsg = "text-to-speech is not available on this hub: the hub's TTS API does not match this CLI version"
 
 // ReportError is the shared failure path for speak/get tts-cache/clear
 // tts-cache/list tts-voices (research.md §5). On a *hub.TTSNotOfferedError it makes exactly
 // one hub.ListExtensions call to diagnose why TTS is unavailable, building a
 // *hub.TTSUnavailableError from the result. Any error is then classified
-// with hub.ClassifyError and printed to stderr as `error: <msg> (hub URL:
-// <url>)` — or just `error: <msg>` for the hub-address diagnosis, whose
-// message already starts with the URL — with `detail: <err>` added when
-// verbose is set. It returns the process exit code.
+// with hub.ClassifyError; for the hub-address and version-mismatch
+// diagnoses, this CLI's own hint/wording is added back on top of hub's
+// CLI-neutral message (FR-015). The result is printed to stderr as `error:
+// <msg> (hub URL: <url>)` — or just `error: <msg>` for the hub-address
+// diagnosis, whose message already starts with the URL — with `detail:
+// <err>` added when verbose is set. It returns the process exit code.
 func ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int {
 	var notOffered *hub.TTSNotOfferedError
 	if errors.As(err, &notOffered) {
@@ -32,6 +45,11 @@ func ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 
 	var unavail *hub.TTSUnavailableError
 	hubAddress := errors.As(err, &unavail) && unavail.Diagnosis == hub.DiagnosisHubAddress
+	if hubAddress {
+		msg += hubAddressHint
+	} else if unavail != nil && unavail.Diagnosis == hub.DiagnosisVersionMismatch {
+		msg = versionMismatchMsg
+	}
 
 	if hubAddress {
 		fmt.Fprintf(stderr, "error: %s\n", msg)
@@ -45,7 +63,7 @@ func ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 		}
 		fmt.Fprintf(stderr, "detail: %v\n", detail)
 	}
-	return class.ExitCode()
+	return exitcode.For(class)
 }
 
 // diagnoseUnavailable runs the research.md §5 diagnosis: it calls

@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/cli/tts"
-	"sonora-cli/internal/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
 )
 
 // extensionsServer fakes GET /api/v2/extensions, returning status/body and
@@ -159,6 +159,26 @@ func TestReportError_TTSNotOffered_DiagnosisMessages(t *testing.T) {
 				t.Errorf("expected exactly 1 inventory request, got %d", got)
 			}
 		})
+	}
+}
+
+// TestReportError_HubAddress_ExactStderr is a characterization test pinning
+// the exact CLI-visible text for the hub-address diagnosis: it passes now
+// (hub.TTSUnavailableError builds the whole message itself) and must still
+// pass once the CLI hint moves to internal/cli/tts (T024), which is expected
+// to reassemble the identical text from hub's now-shorter message plus its
+// own hint.
+func TestReportError_HubAddress_ExactStderr(t *testing.T) {
+	const u = "http://example.invalid"
+	var stderr bytes.Buffer
+	code := tts.ReportError(&stderr, &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: u}, u, false)
+
+	if code != 4 {
+		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
+	}
+	want := "error: " + u + " is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded; set the correct address with --hub-url, MULTIROOM_URL, or the config file\n"
+	if stderr.String() != want {
+		t.Errorf("stderr = %q, want %q", stderr.String(), want)
 	}
 }
 

@@ -7,17 +7,17 @@ import (
 	"os"
 	"strings"
 
-	"sonora-cli/internal/cli/clihelp"
-	"sonora-cli/internal/cli/groups"
-	"sonora-cli/internal/cli/inputs"
-	"sonora-cli/internal/cli/mastermute"
-	"sonora-cli/internal/cli/outputs"
-	"sonora-cli/internal/cli/play"
-	"sonora-cli/internal/cli/respath"
-	"sonora-cli/internal/cli/route"
-	"sonora-cli/internal/cli/routes"
-	"sonora-cli/internal/cli/tts"
-	"sonora-cli/internal/version"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/groups"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/inputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/mastermute"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/play"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/route"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/version"
 )
 
 const helpText = `Usage: sonora <verb> <resource>[/<id>] [flags]

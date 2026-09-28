@@ -179,6 +179,31 @@ The hub base URL is resolved in order of precedence:
 3. `hubUrl` field in `~/.config/sonora/config.json`
 4. default (`http://localhost:8080`)
 
+## Using the hub client from Go
+
+The Multiroom Audio Hub API client that powers this CLI is a public Go package,
+importable by other Sonora Go projects:
+
+```
+go get github.com/Sonora-Multiroom/sonora-cli@v0.1.0
+```
+
+```go
+import "github.com/Sonora-Multiroom/sonora-cli/hub"
+
+client := hub.NewClient()
+outputs, err := hub.ListOutputs(ctx, client, "http://localhost:8080", false)
+if err != nil {
+    class, msg := hub.ClassifyError(err)
+    // class is a coarse ErrorClass (network, not-found, validation, ...); msg is a
+    // short, user-facing description.
+}
+```
+
+`hub` is protocol-only (request/response types, HTTP calls, error classification) and
+depends only on the standard library. Run `go doc github.com/Sonora-Multiroom/sonora-cli/hub`
+for the full client API, or see [contracts/public-packages.md](specs/010-public-hub-package/contracts/public-packages.md).
+
 ## Status
 
 Actively developed and usable day to day, covering inputs, outputs, groups, routes, playback,

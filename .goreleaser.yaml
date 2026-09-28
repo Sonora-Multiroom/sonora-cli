@@ -9,7 +9,7 @@ builds:
     main: ./cmd/sonora
     binary: sonora
     ldflags:
-      - -s -w -X sonora-cli/internal/version.Version={{.Version}}
+      - -s -w -X github.com/Sonora-Multiroom/sonora-cli/internal/version.Version={{.Version}}
     env:
       - CGO_ENABLED=0
     goos:

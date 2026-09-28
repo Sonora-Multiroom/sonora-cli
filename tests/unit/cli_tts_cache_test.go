@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"sonora-cli/internal/cli/tts"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/tts"
 )
 
 func TestRunGetCache_Help(t *testing.T) {

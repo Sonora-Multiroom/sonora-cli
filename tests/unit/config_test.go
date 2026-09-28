@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/config"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 )
 
 // setHome points both HOME (Unix) and USERPROFILE (Windows) at dir so

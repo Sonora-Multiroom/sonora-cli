@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/route"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/route"
 )
 
 func TestRouteRunPause_MissingIdentifier(t *testing.T) {

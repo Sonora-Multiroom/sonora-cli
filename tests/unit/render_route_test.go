@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 func TestRenderRouteCreatedYAML_ExposesExactlyThreeFields(t *testing.T) {

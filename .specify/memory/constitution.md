@@ -1,33 +1,25 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.1.2 → 1.1.3
+Version change: 1.1.3 → 1.2.0
 Modified principles:
-  - V. CLI UX Consistency — the illustrative command-shape example was updated from
-    `sonora <noun> <verb> [args]` to `sonora <verb> <resource>[/<id>] [args]`, and the
-    "verb first, resource second" ordering is now stated explicitly. The principle's
-    normative content is unchanged: commands MUST still follow one consistent, predictable
-    structure across the tool. Only the example naming that structure was stale — it named
-    the noun-first grammar that feature 007-refactor-cli-commands removes and that the
-    already-specified `route` command (008-route-command) never used.
-Added principles: none
+  - II. API Contract Fidelity (OpenAPI-Driven) — added a bullet naming the public `hub/`
+    package as the one place the spec becomes Go types and HTTP calls, for this CLI and all
+    other Sonora Go consumers. Existing obligations are unchanged.
+Added principles:
+  - VII. Public Hub Client Package — `hub/` is a semver-governed public contract; it holds
+    protocol concerns only (CLI concerns stay under `internal/`); stdlib-only dependencies;
+    self-contained godoc; contract tests stay here as the Principle II conformance gate;
+    published tags are immutable.
 Removed sections: none
-Other changes:
-  - Performance Standards, "No hidden I/O" bullet: the example invocation
-    `sonora route list` was corrected to `sonora get routes`. Same staleness class as the
-    Principle V example — an illustrative command in the removed grammar (and one that was
-    never valid even under it, which used `sonora routes list`). No normative change.
+Other changes: none. The new principle was appended as VII rather than inserted after II so
+  existing references to Principles III–VI in specs, plans, and code comments stay valid.
 Deferred / TODO items: none
-Rationale for PATCH bump: both edits replace illustrative examples only. No principle was
-  added, removed, or redefined, and no MUST/SHOULD obligation changed in scope or strength,
-  which is the definition of PATCH under this document's own versioning policy.
-Templates requiring follow-up: none. Downstream templates (plan/spec/tasks) read this file
-  at runtime and need no edits here.
-Follow-up for in-flight work: specs/007-refactor-cli-commands/plan.md's Constitution Check
-  row for Principle V (and research.md §6) describe this example as stale and defer the
-  amendment. That amendment is now made; those two notes may be simplified to a plain
-  "Pass" on the next edit of those files, but they are not incorrect as written.
--->
+Rationale for MINOR bump: a new principle is added and Principle II gains a bullet; nothing
+  is removed or relaxed.
+Templates requiring follow-up: none. Downstream templates read this file at runtime.
+Follow-up for in-flight work: specs/010-public-hub-package implements the `hub/` move this
+  principle governs; until it merges, `internal/hub` is the package these rules apply to.
 
 # Sonora Multiroom CLI Constitution
 
@@ -59,6 +51,9 @@ for every REST interaction the CLI performs.
   (regenerated/updated and re-tested) before merging further changes that touch them.
 - The CLI MUST NOT invent behavior not described by the spec (undocumented endpoints,
   guessed fields) without first updating or confirming the spec with the service team.
+- The public `hub/` package (Principle VII) is the one place where the spec is turned into
+  Go types and HTTP calls, for this CLI and for every other Sonora Go consumer. A hub
+  operation needed by any consumer MUST be added to `hub/` rather than called directly.
 Rationale: the hub API is under active development (currently v0.1.11); treating the spec as
 authoritative is the only way to keep a fast-moving client correct without duplicating
 service-side logic.
@@ -113,6 +108,25 @@ regressions in latency; TDD is the mechanism that keeps both the HTTP client's c
 handling (Principle II) and its failure handling (Principle IV) verifiably correct as the
 tool evolves.
 
+### VII. Public Hub Client Package
+`hub/` is a public Go package consumed by other Sonora projects (at minimum sonora-mcp).
+- Its exported API is a contract and follows the module's semver tags. While the module is
+  `v0.x`, breaking changes are allowed but MUST be called out in the release notes.
+  Published tags MUST never be moved, deleted, or re-created; fixes ship as a new tag.
+- `hub/` MUST contain only hub protocol concerns: request/response types, HTTP calls, error
+  types, and error classification. CLI concerns (exit codes, rendering, flags, config
+  discovery) MUST live under `internal/`.
+- `hub/` MUST keep its standard-library-only dependency footprint: Principle III applies to
+  its consumers too, so it MUST NOT pull third-party modules into their builds.
+- `hub/` exported identifiers MUST have godoc comments that make sense without this repo's
+  specs. References such as "research.md §6" or "Principle IV" belong in internal code or
+  commit history, not in public docs.
+- Contract tests for `hub/` stay in this repo and remain the conformance gate for
+  Principle II. Consumers test only their own mapping onto `hub/`.
+Rationale: one tested client shared by every Sonora Go project is cheaper and safer than
+several clients kept in step with each `openapi.json` change; a clean protocol-only
+boundary is what lets it be shared without leaking CLI behavior into other tools.
+
 ## Performance Standards
 
 - **Startup budget**: cold start to first HTTP request dispatched MUST target well under
@@ -157,4 +171,4 @@ description or resolved by amending this constitution first. Use this file as th
 guidance for planning and implementation commands (`/speckit-plan`, `/speckit-tasks`,
 `/speckit-implement`).
 
-**Version**: 1.1.3 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-08-27
+**Version**: 1.2.0 | **Ratified**: 2026-08-24 | **Last Amended**: 2026-09-27

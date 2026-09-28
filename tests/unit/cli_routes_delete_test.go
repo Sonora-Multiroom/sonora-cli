@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/routes"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
 )
 
 func TestRoutesRunDelete_Help(t *testing.T) {

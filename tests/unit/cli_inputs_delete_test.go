@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sonora-cli/internal/cli/inputs"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/inputs"
 )
 
 func TestInputsRunDelete_Help(t *testing.T) {

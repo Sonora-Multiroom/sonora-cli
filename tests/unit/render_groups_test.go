@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"sonora-cli/internal/hub"
-	"sonora-cli/internal/render"
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
 func TestRenderGroupsYAML_RendersAllFieldsInOrder(t *testing.T) {
