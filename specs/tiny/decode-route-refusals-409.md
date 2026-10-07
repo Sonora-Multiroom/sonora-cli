@@ -2,7 +2,7 @@
 
 **Branch**: feature/decode-route-refusals-409
 **Date**: 2026-10-07
-**Status**: draft
+**Status**: done
 **Complexity**: small
 
 ## What
@@ -55,21 +55,22 @@ contract. Source: `docs/backlog/decode-route-refusals-409.md`.
 
 ## Tasks
 
-- [ ] Extend `errorResponse`/`APIError` with `Reason`, `OutputID`, and the shared builder
-- [ ] Decode 409 in `CreateRoute`, `TransferRoute`, `Playback`; update their doc comments
-- [ ] Add `ClassConflict` and the 409 mapping in `ClassifyError`
-- [ ] Map `ClassConflict` → 14 in `exitcode.For`; README exit table row
-- [ ] Add `JoinMode`, `Outputs` to `hub.Route`; fix `TransferRoute` doc and README `transfer` paragraph
-- [ ] Contract tests: 409 for each of the three functions with a reason and `outputId`; without
+- [X] Extend `errorResponse`/`APIError` with `Reason`, `OutputID`, and the shared builder
+- [X] Decode 409 in `CreateRoute`, `TransferRoute`, `Playback`; update their doc comments
+- [X] Add `ClassConflict` and the 409 mapping in `ClassifyError`
+- [X] Map `ClassConflict` → 14 in `exitcode.For`; README exit table row
+- [X] Add `JoinMode`, `Outputs` to `hub.Route`; fix `TransferRoute` doc and README `transfer` paragraph
+- [X] Contract tests: 409 for each of the three functions with a reason and `outputId`; without
       `outputId` (`INPUT_DISABLED`); unknown reason; undecodable body → `StatusError`; `Route` decodes
       `joinMode`/`outputs`
-- [ ] Unit tests: `ClassifyError` on 409 `APIError` (detail, title-only) and 409 `StatusError`;
+- [X] Unit tests: `ClassifyError` on 409 `APIError` (detail, title-only) and 409 `StatusError`;
       `exitcode.For(ClassConflict) == 14`; CLI `play` against a 409 stub exits 14 and prints the detail
 - [X] Commit the refreshed `api/openapi.json` first, on its own
 
 ## Done When
 
-- [ ] All tasks checked off
-- [ ] `gofmt -l .` empty, `go vet ./...` and `go test ./...` pass
-- [ ] Release notes list the additive `hub` API (`ClassConflict`, `APIError.Reason`/`OutputID`,
+- [X] All tasks checked off
+- [X] `gofmt -l .` empty, `go vet ./...` and `go test ./...` pass (2026-10-07: 4 packages ok, 844
+      tests and subtests passed, 0 failed)
+- [ ] At release: release notes list the additive `hub` API (`ClassConflict`, `APIError.Reason`/`OutputID`,
       `Route.JoinMode`/`Outputs`); follow-up in sonora-mcp: bump `hub`, map `ClassConflict` in `classify`
