@@ -734,3 +734,26 @@ func TestTransferRoute_404_EmptyBodyFallsBackToRoute(t *testing.T) {
 		t.Fatalf("expected route NotFoundError, got %T: %v", err, err)
 	}
 }
+
+func TestRoute_DecodesJoinModeAndOutputs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"routeId": "route_1", "inputId": "spotify-1", "targetId": "upstairs",
+			"targetType": "OUTPUT_GROUP", "status": "ACTIVE", "createdAt": "2026-01-01T00:00:00Z",
+			"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			"joinMode": "MIX", "outputs": []string{"kitchen", "office"},
+		})
+	}))
+	defer srv.Close()
+
+	req := hub.CreateRouteRequest{InputID: "spotify-1", TargetID: "upstairs", TargetType: "OUTPUT_GROUP"}
+	route, err := hub.CreateRoute(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if route.JoinMode != "MIX" || len(route.Outputs) != 2 || route.Outputs[0] != "kitchen" || route.Outputs[1] != "office" {
+		t.Errorf("JoinMode/Outputs = %q/%v, want MIX/[kitchen office]", route.JoinMode, route.Outputs)
+	}
+}

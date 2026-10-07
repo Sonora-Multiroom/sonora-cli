@@ -24,6 +24,12 @@ type Route struct {
 	Transferable bool    `json:"transferable"`
 	Pauseable    bool    `json:"pauseable"`
 	Paused       bool    `json:"paused"`
+	// JoinMode is how the route joined its target: REPLACE, MIX or
+	// DUCK_OTHERS.
+	JoinMode string `json:"joinMode"`
+	// Outputs lists the outputs the route plays on right now, in join order;
+	// a group route lists only the members it plays on.
+	Outputs []string `json:"outputs"`
 }
 
 // CreateRouteRequest mirrors #/components/schemas/CreateRouteRequest in
