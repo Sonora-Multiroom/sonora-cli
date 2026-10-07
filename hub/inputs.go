@@ -209,11 +209,7 @@ func CreateInput(ctx context.Context, client *http.Client, baseURL string, req C
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusConflict:
-		var errBody errorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
-			return nil, &StatusError{StatusCode: resp.StatusCode}
-		}
-		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}

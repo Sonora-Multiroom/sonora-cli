@@ -26,6 +26,7 @@ func TestExitcodeFor_Table(t *testing.T) {
 		hub.ClassInputNotFound:      11,
 		hub.ClassTargetNotFound:     12,
 		hub.ClassTTSUnavailable:     13,
+		hub.ClassConflict:           14,
 	}
 	for class, want := range cases {
 		if got := exitcode.For(class); got != want {
@@ -39,6 +40,7 @@ func TestExitcodeFor_Distinct(t *testing.T) {
 		hub.ClassHub, hub.ClassNetwork, hub.ClassNotFound, hub.ClassValidation,
 		hub.ClassRouteFailed, hub.ClassSourceUnreachable, hub.ClassServiceUnavailable,
 		hub.ClassInputNotFound, hub.ClassTargetNotFound, hub.ClassTTSUnavailable,
+		hub.ClassConflict,
 	}
 	seen := map[int]bool{exitcode.Usage: true}
 	for _, c := range classes {

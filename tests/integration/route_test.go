@@ -303,6 +303,7 @@ func TestRoute_HubErrorStatuses_MapToDistinctExitCodes(t *testing.T) {
 		wantExit     int
 	}{
 		{"400", http.StatusBadRequest, 6},
+		{"409", http.StatusConflict, 14},
 		{"422", http.StatusUnprocessableEntity, 8},
 		{"generic500", http.StatusInternalServerError, 3},
 	}
@@ -628,6 +629,25 @@ func TestRouteTransfer_422_TransferFailed(t *testing.T) {
 		t.Fatalf("exit code = %d, want 8; stderr: %s", res.exitCode, res.stderr)
 	}
 	if !strings.Contains(res.stderr, "route transfer failed") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+}
+
+func TestRouteTransfer_409_RefusedRoute(t *testing.T) {
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+	m.transferStatus = http.StatusConflict
+	m.transferBody = map[string]any{
+		"title": "Route not admitted", "detail": "Output 'bedroom-speaker' is disabled",
+		"reason": "OUTPUT_DISABLED", "outputId": "bedroom-speaker",
+	}
+
+	res := runCLI(t, "transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "Output 'bedroom-speaker' is disabled") {
 		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
 	}
 }

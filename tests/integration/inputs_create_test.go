@@ -90,8 +90,11 @@ func TestInputsCreate_DuplicateID_409(t *testing.T) {
 
 	res := runCLI(t, "create", "inputs/spotify-1", "u1", "--display-name", "Spotify", "--hub-url", srv.URL)
 
-	if res.exitCode != 3 {
-		t.Fatalf("exit code = %d, want 3; stderr: %s", res.exitCode, res.stderr)
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "already exists") {
+		t.Errorf("expected the hub's detail in stderr, got:\n%s", res.stderr)
 	}
 	if res.stdout != "" {
 		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)

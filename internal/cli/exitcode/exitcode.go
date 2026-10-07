@@ -34,6 +34,8 @@ func For(c hub.ErrorClass) int {
 		return 12
 	case hub.ClassTTSUnavailable:
 		return 13
+	case hub.ClassConflict:
+		return 14
 	default:
 		return 0
 	}

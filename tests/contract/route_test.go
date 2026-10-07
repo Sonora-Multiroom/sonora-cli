@@ -332,9 +332,10 @@ func TestDeleteRoute_OtherErrorStatus_IsStatusError(t *testing.T) {
 // Request/response shapes here mirror #/components/schemas/TransferRequest,
 // RouteResponse, and ErrorResponse, and the transferRoute operation, in
 // api/openapi.json (constitution Principle II): POST
-// /api/v2/routes/{routeId}/transfer returns 200 with the new route on
-// success, 404 if the route doesn't exist, 400 if it isn't transferable,
-// 422 if the transfer fails.
+// /api/v2/routes/{routeId}/transfer returns 200 with the route (same
+// routeId) on success, 404 if the route doesn't exist, 400 if it isn't
+// transferable, 409 if the hub refuses it (route_refusal_test.go), 422 if the
+// transfer fails.
 
 func TestTransferRoute_Success_Decodes(t *testing.T) {
 	var gotMethod, gotPath string
@@ -732,5 +733,28 @@ func TestTransferRoute_404_EmptyBodyFallsBackToRoute(t *testing.T) {
 	var notFoundErr *hub.NotFoundError
 	if !errors.As(err, &notFoundErr) || notFoundErr.Resource != "route" || notFoundErr.ID != "missing-route" {
 		t.Fatalf("expected route NotFoundError, got %T: %v", err, err)
+	}
+}
+
+func TestRoute_DecodesJoinModeAndOutputs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"routeId": "route_1", "inputId": "spotify-1", "targetId": "upstairs",
+			"targetType": "OUTPUT_GROUP", "status": "ACTIVE", "createdAt": "2026-01-01T00:00:00Z",
+			"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			"joinMode": "MIX", "outputs": []string{"kitchen", "office"},
+		})
+	}))
+	defer srv.Close()
+
+	req := hub.CreateRouteRequest{InputID: "spotify-1", TargetID: "upstairs", TargetType: "OUTPUT_GROUP"}
+	route, err := hub.CreateRoute(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if route.JoinMode != "MIX" || len(route.Outputs) != 2 || route.Outputs[0] != "kitchen" || route.Outputs[1] != "office" {
+		t.Errorf("JoinMode/Outputs = %q/%v, want MIX/[kitchen office]", route.JoinMode, route.Outputs)
 	}
 }

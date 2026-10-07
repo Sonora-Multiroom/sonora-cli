@@ -100,9 +100,8 @@ group's volume level and print the applied `outputId`/`groupId`/`volume`/`update
 confirmation. Only `outputs`/`volume` and `groups`/`volume` support `set` today.
 
 `transfer routes/<route-id> <outputs|groups>/<target-id>` seamlessly moves an active route's
-playback to a new output or group without interruption. The hub replaces the old route with a
-new one, so the printed `routeId` is the *new* route's id — update any stored references
-accordingly.
+playback to a new output or group without interruption. The route keeps its `routeId` (hub
+0.1.22 and later), so stored references stay valid.
 
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —
@@ -169,6 +168,7 @@ sonora list tts-voices --provider google --language uk-UA
 | 11 | input not found (route commands) |
 | 12 | target not found (route commands, including TTS `TARGET_NOT_FOUND`) |
 | 13 | TTS not available — the hub's TTS extension isn't installed, active, or hub-version-compatible |
+| 14 | the hub refused for its current state (409), e.g. a disabled input, output or group, a route limit, or an input already on the output — change that state and retry |
 
 ## Configuration
 

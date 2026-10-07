@@ -10,7 +10,7 @@
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.18"
+    "version": "0.1.22"
   },
   "servers": [
     {
@@ -20,12 +20,24 @@
   ],
   "tags": [
     {
+      "name": "TTS Cache",
+      "description": "The on-disk cache of synthesized audio"
+    },
+    {
       "name": "Inputs",
       "description": "Audio input lifecycle management — create, list, retrieve, and delete ephemeral inputs"
     },
     {
+      "name": "TTS Voices",
+      "description": "The voices a configured provider offers"
+    },
+    {
       "name": "Master Mute",
       "description": "System-wide master mute control — silence all audio outputs"
+    },
+    {
+      "name": "TTS",
+      "description": "Text-to-speech announcements to an output or a group"
     },
     {
       "name": "Extensions",
@@ -66,7 +78,7 @@
             "schema": {
               "type": "string",
               "examples": [
-                "route-abc-123"
+                "route-3f9a1c07b2e4"
               ]
             }
           }
@@ -253,7 +265,7 @@
           "Outputs"
         ],
         "summary": "Set output enabled state",
-        "description": "Enables or disables an audio output. A disabled output remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "description": "Enables or disables an audio output. A disabled output remains registered but is unavailable for new route creation. Disabling also takes it out of playback: a route addressed to it stops, and a group route keeps playing on its other members.",
         "operationId": "setOutputEnabled",
         "parameters": [
           {
@@ -753,6 +765,16 @@
               }
             }
           },
+          "409": {
+            "description": "Route not admitted: the input, output or group is disabled, every member of the group is disabled, the output is at its route limit, or the input already plays there. The body carries a reason (INPUT_DISABLED, OUTPUT_DISABLED, GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED, INPUT_ALREADY_ON_OUTPUT); outputId is present only for output-level reasons. Fix the state and retry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Route creation failed",
             "content": {
@@ -792,7 +814,7 @@
           "Routes"
         ],
         "summary": "Transfer an active route to a new output or group",
-        "description": "Seamlessly moves audio playback to a new target without interruption. The old route is replaced — callers must update their references to the new routeId.",
+        "description": "Moves playback to a new target without interrupting outputs that are in both. The route keeps its routeId. Atomic: if a new output fails to open, the route keeps playing where it was.",
         "operationId": "transferRoute",
         "parameters": [
           {
@@ -803,7 +825,7 @@
             "schema": {
               "type": "string",
               "examples": [
-                "route-abc-123"
+                "route-3f9a1c07b2e4"
               ]
             }
           }
@@ -841,6 +863,16 @@
           },
           "404": {
             "description": "Route or target not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Route not admitted: the input, output or group is disabled, every member of the group is disabled, the output is at its route limit, or the input already plays there. The body carries a reason (INPUT_DISABLED, OUTPUT_DISABLED, GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED, INPUT_ALREADY_ON_OUTPUT); outputId is present only for output-level reasons. Fix the state and retry",
             "content": {
               "application/json": {
                 "schema": {
@@ -903,6 +935,16 @@
           },
           "404": {
             "description": "Output or group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Route not admitted: the input, output or group is disabled, every member of the group is disabled, the output is at its route limit, or the input already plays there. The body carries a reason (INPUT_DISABLED, OUTPUT_DISABLED, GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED, INPUT_ALREADY_ON_OUTPUT); outputId is present only for output-level reasons. Fix the state and retry",
             "content": {
               "application/json": {
                 "schema": {
@@ -1034,7 +1076,7 @@
     "/api/tts/speak": {
       "post": {
         "tags": [
-          "tts-controller"
+          "TTS"
         ],
         "summary": "Trigger a TTS announcement",
         "operationId": "speak",
@@ -1383,7 +1425,7 @@
             "schema": {
               "type": "string",
               "examples": [
-                "route-abc-123"
+                "route-3f9a1c07b2e4"
               ]
             }
           }
@@ -1427,7 +1469,7 @@
             "schema": {
               "type": "string",
               "examples": [
-                "route-abc-123"
+                "route-3f9a1c07b2e4"
               ]
             }
           }
@@ -1542,6 +1584,99 @@
         }
       }
     },
+    "/api/v2/outputs/{outputId}/routes": {
+      "get": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "List the routes playing on a single output",
+        "description": "Every route playing on the output — addressed to it directly or to a group it belongs to — in the order they joined it, each with its join mode, how it sounds on this output (duckState) and whether it is the output's main route.",
+        "operationId": "getRoutesForOutput",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "kitchen"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Routes on the output (possibly none)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RouteOnOutputResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Outputs"
+        ],
+        "summary": "Stop every route associated with a single output",
+        "description": "Stops routes addressed directly to this output, and any group route whose group currently includes this output as a member (the whole group route is stopped, since a single output cannot be detached from a live group route). Idempotent and best-effort, matching DELETE /api/v2/routes semantics.",
+        "operationId": "stopRoutesForOutput",
+        "parameters": [
+          {
+            "name": "outputId",
+            "in": "path",
+            "description": "Unique output identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "office-speaker"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stop completed (possibly with zero routes stopped)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStopResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Output not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/inputs/{inputId}": {
       "get": {
         "tags": [
@@ -1592,7 +1727,7 @@
           "Inputs"
         ],
         "summary": "Delete an ephemeral audio input",
-        "description": "Removes a previously registered ephemeral input. Static (YAML-configured) inputs cannot be deleted.",
+        "description": "Removes a previously registered ephemeral input. Configuration inputs cannot be deleted.",
         "operationId": "deleteInput",
         "parameters": [
           {
@@ -1613,7 +1748,7 @@
             "description": "Input deleted"
           },
           "400": {
-            "description": "Input is a static (YAML-configured) input and cannot be deleted",
+            "description": "Input is a configuration input and cannot be deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -1743,7 +1878,7 @@
     "/api/tts/providers/{providerName}/voices": {
       "get": {
         "tags": [
-          "tts-voice-controller"
+          "TTS Voices"
         ],
         "summary": "List the voices a provider offers",
         "operationId": "listVoices",
@@ -1810,7 +1945,7 @@
     "/api/tts/cache/stats": {
       "get": {
         "tags": [
-          "tts-cache-controller"
+          "TTS Cache"
         ],
         "summary": "Get audio cache statistics",
         "operationId": "getCacheStats",
@@ -1949,52 +2084,6 @@
         }
       }
     },
-    "/api/v2/outputs/{outputId}/routes": {
-      "delete": {
-        "tags": [
-          "Outputs"
-        ],
-        "summary": "Stop every route associated with a single output",
-        "description": "Stops routes addressed directly to this output, and any group route whose group currently includes this output as a member (the whole group route is stopped, since a single output cannot be detached from a live group route). Idempotent and best-effort, matching DELETE /api/v2/routes semantics.",
-        "operationId": "stopRoutesForOutput",
-        "parameters": [
-          {
-            "name": "outputId",
-            "in": "path",
-            "description": "Unique output identifier",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "examples": [
-                "office-speaker"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Stop completed (possibly with zero routes stopped)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BulkStopResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Output not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v2/groups/{groupId}/routes": {
       "delete": {
         "tags": [
@@ -2044,7 +2133,7 @@
     "/api/tts/cache": {
       "delete": {
         "tags": [
-          "tts-cache-controller"
+          "TTS Cache"
         ],
         "summary": "Clear the audio cache",
         "operationId": "clearCache",
@@ -2167,6 +2256,26 @@
             "examples": [
               "2026-06-22T14:30:00Z"
             ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why a route was not admitted (ROUTE_LIMIT_REACHED or INPUT_ALREADY_ON_OUTPUT); present only on route admission errors",
+            "examples": [
+              "ROUTE_LIMIT_REACHED"
+            ]
+          },
+          "outputId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The first output that failed the admission check; present only on route admission errors",
+            "examples": [
+              "kitchen"
+            ]
           }
         }
       },
@@ -2178,7 +2287,7 @@
             "type": "string",
             "description": "Unique route identifier",
             "examples": [
-              "route-abc-123"
+              "route-3f9a1c07b2e4"
             ]
           },
           "inputId": {
@@ -2247,6 +2356,31 @@
           "paused": {
             "type": "boolean",
             "description": "Whether playback is currently paused"
+          },
+          "joinMode": {
+            "type": "string",
+            "description": "How the route joined its target (REPLACE, MIX or DUCK_OTHERS)",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "REPLACE"
+            ]
+          },
+          "outputs": {
+            "type": "array",
+            "description": "Outputs the route plays on right now, in join order. A group route lists only the members it plays on",
+            "examples": [
+              [
+                "kitchen",
+                "office"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2434,7 +2568,7 @@
           },
           "source": {
             "type": "string",
-            "description": "Source type: STATIC (YAML-configured) or EPHEMERAL (API-created)",
+            "description": "EPHEMERAL for any input added at runtime (create, play, v1, DLNA); STATIC for configuration inputs",
             "enum": [
               "STATIC",
               "EPHEMERAL"
@@ -2446,7 +2580,7 @@
               "null"
             ],
             "format": "date-time",
-            "description": "Creation timestamp (null for static inputs)",
+            "description": "Creation time of a runtime input, identical on every read; null for configuration inputs",
             "examples": [
               "2026-06-22T14:30:00Z"
             ]
@@ -2454,6 +2588,21 @@
           "pauseable": {
             "type": "boolean",
             "description": "Whether this input supports pause/resume"
+          },
+          "defaultJoinMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Join mode for routes from this input whose request names none; null when none is declared",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "DUCK_OTHERS"
+            ]
           }
         }
       },
@@ -2582,6 +2731,21 @@
             "examples": [
               "SINGLE_OUTPUT"
             ]
+          },
+          "joinMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "How the route joins the target: REPLACE stops the routes playing there (except ducking routes), MIX plays alongside them, DUCK_OTHERS plays alongside and lowers them while it plays. Omitted: the input's default join mode, else REPLACE",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "DUCK_OTHERS"
+            ]
           }
         },
         "required": [
@@ -2672,6 +2836,21 @@
             ],
             "maximum": 100,
             "minimum": 0
+          },
+          "joinMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "How the playback joins the target: REPLACE stops the routes playing there (except ducking routes), MIX plays alongside them, DUCK_OTHERS plays alongside and lowers them while it plays (an announcement). Omitted: REPLACE",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "DUCK_OTHERS"
+            ]
           }
         },
         "required": [
@@ -2746,6 +2925,21 @@
               "null"
             ],
             "description": "Auto-remove input when its route is stopped (defaults to false)"
+          },
+          "defaultJoinMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Join mode for routes from this input whose request names none (REPLACE, MIX or DUCK_OTHERS); omitted: none declared, routes fall back to REPLACE",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "DUCK_OTHERS"
+            ]
           }
         },
         "required": [
@@ -2793,6 +2987,9 @@
             "format": "double"
           },
           "stylePrompt": {
+            "type": "string"
+          },
+          "playbackMode": {
             "type": "string"
           }
         },
@@ -2907,6 +3104,31 @@
           },
           "autoRemove": {
             "type": "boolean"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "CONFIGURATION",
+              "RUNTIME"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "defaultJoinMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ]
           }
         },
         "required": [
@@ -2942,6 +3164,113 @@
               "PCM",
               "FLOAT"
             ]
+          }
+        }
+      },
+      "RouteOnOutputResponse": {
+        "type": "object",
+        "description": "A route playing on an output, with its duck state there and whether it is the output's main route",
+        "properties": {
+          "routeId": {
+            "type": "string",
+            "description": "Unique route identifier",
+            "examples": [
+              "route-3f9a1c07b2e4"
+            ]
+          },
+          "inputId": {
+            "type": "string",
+            "description": "Source audio input ID",
+            "examples": [
+              "radio"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Target output or group ID; a group route appears under each member output",
+            "examples": [
+              "kitchen"
+            ]
+          },
+          "targetType": {
+            "type": "string",
+            "description": "Target type: SINGLE_OUTPUT or OUTPUT_GROUP",
+            "enum": [
+              "SINGLE_OUTPUT",
+              "OUTPUT_GROUP"
+            ],
+            "examples": [
+              "SINGLE_OUTPUT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Route status",
+            "enum": [
+              "STARTING",
+              "ACTIVE",
+              "STOPPING",
+              "STOPPED",
+              "FAILED"
+            ]
+          },
+          "joinMode": {
+            "type": "string",
+            "description": "How the route joined its target (REPLACE, MIX or DUCK_OTHERS)",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ],
+            "examples": [
+              "REPLACE"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when route was created",
+            "examples": [
+              "2026-09-30T08:00:00Z"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Timestamp when audio began playing (nullable before playback starts)",
+            "examples": [
+              "2026-09-30T08:00:00Z"
+            ]
+          },
+          "transferable": {
+            "type": "boolean",
+            "description": "Whether route can be transferred to another target"
+          },
+          "pauseable": {
+            "type": "boolean",
+            "description": "Whether the input driving this route supports pause/resume"
+          },
+          "paused": {
+            "type": "boolean",
+            "description": "Whether playback is currently paused"
+          },
+          "duckState": {
+            "type": "string",
+            "description": "How the route sounds on this output: FULL, or LOWERED under a ducking route. More values may be added; treat an unknown one as FULL",
+            "enum": [
+              "FULL",
+              "LOWERED"
+            ],
+            "examples": [
+              "LOWERED"
+            ]
+          },
+          "main": {
+            "type": "boolean",
+            "description": "Whether this is the output's main route: the first non-ducking route to join it, else the first route"
           }
         }
       },
@@ -3066,6 +3395,14 @@
           }
         }
       },
+      "OutputId": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      },
       "Route": {
         "type": "object",
         "properties": {
@@ -3105,6 +3442,20 @@
           },
           "transferable": {
             "type": "boolean"
+          },
+          "joinMode": {
+            "type": "string",
+            "enum": [
+              "REPLACE",
+              "MIX",
+              "DUCK_OTHERS"
+            ]
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputId"
+            }
           }
         }
       },
@@ -3233,7 +3584,7 @@
             "type": "string",
             "description": "Unique route identifier",
             "examples": [
-              "route-abc-123"
+              "route-3f9a1c07b2e4"
             ]
           },
           "targetType": {
