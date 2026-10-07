@@ -235,10 +235,11 @@ func DeleteRoute(ctx context.Context, client *http.Client, baseURL, routeID stri
 // helper (malformed body → *DecodeError). A 404 is returned as a
 // *NotFoundError naming the missing input or target, as the hub's problem
 // detail reports it ("Input not found: <id>", "Output not found: <id>",
-// "Group not found: <id>"); without such a detail it names the target. A 400/422 attempts to decode the
-// body as an errorResponse into an *APIError, falling back to a
+// "Group not found: <id>"); without such a detail it names the target. A 400/409/422 attempts to decode
+// the body as an errorResponse into an *APIError, falling back to a
 // *StatusError if that decode fails; any other non-2xx status is a
-// *StatusError.
+// *StatusError. A 409 is a route the hub refused in its current state, with
+// APIError.Reason saying why.
 func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req CreateRouteRequest) (*Route, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -261,12 +262,8 @@ func CreateRoute(ctx context.Context, client *http.Client, baseURL string, req C
 		return nil, notFoundFromBody(resp.Body, NotFoundError{Resource: "target", ID: req.TargetID})
 	}
 	switch resp.StatusCode {
-	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		var errBody errorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
-			return nil, &StatusError{StatusCode: resp.StatusCode}
-		}
-		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	case http.StatusBadRequest, http.StatusConflict, http.StatusUnprocessableEntity:
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}
@@ -366,9 +363,9 @@ func StopAllRoutes(ctx context.Context, client *http.Client, baseURL string) (*B
 // so on success (200) the decoded and validated *new* Route is returned,
 // mirroring CreateRoute's success handling. A 404 is returned as a
 // *NotFoundError naming the missing route or target, as the hub's problem
-// detail reports it; without such a detail it names the route. A 400/422 attempts to decode the body as
-// an errorResponse into an *APIError, falling back to a *StatusError if
-// that decode fails (mirroring CreateRoute's 400/422 handling); any other
+// detail reports it; without such a detail it names the route. A 400/409/422 attempts to decode the
+// body as an errorResponse into an *APIError, falling back to a *StatusError if
+// that decode fails (mirroring CreateRoute's handling); any other
 // non-2xx status is a *StatusError.
 func TransferRoute(ctx context.Context, client *http.Client, baseURL, routeID string, req TransferRequest) (*Route, error) {
 	body, err := json.Marshal(req)
@@ -393,12 +390,8 @@ func TransferRoute(ctx context.Context, client *http.Client, baseURL, routeID st
 		return nil, notFoundFromBody(resp.Body, NotFoundError{Resource: "route", ID: routeID})
 	}
 	switch resp.StatusCode {
-	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		var errBody errorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
-			return nil, &StatusError{StatusCode: resp.StatusCode}
-		}
-		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	case http.StatusBadRequest, http.StatusConflict, http.StatusUnprocessableEntity:
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}

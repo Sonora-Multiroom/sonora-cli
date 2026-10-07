@@ -169,6 +169,7 @@ sonora list tts-voices --provider google --language uk-UA
 | 11 | input not found (route commands) |
 | 12 | target not found (route commands, including TTS `TARGET_NOT_FOUND`) |
 | 13 | TTS not available — the hub's TTS extension isn't installed, active, or hub-version-compatible |
+| 14 | the hub refused for its current state (409), e.g. a disabled input, output or group, a route limit, or an input already on the output — change that state and retry |
 
 ## Configuration
 

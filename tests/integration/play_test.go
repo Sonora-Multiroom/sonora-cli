@@ -147,6 +147,7 @@ func TestPlay_HubErrorStatuses_MapToDistinctExitCodes(t *testing.T) {
 		wantExit   int
 	}{
 		{"400", http.StatusBadRequest, 6},
+		{"409", http.StatusConflict, 14},
 		{"422", http.StatusUnprocessableEntity, 8},
 		{"502", http.StatusBadGateway, 9},
 		{"503", http.StatusServiceUnavailable, 10},
@@ -170,6 +171,28 @@ func TestPlay_HubErrorStatuses_MapToDistinctExitCodes(t *testing.T) {
 				t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
 			}
 		})
+	}
+}
+
+func TestPlay_409_RefusedRoute_PrintsHubDetail(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"bathroom"}, nil)
+	m.playStatus = http.StatusConflict
+	m.playBody = map[string]any{
+		"type": "urn:multiroom:error:route-admission", "title": "Route not admitted",
+		"detail": "Output 'bathroom' is disabled", "status": 409,
+		"reason": "OUTPUT_DISABLED", "outputId": "bathroom",
+	}
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/bathroom", "--hub-url", srv.URL)
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "Output 'bathroom' is disabled") {
+		t.Errorf("expected the hub's detail in stderr, got:\n%s", res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout on failure, got:\n%s", res.stdout)
 	}
 }
 

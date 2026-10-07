@@ -332,9 +332,10 @@ func TestDeleteRoute_OtherErrorStatus_IsStatusError(t *testing.T) {
 // Request/response shapes here mirror #/components/schemas/TransferRequest,
 // RouteResponse, and ErrorResponse, and the transferRoute operation, in
 // api/openapi.json (constitution Principle II): POST
-// /api/v2/routes/{routeId}/transfer returns 200 with the new route on
-// success, 404 if the route doesn't exist, 400 if it isn't transferable,
-// 422 if the transfer fails.
+// /api/v2/routes/{routeId}/transfer returns 200 with the route (same
+// routeId) on success, 404 if the route doesn't exist, 400 if it isn't
+// transferable, 409 if the hub refuses it (route_refusal_test.go), 422 if the
+// transfer fails.
 
 func TestTransferRoute_Success_Decodes(t *testing.T) {
 	var gotMethod, gotPath string

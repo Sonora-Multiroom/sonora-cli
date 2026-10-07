@@ -139,6 +139,7 @@ func TestClassifyError_APIError_StatusMappings(t *testing.T) {
 		class  hub.ErrorClass
 	}{
 		{400, hub.ClassValidation},
+		{409, hub.ClassConflict},
 		{422, hub.ClassRouteFailed},
 		{502, hub.ClassSourceUnreachable},
 		{503, hub.ClassServiceUnavailable},
@@ -152,6 +153,35 @@ func TestClassifyError_APIError_StatusMappings(t *testing.T) {
 		if msg == "" {
 			t.Errorf("status %d: expected a non-empty friendly message", c.status)
 		}
+	}
+}
+
+// A 409 keeps the hub's own explanation: detail first, then title, then a
+// generic "change the state and retry" message when the body had neither.
+func TestClassifyError_Conflict_Messages(t *testing.T) {
+	cases := []struct {
+		name    string
+		err     error
+		wantMsg string
+	}{
+		{"detail", &hub.APIError{StatusCode: 409, Title: "Resource Conflict", Detail: "Input ID already exists"}, "Input ID already exists"},
+		{"title only", &hub.APIError{StatusCode: 409, Title: "Route not admitted"}, "Route not admitted"},
+		{"empty body", &hub.APIError{StatusCode: 409}, ""},
+		{"undecodable body", &hub.StatusError{StatusCode: 409}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(c.err)
+			if class != hub.ClassConflict {
+				t.Errorf("got class %v, want ClassConflict", class)
+			}
+			if c.wantMsg != "" && msg != c.wantMsg {
+				t.Errorf("got message %q, want %q", msg, c.wantMsg)
+			}
+			if c.wantMsg == "" && !strings.Contains(msg, "retry") {
+				t.Errorf("expected the generic conflict message, got %q", msg)
+			}
+		})
 	}
 }
 

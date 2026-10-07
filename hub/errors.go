@@ -27,6 +27,9 @@ const (
 	ClassInputNotFound
 	ClassTargetNotFound
 	ClassTTSUnavailable
+	// ClassConflict: the hub refused the request in its current state (409),
+	// for example a disabled target; change that state and retry.
+	ClassConflict
 )
 
 // StatusError indicates the hub responded with a non-2xx HTTP status.
@@ -67,6 +70,16 @@ type APIError struct {
 	StatusCode int
 	Title      string
 	Detail     string
+	// Reason says why the hub refused a route (409 from CreateRoute,
+	// TransferRoute or Playback): one of INPUT_DISABLED, OUTPUT_DISABLED,
+	// GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED or
+	// INPUT_ALREADY_ON_OUTPUT. The hub may add reasons; treat an unknown one
+	// as a generic conflict. Empty on every other error.
+	Reason string
+	// OutputID names the first output that failed an output-level check of a
+	// route refusal. Empty for INPUT_DISABLED, GROUP_DISABLED and every other
+	// error.
+	OutputID string
 }
 
 func (e *APIError) Error() string {
@@ -135,6 +148,11 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 				msg = "the request was rejected as invalid"
 			}
 			return ClassValidation, msg
+		case 409:
+			if msg == "" {
+				msg = conflictMessage
+			}
+			return ClassConflict, msg
 		case 422:
 			if msg == "" {
 				msg = "route creation failed"
@@ -151,6 +169,9 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 
 	var statusErr *StatusError
 	if errors.As(err, &statusErr) {
+		if statusErr.StatusCode == 409 {
+			return ClassConflict, conflictMessage
+		}
 		return ClassHub, fmt.Sprintf("hub reported an error (HTTP %d)", statusErr.StatusCode)
 	}
 
@@ -172,6 +193,27 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	}
 
 	return ClassNetwork, "could not reach the hub"
+}
+
+// conflictMessage is ClassifyError's message for a 409 whose body gives no
+// detail or title.
+const conflictMessage = "the hub refused the request in its current state; change that state and retry"
+
+// apiErrorFromBody decodes an error response body into an *APIError for the
+// given status, falling back to a *StatusError when the body is not a
+// decodable ErrorResponse.
+func apiErrorFromBody(status int, body io.Reader) error {
+	var errBody errorResponse
+	if err := json.NewDecoder(body).Decode(&errBody); err != nil {
+		return &StatusError{StatusCode: status}
+	}
+	return &APIError{
+		StatusCode: status,
+		Title:      errBody.Title,
+		Detail:     errBody.Detail,
+		Reason:     errBody.Reason,
+		OutputID:   errBody.OutputID,
+	}
 }
 
 // notFoundFromBody returns the *NotFoundError for a 404 from an operation

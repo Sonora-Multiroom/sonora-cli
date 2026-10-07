@@ -29,21 +29,23 @@ type PlaybackResponse struct {
 }
 
 // errorResponse mirrors #/components/schemas/ErrorResponse in
-// api/openapi.json — only the fields Playback needs to construct an
-// *APIError.
+// api/openapi.json — only the fields needed to construct an *APIError.
 type errorResponse struct {
-	Title  string `json:"title"`
-	Detail string `json:"detail"`
+	Title    string `json:"title"`
+	Detail   string `json:"detail"`
+	Reason   string `json:"reason"`
+	OutputID string `json:"outputId"`
 }
 
 // Playback calls POST {baseURL}/api/v2/play (operationId "playback"),
 // creating an ephemeral input and route in one hub round trip. On 200, the
 // decoded PlaybackResponse is returned, rejected as a *DecodeError if
 // InputID, Route.RouteID, or Route.Status is empty. A 404 is returned as a
-// *NotFoundError naming the target; a 400/422/502/503 attempts
+// *NotFoundError naming the target; a 400/409/422/502/503 attempts
 // to decode the body as an ErrorResponse into a *APIError, falling back to a
 // *StatusError if that decode fails; any other non-2xx status is a
-// *StatusError.
+// *StatusError. A 409 is a route the hub refused in its current state, with
+// APIError.Reason saying why.
 func Playback(ctx context.Context, client *http.Client, baseURL string, req PlaybackRequest) (*PlaybackResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -66,12 +68,8 @@ func Playback(ctx context.Context, client *http.Client, baseURL string, req Play
 		return nil, &NotFoundError{Resource: "target", ID: req.TargetID}
 	}
 	switch resp.StatusCode {
-	case http.StatusBadRequest, http.StatusUnprocessableEntity, http.StatusBadGateway, http.StatusServiceUnavailable:
-		var errBody errorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
-			return nil, &StatusError{StatusCode: resp.StatusCode}
-		}
-		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	case http.StatusBadRequest, http.StatusConflict, http.StatusUnprocessableEntity, http.StatusBadGateway, http.StatusServiceUnavailable:
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}
