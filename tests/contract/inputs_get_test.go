@@ -24,7 +24,7 @@ func TestGetInput_RequestAndDecodeContract_Static(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"inputId": "spotify-1", "displayName": "Spotify Stream", "uri": "u1",
-			"enabled": true, "autoRemove": false, "source": "STATIC", "createdAt": nil, "pauseable": true,
+			"enabled": true, "autoRemove": false, "source": "STATIC", "createdAt": nil, "pauseable": true, "defaultJoinMode": nil,
 		})
 	}))
 	defer srv.Close()
@@ -38,7 +38,7 @@ func TestGetInput_RequestAndDecodeContract_Static(t *testing.T) {
 	if gotPath != "/api/v2/inputs/spotify-1" {
 		t.Errorf("got path %q, want /api/v2/inputs/spotify-1", gotPath)
 	}
-	if input.InputID != "spotify-1" || input.Source != "STATIC" || input.CreatedAt != nil {
+	if input.InputID != "spotify-1" || input.Source != "STATIC" || input.CreatedAt != nil || input.DefaultJoinMode != nil {
 		t.Errorf("unexpected decoded input: %+v", input)
 	}
 	if got := atomic.LoadInt32(&requestCount); got != 1 {
@@ -52,6 +52,7 @@ func TestGetInput_RequestAndDecodeContract_Ephemeral(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"inputId": "line-in-1", "displayName": "Line In", "uri": "u2",
 			"enabled": true, "autoRemove": true, "source": "EPHEMERAL", "createdAt": "2026-06-22T14:30:00Z", "pauseable": false,
+			"defaultJoinMode": "DUCK_OTHERS",
 		})
 	}))
 	defer srv.Close()
@@ -61,7 +62,8 @@ func TestGetInput_RequestAndDecodeContract_Ephemeral(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if input.Source != "EPHEMERAL" || input.CreatedAt == nil || *input.CreatedAt != "2026-06-22T14:30:00Z" {
+	if input.Source != "EPHEMERAL" || input.CreatedAt == nil || *input.CreatedAt != "2026-06-22T14:30:00Z" ||
+		input.DefaultJoinMode == nil || *input.DefaultJoinMode != "DUCK_OTHERS" {
 		t.Errorf("unexpected decoded input: %+v", input)
 	}
 }

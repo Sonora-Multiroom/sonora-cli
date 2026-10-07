@@ -22,6 +22,10 @@ type Input struct {
 	Source      string  `json:"source"`
 	CreatedAt   *string `json:"createdAt"`
 	Pauseable   bool    `json:"pauseable"`
+	// DefaultJoinMode is the join mode (REPLACE, MIX or DUCK_OTHERS) for
+	// routes from this input whose request names none; nil when the input
+	// declares none.
+	DefaultJoinMode *string `json:"defaultJoinMode"`
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
