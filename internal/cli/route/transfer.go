@@ -22,9 +22,8 @@ const transferUsage = "usage: sonora transfer routes/<route-id> <outputs|groups>
 // flags, validates both resource paths (the first must be routes/<id>, the
 // second outputs/<id> or groups/<id> — no auto-detect, mirroring Run's
 // input/target validation), verifies the target already exists, calls the
-// hub to transfer the route, and renders the result to stdout. The hub
-// replaces the old route with a new one, so the rendered routeId is the
-// *new* route's id. Any failure is reported on stderr, never stdout, so
+// hub to transfer the route, and renders the result to stdout. The route
+// keeps its routeId (hub 0.1.22 and later). Any failure is reported on stderr, never stdout, so
 // scripts piping stdout never see error text. It returns the process exit
 // code per data-model.md's exit code table.
 func RunTransfer(args []string, stdout, stderr io.Writer) int {

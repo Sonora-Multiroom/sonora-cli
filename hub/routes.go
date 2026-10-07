@@ -359,14 +359,14 @@ func StopAllRoutes(ctx context.Context, client *http.Client, baseURL string) (*B
 
 // TransferRoute calls POST {baseURL}/api/v2/routes/{routeId}/transfer
 // (operationId "transferRoute"), seamlessly moving an active route's
-// playback to a new target. The hub replaces the old route with a new one,
-// so on success (200) the decoded and validated *new* Route is returned,
-// mirroring CreateRoute's success handling. A 404 is returned as a
-// *NotFoundError naming the missing route or target, as the hub's problem
-// detail reports it; without such a detail it names the route. A 400/409/422 attempts to decode the
-// body as an errorResponse into an *APIError, falling back to a *StatusError if
-// that decode fails (mirroring CreateRoute's handling); any other
-// non-2xx status is a *StatusError.
+// playback to a new target. The route keeps its route ID (hub 0.1.22 and
+// later), so on success (200) the decoded and validated Route is returned
+// with its new target, mirroring CreateRoute's success handling. A 404 is
+// returned as a *NotFoundError naming the missing route or target, as the
+// hub's problem detail reports it; without such a detail it names the route.
+// A 400/409/422 attempts to decode the body as an errorResponse into an
+// *APIError, falling back to a *StatusError if that decode fails (mirroring
+// CreateRoute's handling); any other non-2xx status is a *StatusError.
 func TransferRoute(ctx context.Context, client *http.Client, baseURL, routeID string, req TransferRequest) (*Route, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
