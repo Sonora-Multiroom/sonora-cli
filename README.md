@@ -94,6 +94,8 @@ Only `outputs` and `groups` support mute/unmute today.
 `get master-mute` fetches the system-wide master-mute state; `mute all` and `unmute all` set
 it. All three print a bare `{muted: bool}` record. `master-mute` and `all` are singleton
 keywords, not `<resource>/<id>` paths — `master-mute` never takes an id and has no `list` form.
+Master mute is a layer above each output's own mute: `mute all` silences every output, and
+`unmute all` restores each output's own mute, so an output muted on its own stays muted.
 
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
