@@ -12,7 +12,7 @@ import (
 )
 
 // Response/request shapes here mirror #/components/schemas/MutedRequest,
-// #/components/schemas/GroupMuteResponse, and the setGroupMuted operation in
+// #/components/schemas/GroupMuteResponse, and the setGroupMute operation in
 // api/openapi.json (constitution Principle II).
 
 func TestSetGroupMuted_Mute_RequestAndDecodeContract(t *testing.T) {

@@ -164,7 +164,7 @@ type GroupMute struct {
 }
 
 // SetGroupMuted calls PUT {baseURL}/api/v2/groups/{groupId}/mute
-// (operationId "setGroupMuted") with {"muted": muted}. On success (200), the
+// (operationId "setGroupMute") with {"muted": muted}. On success (200), the
 // decoded GroupMute confirmation is returned (malformed body → *DecodeError). A 404
 // is returned as a *NotFoundError naming the group. A 400 attempts to decode
 // the body as an errorResponse into an *APIError, falling back to a
