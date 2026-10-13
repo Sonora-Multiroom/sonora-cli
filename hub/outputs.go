@@ -165,7 +165,7 @@ type OutputMute struct {
 }
 
 // SetOutputMuted calls PUT {baseURL}/api/v2/outputs/{outputId}/mute
-// (operationId "setOutputMuted") with {"muted": muted}. On success (200),
+// (operationId "setOutputMute") with {"muted": muted}. On success (200),
 // the decoded OutputMute confirmation is returned (malformed body → *DecodeError). A
 // 404 is returned as a *NotFoundError naming the output. A 400 attempts to
 // decode the body as an errorResponse into an *APIError, falling back to a

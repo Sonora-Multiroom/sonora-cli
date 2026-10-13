@@ -10,7 +10,7 @@
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.22"
+    "version": "0.1.24"
   },
   "servers": [
     {
@@ -32,10 +32,6 @@
       "description": "The voices a configured provider offers"
     },
     {
-      "name": "Master Mute",
-      "description": "System-wide master mute control — silence all audio outputs"
-    },
-    {
       "name": "TTS",
       "description": "Text-to-speech announcements to an output or a group"
     },
@@ -50,6 +46,10 @@
     {
       "name": "Outputs",
       "description": "Audio output management — list outputs, control volume and mute state"
+    },
+    {
+      "name": "Master Mute",
+      "description": "System-wide master mute control. Master mute is a layer above each output's own mute: while it is on every output is silent, and turning it off restores each output's own mute. It does not change any output's `muted`."
     },
     {
       "name": "Groups",
@@ -331,7 +331,7 @@
           "Master Mute"
         ],
         "summary": "Get master mute state",
-        "description": "Returns the current global mute state. When active, all audio outputs are silenced.",
+        "description": "Returns the current global mute state. When active, all audio outputs are silenced whatever their own mute.",
         "operationId": "getMasterMute",
         "responses": {
           "200": {
@@ -351,7 +351,7 @@
           "Master Mute"
         ],
         "summary": "Set master mute state",
-        "description": "Sets the global mute state. PUT is idempotent — same request repeated produces the same result.",
+        "description": "Sets the global mute state. Master mute is a layer above each output's own mute: while it is on every output is silent, and turning it off restores each output's own mute. It does not change any output's `muted`. PUT is idempotent — same request repeated produces the same result.",
         "operationId": "setMasterMute",
         "requestBody": {
           "content": {
@@ -1124,290 +1124,6 @@
         }
       }
     },
-    "/api/routes": {
-      "get": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "getAllRoutes",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Route"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "createRoute_1",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRouteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/routes/{routeId}/transfer": {
-      "post": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "transferRoute_1",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TransferRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/routes/{routeId}/stop": {
-      "post": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "stopRoute",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/routes/{routeId}/start": {
-      "post": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "startRoute",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/routes/group": {
-      "post": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "createGroupRoute",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateGroupRouteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/play": {
-      "post": {
-        "tags": [
-          "play-controller"
-        ],
-        "operationId": "play",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlayRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/master-mute/toggle": {
-      "post": {
-        "tags": [
-          "master-mute-controller"
-        ],
-        "operationId": "toggleMasterMute",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/master-mute/groups/{groupId}/toggle": {
-      "post": {
-        "tags": [
-          "master-mute-controller"
-        ],
-        "operationId": "toggleGroupMute",
-        "parameters": [
-          {
-            "name": "groupId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/inputs": {
-      "get": {
-        "tags": [
-          "inputs-controller"
-        ],
-        "operationId": "getAllInputs",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AudioInputDefinition"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "inputs-controller"
-        ],
-        "operationId": "registerInput",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AudioInputDefinition"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AudioInputDefinition"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v2/routes/{routeId}": {
       "get": {
         "tags": [
@@ -1963,127 +1679,6 @@
         }
       }
     },
-    "/api/routes/{routeId}": {
-      "get": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "getRoute_1",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "deleteRoute_1",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/routes/{routeId}/transferable": {
-      "get": {
-        "tags": [
-          "routes-controller"
-        ],
-        "operationId": "isTransferable",
-        "parameters": [
-          {
-            "name": "routeId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/outputs": {
-      "get": {
-        "tags": [
-          "outputs-controller"
-        ],
-        "operationId": "listOutputs_1",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/OutputsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/devices": {
-      "get": {
-        "tags": [
-          "devices-controller"
-        ],
-        "operationId": "listDevices",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevicesResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v2/groups/{groupId}/routes": {
       "delete": {
         "tags": [
@@ -2160,29 +1755,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/inputs/{inputId}": {
-      "delete": {
-        "tags": [
-          "inputs-controller"
-        ],
-        "operationId": "unregisterInput",
-        "parameters": [
-          {
-            "name": "inputId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -2568,7 +2140,7 @@
           },
           "source": {
             "type": "string",
-            "description": "EPHEMERAL for any input added at runtime (create, play, v1, DLNA); STATIC for configuration inputs",
+            "description": "EPHEMERAL for any input added at runtime (create, play, DLNA); STATIC for configuration inputs",
             "enum": [
               "STATIC",
               "EPHEMERAL"
@@ -2957,6 +2529,7 @@
           },
           "targetName": {
             "type": "string",
+            "description": "ID of the output or output group (not its display name): 1-255 letters, digits, hyphens or underscores. Any other name answers 400 TARGET_NOT_FOUND",
             "minLength": 1
           },
           "targetType": {
@@ -3023,147 +2596,6 @@
           },
           "message": {
             "type": "string"
-          }
-        }
-      },
-      "CreateGroupRouteRequest": {
-        "type": "object",
-        "properties": {
-          "inputId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "groupId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "volume": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "required": [
-          "groupId",
-          "inputId"
-        ]
-      },
-      "PlayRequest": {
-        "type": "object",
-        "properties": {
-          "uri": {
-            "type": "string",
-            "minLength": 1
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "targetOutputId": {
-            "type": "string"
-          },
-          "targetGroupId": {
-            "type": "string"
-          },
-          "volume": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 100,
-            "minimum": 0
-          },
-          "validDestination": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "uri"
-        ]
-      },
-      "AudioInputDefinition": {
-        "type": "object",
-        "properties": {
-          "inputId": {
-            "$ref": "#/components/schemas/InputId"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "uri": {
-            "type": "string",
-            "minLength": 1
-          },
-          "format": {
-            "$ref": "#/components/schemas/SampleFormat"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "shared": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "autoRemove": {
-            "type": "boolean"
-          },
-          "origin": {
-            "type": "string",
-            "enum": [
-              "CONFIGURATION",
-              "RUNTIME"
-            ]
-          },
-          "createdAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "defaultJoinMode": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "enum": [
-              "REPLACE",
-              "MIX",
-              "DUCK_OTHERS"
-            ]
-          }
-        },
-        "required": [
-          "uri"
-        ]
-      },
-      "InputId": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string"
-          }
-        }
-      },
-      "SampleFormat": {
-        "type": "object",
-        "properties": {
-          "sampleRate": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "bitDepth": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "channels": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sampleType": {
-            "type": "string",
-            "enum": [
-              "PCM",
-              "FLOAT"
-            ]
           }
         }
       },
@@ -3391,166 +2823,6 @@
             "additionalProperties": {
               "type": "integer",
               "format": "int32"
-            }
-          }
-        }
-      },
-      "OutputId": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string"
-          }
-        }
-      },
-      "Route": {
-        "type": "object",
-        "properties": {
-          "routeId": {
-            "$ref": "#/components/schemas/RouteId"
-          },
-          "inputId": {
-            "$ref": "#/components/schemas/InputId"
-          },
-          "targetType": {
-            "type": "string",
-            "enum": [
-              "SINGLE_OUTPUT",
-              "OUTPUT_GROUP"
-            ]
-          },
-          "targetId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "STARTING",
-              "ACTIVE",
-              "STOPPING",
-              "STOPPED",
-              "FAILED"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "startedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "transferable": {
-            "type": "boolean"
-          },
-          "joinMode": {
-            "type": "string",
-            "enum": [
-              "REPLACE",
-              "MIX",
-              "DUCK_OTHERS"
-            ]
-          },
-          "outputs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OutputId"
-            }
-          }
-        }
-      },
-      "RouteId": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string"
-          }
-        }
-      },
-      "GroupItem": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "outputIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "OutputItem": {
-        "type": "object",
-        "properties": {
-          "outputId": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          }
-        }
-      },
-      "OutputsResponse": {
-        "type": "object",
-        "properties": {
-          "outputs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OutputItem"
-            }
-          },
-          "groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GroupItem"
-            }
-          }
-        }
-      },
-      "AudioDevice": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "INPUT",
-              "OUTPUT"
-            ]
-          },
-          "maxChannels": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "defaultSampleRate": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "DevicesResponse": {
-        "type": "object",
-        "properties": {
-          "inputs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AudioDevice"
-            }
-          },
-          "outputs": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AudioDevice"
             }
           }
         }

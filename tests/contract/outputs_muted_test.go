@@ -12,7 +12,7 @@ import (
 )
 
 // Response/request shapes here mirror #/components/schemas/MutedRequest,
-// #/components/schemas/OutputMuteResponse, and the setOutputMuted operation in
+// #/components/schemas/OutputMuteResponse, and the setOutputMute operation in
 // api/openapi.json (constitution Principle II).
 
 func TestSetOutputMuted_Mute_RequestAndDecodeContract(t *testing.T) {
