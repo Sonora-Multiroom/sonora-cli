@@ -14,13 +14,16 @@ import (
 // including target resolution, end to end. outputIDs/groupIDs name the
 // identifiers that exist as each type; playStatus (0 = success) makes the
 // play endpoint return a fixed non-2xx status with playBody as its error
-// body, for exercising the hub-error paths.
+// body, for exercising the hub-error paths. respDisplayName, when non-empty,
+// is the displayName a 0.1.28 hub reports in a successful play answer; left
+// empty, the answer has no displayName, as from an older hub.
 type mockPlayHub struct {
-	outputIDs   map[string]bool
-	groupIDs    map[string]bool
-	playStatus  int
-	playBody    map[string]any
-	playRequest map[string]any
+	outputIDs       map[string]bool
+	groupIDs        map[string]bool
+	playStatus      int
+	playBody        map[string]any
+	playRequest     map[string]any
+	respDisplayName string
 }
 
 func newMockPlayHub(t *testing.T, outputIDs, groupIDs []string) (*httptest.Server, *mockPlayHub) {
@@ -54,7 +57,7 @@ func newMockPlayHub(t *testing.T, outputIDs, groupIDs []string) (*httptest.Serve
 			if name != "" {
 				msg = "Playback started: " + name
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			resp := map[string]any{
 				"inputId": "playback_1782345678",
 				"route": map[string]any{
 					"routeId": "route_abc123", "inputId": "playback_1782345678",
@@ -63,7 +66,11 @@ func newMockPlayHub(t *testing.T, outputIDs, groupIDs []string) (*httptest.Serve
 					"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
 				},
 				"message": msg,
-			})
+			}
+			if m.respDisplayName != "" {
+				resp["displayName"] = m.respDisplayName
+			}
+			_ = json.NewEncoder(w).Encode(resp)
 		case strings.HasPrefix(r.URL.Path, "/api/v2/outputs/"):
 			id := strings.TrimPrefix(r.URL.Path, "/api/v2/outputs/")
 			if !m.outputIDs[id] {
@@ -390,5 +397,43 @@ func TestPlay_OldNameFlag_UsageError(t *testing.T) {
 
 	if res.exitCode != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+}
+
+func TestPlay_Success_ShowsDisplayName(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+	m.respDisplayName = "Flickermood — Forss"
+
+	res := runCLI(t, "play", "https://soundcloud.com/forss/flickermood", "outputs/office-speaker", "--hub-url", srv.URL)
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	lines := strings.Split(res.stdout, "\n")
+	if len(lines) < 2 || lines[1] != `displayName: "Flickermood — Forss"` {
+		t.Errorf("expected displayName as the second line, got:\n%s", res.stdout)
+	}
+
+	res = runCLI(t, "play", "https://soundcloud.com/forss/flickermood", "outputs/office-speaker", "--hub-url", srv.URL, "--json")
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(res.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, res.stdout)
+	}
+	if decoded["displayName"] != "Flickermood — Forss" {
+		t.Errorf("expected displayName in JSON, got: %+v", decoded)
+	}
+}
+
+func TestPlay_Success_NoDisplayNameFromOlderHub(t *testing.T) {
+	srv, _ := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if strings.Contains(res.stdout, "displayName") {
+		t.Errorf("expected no displayName in stdout, got:\n%s", res.stdout)
 	}
 }

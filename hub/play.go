@@ -24,8 +24,13 @@ type PlaybackRequest struct {
 // defined in routes.go.
 type PlaybackResponse struct {
 	InputID string `json:"inputId"`
-	Route   Route  `json:"route"`
-	Message string `json:"message"`
+	// DisplayName is the input's display name once the route exists: the
+	// name sent with the request, the title a SoundCloud or YouTube link
+	// resolved to, or a generated placeholder. Empty when the hub does not
+	// report it (before hub 0.1.28).
+	DisplayName string `json:"displayName"`
+	Route       Route  `json:"route"`
+	Message     string `json:"message"`
 }
 
 // errorResponse mirrors #/components/schemas/ErrorResponse in

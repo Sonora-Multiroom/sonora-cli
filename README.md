@@ -120,8 +120,11 @@ playback to a new output or group without interruption. The route keeps its `rou
 group, creating the ephemeral input and route in one call —
 `sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
 (no polling for the route to become active). The target's type is given directly by the
-`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume, and
-`--display-name NAME` sets the ephemeral input's display name.
+`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume. The optional
+`--display-name NAME` sets the ephemeral input's display name, and the hub keeps a name you give
+as it is; without it, the hub names a SoundCloud or YouTube link "Title — Uploader" and anything
+else with a generated name. The output shows that name as `displayName` when the hub reports it
+(hub 0.1.28 and later).
 
 `speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
 a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts

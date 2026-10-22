@@ -247,3 +247,15 @@ func TestPlayRun_VolumeBoundaryValues_ProceedToCallHub(t *testing.T) {
 		})
 	}
 }
+
+func TestPlayRun_HelpDescribesDisplayName(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if want := "without it the hub names a SoundCloud or YouTube link after its track"; !strings.Contains(stdout.String(), want) {
+		t.Errorf("expected --display-name help to contain %q, got:\n%s", want, stdout.String())
+	}
+}
