@@ -44,6 +44,24 @@ How to show an output's routes was decided in the backlog item on 2026-10-22: an
 (`--routes`, `list routes --playing-on`, `list routes --output`, `get outputs/<id>/routes`, always
 including the routes) are not reopened here.
 
+## Clarifications
+
+### Session 2026-10-22
+
+- Q: Should `list routes` and `list inputs` also show the join mode, or only the single-item views? → A:
+  Only the single-item views (`get routes/<id>`, `get inputs/<id>`, `get outputs/<id> --include-routes`);
+  both lists stay unchanged.
+- Q: Should `--join-mode` also accept the hyphenated spelling `duck-others` used by sonora-tts? → A: No;
+  only the hub's spelling, in any case. `duck-others` is a usage error that lists the valid modes.
+- Q: With `--include-routes`, should each route show every field or a compact set? → A: YAML shows a
+  compact set (`routeId`, `inputId`, `targetId`, `targetType`, `status`, `joinMode`, `duckState`, `main`,
+  `paused`); JSON shows every field.
+
+### Session 2026-10-23
+
+- Q: What should `--include-routes` do when used with anything other than `get outputs/<id>`? → A: Usage
+  error (exit 2), no request sent, and the message says the flag applies only to `get outputs/<id>`.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Announce over music, or play alongside it (Priority: P1)
@@ -114,9 +132,9 @@ that only one request is sent.
 
 1. **Given** an output with a direct route and a group route playing, **When** the user runs
    `sonora get outputs/<id> --include-routes`, **Then** the output shows the output's record followed by
-   a `routes` list with both routes in the hub's order. Each entry has its route ID, input, target,
-   target type, status, join mode, duck state, whether it is the main route, and the other fields the
-   hub returns for it. This holds in YAML and in JSON.
+   a `routes` list with both routes in the hub's order. In YAML each entry has its route ID, input,
+   target, target type, status, join mode, duck state, whether it is the main route, and whether it is
+   paused. In JSON each entry has every field the hub returns for it.
 2. **Given** an output with nothing playing, **When** the user runs the same command, **Then** the
    output's record is followed by an empty routes list, in YAML and in JSON.
 3. **Given** `sonora get outputs/<id>` without the flag, **When** it runs, **Then** it sends one request,
@@ -169,8 +187,8 @@ fields and one that omits them, and compare the YAML and JSON output.
 ### Edge Cases
 
 - **Mixed case**: `--join-mode duck_others`, `Duck_Others` and `DUCK_OTHERS` all mean the same mode and
-  are sent upper-cased, as `--status` on `list routes` does today. Hyphens (`duck-others`) are not
-  accepted: the hub's spelling has an underscore.
+  are sent upper-cased, as `--status` on `list routes` does today. The hyphenated spelling that
+  sonora-tts uses (`duck-others`) is not an alias: it is a usage error that lists the valid modes.
 - **Empty value** (`--join-mode ""`): a usage error, not "use the default". Leaving the flag out is the
   way to use the default.
 - **A join mode the hub refuses**: a hub older than 0.1.21 ignores or rejects the field. Whatever it
@@ -185,6 +203,8 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **A hub older than 0.1.21 for `get routes/<id>`**: the route has no join mode and no outputs. The
   YAML leaves those two fields out instead of showing empty values. The JSON keeps printing what it
   prints today.
+- **`--include-routes` on another resource or on a list** (`get outputs`, `get groups/<id>`,
+  `get inputs/<id>`): a usage error before any request is sent.
 - **Many routes on one output**: shown in full, in the hub's order. There is no paging.
 - **Unknown future join mode in a response**: shown as the hub sent it. The flags still accept only the
   three documented modes, until the contract adds more.
@@ -218,8 +238,13 @@ fields and one that omits them, and compare the YAML and JSON output.
   state other than `LOWERED` counts as not lowered.
 - **FR-008**: `sonora get outputs/<id>` MUST accept `--include-routes`, with the help text "also list
   the routes playing on this output, in join order". With it, the output MUST be the output's record
-  followed by a `routes` list holding every field of each route on the output, in YAML and in JSON. An
-  output with no routes MUST show an empty list.
+  followed by a `routes` list in the hub's order. In YAML each entry MUST hold `routeId`, `inputId`,
+  `targetId`, `targetType`, `status`, `joinMode`, `duckState`, `main` and `paused`, in that order; in JSON
+  each entry MUST hold every field of the contract's route-on-output record. An output with no routes
+  MUST show an empty list.
+- **FR-008a**: `--include-routes` on any other `get` form (a list such as `get outputs`, or a resource
+  other than `outputs/<id>`) MUST be a usage error (exit 2). The command MUST send no request, and the
+  error MUST say the flag applies only to `get outputs/<id>`.
 - **FR-009**: Without `--include-routes`, `sonora get outputs/<id>` MUST send exactly one request, and
   its output MUST be unchanged.
 - **FR-010**: When the output request succeeds and the routes request answers 404, the CLI MUST report
@@ -279,11 +304,11 @@ fields and one that omits them, and compare the YAML and JSON output.
 
 - The production hub runs 0.1.28. Hubs older than 0.1.21 must still work for every command that does
   not use the new flags.
-- **List views stay as they are** (the backlog's open question). `list routes` and `list inputs` keep
-  their fixed fields. The join mode appears in `get routes/<id>`, `get inputs/<id>` and in the routes
-  shown by `--include-routes`, which is where a user asks about one route or one output. Adding columns to
-  the lists would change their shape for every script that reads them, for little gain. This can be
-  revisited separately.
+- **List views stay as they are** (the backlog's open question, settled in Clarifications). `list routes`
+  and `list inputs` keep their fixed fields. The join mode appears in `get routes/<id>`,
+  `get inputs/<id>` and in the routes shown by `--include-routes`, which is where a user asks about one
+  route or one output. Adding columns to the lists would change their shape for every script that reads
+  them, for little gain.
 - `sonora play` and `sonora route` do not show the join mode in their own output. Their output stays as
   it is, and `get routes/<id>` shows the join mode afterwards.
 - sonora-tts's announcement playback mode is out of scope until sonora-tts documents it.
