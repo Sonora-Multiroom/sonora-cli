@@ -85,7 +85,18 @@ already-paused route (or resuming an already-active one) still succeeds. Only `r
 supports pause/resume today.
 
 `enable <resource>/<id>` and `disable <resource>/<id>` set the input's, output's, or group's
-enabled state; a disabled input remains registered but is unavailable for new route creation.
+enabled state, and change playback that is already running:
+
+- disabling an input stops every route playing it, including paused routes and routes sharing its
+  hardware input, and removes an input registered with auto-remove;
+- disabling a group stops the routes addressed to it, while routes addressed to a member keep
+  playing;
+- disabling an output takes it out of every route playing on it: a route addressed to it stops, and
+  a group route keeps playing on its other members;
+- enabling an output puts it back into the live group routes of its enabled groups, under the same
+  route ID, and a route stopped by the disable does not come back;
+- enabling an input or a group starts nothing.
+
 `inputs`, `outputs`, and `groups` support enable/disable today.
 
 `mute <resource>/<id>` and `unmute <resource>/<id>` set the output's or group's muted state.
@@ -103,14 +114,19 @@ confirmation. Only `outputs`/`volume` and `groups`/`volume` support `set` today.
 
 `transfer routes/<route-id> <outputs|groups>/<target-id>` seamlessly moves an active route's
 playback to a new output or group without interruption. The route keeps its `routeId` (hub
-0.1.22 and later), so stored references stay valid.
+0.1.22 and later), so stored references stay valid. Right after an output is enabled, the hub
+may briefly refuse a transfer while the route is still adding that output; the refusal clears by
+itself, and `transfer` retries it for a moment before giving up.
 
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —
 `sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
 (no polling for the route to become active). The target's type is given directly by the
-`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume, and
-`--display-name NAME` sets the ephemeral input's display name.
+`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume. The optional
+`--display-name NAME` sets the ephemeral input's display name, and the hub keeps a name you give
+as it is; without it, the hub names a SoundCloud or YouTube link "Title — Uploader" and anything
+else with a generated name. The output shows that name as `displayName` when the hub reports it
+(hub 0.1.28 and later).
 
 `speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
 a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts
@@ -170,7 +186,7 @@ sonora list tts-voices --provider google --language uk-UA
 | 11 | input not found (route commands) |
 | 12 | target not found (route commands, including TTS `TARGET_NOT_FOUND`) |
 | 13 | TTS not available — the hub's TTS extension isn't installed, active, or hub-version-compatible |
-| 14 | the hub refused for its current state (409), e.g. a disabled input, output or group, a route limit, or an input already on the output — change that state and retry |
+| 14 | the hub refused for its current state (409), e.g. a disabled input, output or group, a route limit, or an input already on the output — change that state and retry; a refusal because a route is still adding an output clears by itself, and `transfer` retries it for a moment |
 
 ## Configuration
 

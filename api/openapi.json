@@ -10,7 +10,7 @@
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.24"
+    "version": "0.1.28"
   },
   "servers": [
     {
@@ -265,7 +265,7 @@
           "Outputs"
         ],
         "summary": "Set output enabled state",
-        "description": "Enables or disables an audio output. A disabled output remains registered but is unavailable for new route creation. Disabling also takes it out of playback: a route addressed to it stops, and a group route keeps playing on its other members.",
+        "description": "Enables or disables an audio output. A disabled output remains registered but is unavailable for new route creation. Disabling also takes it out of playback: a route addressed to it stops, and a group route keeps playing on its other members. Enabling puts it back into every live group route (playing, paused or starting) whose enabled group contains it, under the same route ID, and never stops a route; a route stopped by the disable does not come back.",
         "operationId": "setOutputEnabled",
         "parameters": [
           {
@@ -383,7 +383,7 @@
           "Inputs"
         ],
         "summary": "Set input enabled state",
-        "description": "Enables or disables an audio input. A disabled input remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "description": "Enables or disables an audio input. A disabled input remains registered but is unavailable for new route creation. Disabling also takes it out of playback: every route playing it stops, including routes sharing a hardware input and paused routes, and an input registered with auto-remove is then removed. Enabling starts nothing.",
         "operationId": "setInputEnabled",
         "parameters": [
           {
@@ -422,6 +422,72 @@
           },
           "400": {
             "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Input not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/inputs/{inputId}/display-name": {
+      "put": {
+        "tags": [
+          "Inputs"
+        ],
+        "summary": "Rename an input",
+        "description": "Changes the display name of a configured or runtime input. The name is trimmed and may be at most 64 characters; null, empty or blank restores the original name (the configured one, or the one the input was registered with). A rename lasts as long as the input's definition: until a restart for a configuration input, until it is removed for a runtime input. Playback is not interrupted.",
+        "operationId": "setInputDisplayName",
+        "parameters": [
+          {
+            "name": "inputId",
+            "in": "path",
+            "description": "Unique input identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "spotify-1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayNameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Input renamed, or nothing to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Name too long or contains a control character, or unreadable body",
             "content": {
               "application/json": {
                 "schema": {
@@ -581,7 +647,7 @@
           "Groups"
         ],
         "summary": "Set group enabled state",
-        "description": "Enables or disables an output group. A disabled group remains registered but is unavailable for new route creation. Existing active routes are unaffected.",
+        "description": "Enables or disables an output group. A disabled group remains registered but is unavailable for new route creation. Disabling also stops every route addressed to the group; routes addressed directly to a member output keep playing. Enabling starts nothing.",
         "operationId": "setGroupEnabled",
         "parameters": [
           {
@@ -872,7 +938,7 @@
             }
           },
           "409": {
-            "description": "Route not admitted: the input, output or group is disabled, every member of the group is disabled, the output is at its route limit, or the input already plays there. The body carries a reason (INPUT_DISABLED, OUTPUT_DISABLED, GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED, INPUT_ALREADY_ON_OUTPUT); outputId is present only for output-level reasons. Fix the state and retry",
+            "description": "Route not admitted: the input, output or group is disabled, every member of the group is disabled, the output is at its route limit, or the input already plays there, or the route is still adding an output that was just enabled. The body carries a reason (INPUT_DISABLED, OUTPUT_DISABLED, GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED, INPUT_ALREADY_ON_OUTPUT, ROUTE_CHANGING_OUTPUTS); outputId is present only for output-level reasons. Fix the state and retry; ROUTE_CHANGING_OUTPUTS clears by itself within moments",
             "content": {
               "application/json": {
                 "schema": {
@@ -1834,7 +1900,7 @@
               "string",
               "null"
             ],
-            "description": "Why a route was not admitted (ROUTE_LIMIT_REACHED or INPUT_ALREADY_ON_OUTPUT); present only on route admission errors",
+            "description": "Why a route was not admitted; present only on route admission errors (409). ROUTE_LIMIT_REACHED: a target output already holds the most routes it may. INPUT_ALREADY_ON_OUTPUT: the input already plays on a target output through another route. INPUT_DISABLED: the input is disabled. OUTPUT_DISABLED: the target output is disabled. GROUP_DISABLED: the target group is disabled. ALL_MEMBERS_DISABLED: every member of the target group is disabled. ROUTE_CHANGING_OUTPUTS: the route is still adding an output, so it cannot be transferred yet; transient, retry shortly. More reasons may be added: treat an unknown one as a generic conflict.",
             "examples": [
               "ROUTE_LIMIT_REACHED"
             ]
@@ -1844,7 +1910,7 @@
               "string",
               "null"
             ],
-            "description": "The first output that failed the admission check; present only on route admission errors",
+            "description": "The first output that failed the admission check; present only on route admission errors, and absent for INPUT_DISABLED, GROUP_DISABLED and ROUTE_CHANGING_OUTPUTS",
             "examples": [
               "kitchen"
             ]
@@ -2178,6 +2244,23 @@
           }
         }
       },
+      "DisplayNameRequest": {
+        "type": "object",
+        "description": "Rename an audio input, or restore its original name",
+        "properties": {
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New display name, at most 64 characters after trimming; null or blank restores the original name",
+            "examples": [
+              "Kiss FM"
+            ],
+            "maxLength": 64
+          }
+        }
+      },
       "GroupVolumeResponse": {
         "type": "object",
         "description": "Confirmation of applied volume level for a group",
@@ -2451,6 +2534,13 @@
             "description": "Success message describing the playback state",
             "examples": [
               "Playback started: Radio Stream → office-speaker"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The input's display name once the route exists: the name sent with the request, the title the link resolved to, or a generated placeholder",
+            "examples": [
+              "Flickermood — Forss"
             ]
           }
         }

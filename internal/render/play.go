@@ -8,31 +8,38 @@ import (
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
 
-// playbackPayload is the flat rendered view of a hub.PlaybackResponse: only
-// inputId/routeId/status/message (FR-006) — the full nested Route is
-// deliberately not rendered (data-model.md's "PlaybackResult" section).
+// playbackPayload is the flat rendered view of a hub.PlaybackResponse:
+// inputId, displayName (only when the hub reports one), routeId, status and
+// message. The full nested Route is deliberately not rendered
+// (data-model.md's "PlaybackResult" section).
 type playbackPayload struct {
-	InputID string `json:"inputId"`
-	RouteID string `json:"routeId"`
-	Status  string `json:"status"`
-	Message string `json:"message"`
+	InputID     string `json:"inputId"`
+	DisplayName string `json:"displayName,omitempty"`
+	RouteID     string `json:"routeId"`
+	Status      string `json:"status"`
+	Message     string `json:"message"`
 }
 
 func toPlaybackPayload(p hub.PlaybackResponse) playbackPayload {
 	return playbackPayload{
-		InputID: p.InputID,
-		RouteID: p.Route.RouteID,
-		Status:  p.Route.Status,
-		Message: p.Message,
+		InputID:     p.InputID,
+		DisplayName: p.DisplayName,
+		RouteID:     p.Route.RouteID,
+		Status:      p.Route.Status,
+		Message:     p.Message,
 	}
 }
 
 // RenderPlaybackYAML renders a playback result as a bare YAML record,
-// exposing exactly inputId, routeId, status, message in that order (FR-006).
+// exposing inputId, displayName, routeId, status, message in that order;
+// displayName is left out when the hub did not report one.
 func RenderPlaybackYAML(p hub.PlaybackResponse) string {
 	payload := toPlaybackPayload(p)
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "inputId: %q\n", payload.InputID)
+	if payload.DisplayName != "" {
+		fmt.Fprintf(&b, "displayName: %q\n", payload.DisplayName)
+	}
 	fmt.Fprintf(&b, "routeId: %q\n", payload.RouteID)
 	fmt.Fprintf(&b, "status: %q\n", payload.Status)
 	fmt.Fprintf(&b, "message: %q\n", payload.Message)
@@ -40,7 +47,8 @@ func RenderPlaybackYAML(p hub.PlaybackResponse) string {
 }
 
 // RenderPlaybackJSON renders a playback result as a strict JSON object,
-// exposing exactly inputId, routeId, status, message (FR-006).
+// exposing inputId, displayName, routeId, status, message; displayName is
+// left out when the hub did not report one.
 func RenderPlaybackJSON(p hub.PlaybackResponse) string {
 	data, err := json.Marshal(toPlaybackPayload(p))
 	if err != nil {

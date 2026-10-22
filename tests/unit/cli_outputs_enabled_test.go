@@ -79,3 +79,62 @@ func TestOutputsRunDisable_UnreachableHubURL(t *testing.T) {
 		t.Fatalf("exit code = %d, want 4; stderr: %s", code, stderr.String())
 	}
 }
+
+func TestOutputsRunEnable_HelpDescribesPlayback(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunEnable([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	lines := strings.Split(stdout.String(), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("expected at least 3 lines of help, got:\n%s", stdout.String())
+	}
+	if want := "usage: sonora enable outputs/<output-id> [flags]"; lines[0] != want {
+		t.Errorf("line 1 = %q, want %q", lines[0], want)
+	}
+	if lines[1] != "" {
+		t.Errorf("line 2 = %q, want empty", lines[1])
+	}
+	if want := "Enabling puts the output back into the group routes still playing on its groups; a route stopped by the disable does not come back."; lines[2] != want {
+		t.Errorf("line 3 = %q, want %q", lines[2], want)
+	}
+}
+
+func TestOutputsRunDisable_HelpDescribesPlayback(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunDisable([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	lines := strings.Split(stdout.String(), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("expected at least 3 lines of help, got:\n%s", stdout.String())
+	}
+	if want := "usage: sonora disable outputs/<output-id> [flags]"; lines[0] != want {
+		t.Errorf("line 1 = %q, want %q", lines[0], want)
+	}
+	if lines[1] != "" {
+		t.Errorf("line 2 = %q, want empty", lines[1])
+	}
+	if want := "Disabling takes the output out of every route playing on it; a route addressed only to it stops."; lines[2] != want {
+		t.Errorf("line 3 = %q, want %q", lines[2], want)
+	}
+}
+
+func TestOutputsRunDisable_UsageErrorOmitsDescription(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunDisable([]string{}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "usage: sonora disable outputs/<output-id> [flags]") {
+		t.Errorf("expected the usage line on stderr, got:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "Disabling takes the output out of every route playing on it; a route addressed only to it stops.") {
+		t.Errorf("expected no description on a usage error, got stderr:\n%s", stderr.String())
+	}
+}

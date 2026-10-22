@@ -34,7 +34,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
 	volumeFlag := fs.Int("volume", -1, "starting volume `N` (0-100), set before playback starts")
-	displayNameFlag := fs.String("display-name", "", "display `NAME` for the created ephemeral input")
+	displayNameFlag := fs.String("display-name", "", "display `NAME` for the input, kept as given; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,

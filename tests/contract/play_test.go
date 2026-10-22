@@ -262,3 +262,53 @@ func TestPlayback_MalformedBody_MissingRouteID(t *testing.T) {
 func TestPlayback_MalformedBody_MissingRouteStatus(t *testing.T) {
 	testPlaybackMalformedBody(t, `{"inputId":"playback_1","route":{"routeId":"route_1","status":""},"message":"ok"}`)
 }
+
+// servePlayback serves a 200 /api/v2/play whose body is a 0.1.28-era
+// PlaybackResponse, with displayName included only when it is non-empty.
+func servePlayback(t *testing.T, displayName string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := map[string]any{
+			"inputId": "playback_1782345678",
+			"route": map[string]any{
+				"routeId": "route-3f9a1c07b2e4", "inputId": "playback_1782345678", "targetId": "office-speaker",
+				"targetType": "SINGLE_OUTPUT", "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
+				"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			},
+			"message": "Playback started: Flickermood — Forss → office-speaker",
+		}
+		if displayName != "" {
+			body["displayName"] = displayName
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestPlayback_Success_DecodesDisplayName(t *testing.T) {
+	srv := servePlayback(t, "Flickermood — Forss")
+
+	req := hub.PlaybackRequest{URI: "https://soundcloud.com/forss/flickermood", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT"}
+	resp, err := hub.Playback(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.DisplayName != "Flickermood — Forss" {
+		t.Errorf("got DisplayName %q, want %q", resp.DisplayName, "Flickermood — Forss")
+	}
+}
+
+func TestPlayback_Success_MissingDisplayNameDecodesEmpty(t *testing.T) {
+	srv := servePlayback(t, "")
+
+	req := hub.PlaybackRequest{URI: "https://stream.example.com/live.mp3", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT"}
+	resp, err := hub.Playback(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.DisplayName != "" {
+		t.Errorf("got DisplayName %q, want empty", resp.DisplayName)
+	}
+}

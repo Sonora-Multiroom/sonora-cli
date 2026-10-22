@@ -381,9 +381,11 @@ with no second copy (research §7).
       (`go get …@v0.1.0`, import `…/hub`, 5-line example, link to `go doc`); commit `docs:`
 - [X] T049 Final gate: `gofmt -l .` (no output), `go vet ./...`, `go test ./...` green;
       mark all tasks above `[X]`
-- [ ] T050 [P] Tick the Phase 2 checklist items in
+- [X] T050 [P] Tick the Phase 2 checklist items in
       `D:\projects-sonora\sonora-mcp\docs\future\go-rewrite-shared-hub-client.md`
-      (sonora-mcp repo; separate commit there, confirm with the maintainer)
+      (sonora-mcp repo; separate commit there, confirm with the maintainer). Done in
+      sonora-mcp: all items ticked and the plan moved to
+      `docs/archive/go-rewrite-shared-hub-client.md` (commit `be2c89c`).
 
 ---
 
