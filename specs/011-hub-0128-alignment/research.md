@@ -5,9 +5,11 @@ All Technical Context items were known; these are the design decisions.
 ## 1. Where the enable/disable playback text goes in `--help`
 
 - **Decision**: Append a blank line and one description line to the usage string passed to
-  `clihelp.SetUsage`/`PrintUsage` in `internal/cli/{inputs,outputs,groups}/enabled.go`, chosen per verb.
-  `PrintUsage` prints the usage string with `Fprintln`, so a multi-line string needs no helper change,
-  and the first line stays the `usage: …` line that tests and users expect.
+  `clihelp.PrintUsage` for an explicit `--help` in `internal/cli/{inputs,outputs,groups}/enabled.go`,
+  chosen per verb. `PrintUsage` prints the usage string with `Fprintln`, so a multi-line string needs no
+  helper change, and the first line stays the `usage: …` line that tests and users expect.
+  `clihelp.SetUsage` and the missing-argument message keep the one-line usage, so error output does not
+  change.
 - **Rationale**: Smallest change; no other command has a description today, so no shared helper exists
   to reuse, and adding one for six strings is not worth it.
 - **Alternatives**: A `description` parameter on `clihelp.SetUsage` (touches every caller); text only in

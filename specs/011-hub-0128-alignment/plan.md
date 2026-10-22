@@ -9,8 +9,8 @@
 Three small corrections after the `api/openapi.json` refresh to hub 0.1.28, with no new command or flag:
 
 1. **Docs**: the enable/disable help texts and README say what each command does to running playback
-   (hub 0.1.25 semantics). The help gets a description line under the usage line, which `clihelp`
-   already prints verbatim.
+   (hub 0.1.25 semantics). The `--help` output gets a description line under the usage line, which
+   `clihelp.PrintUsage` already prints verbatim; usage errors keep printing the one-line usage.
 2. **Play name**: `hub.PlaybackResponse` gains `DisplayName`; `sonora play` renders `displayName` after
    `inputId` when non-empty and omits it otherwise; `--display-name` help and README describe the hub's
    naming.
@@ -96,8 +96,10 @@ tests/
 ├── unit/render_play_test.go      # displayName present / absent / non-ASCII
 ├── unit/hub_client_test.go       # ClassifyError message, IsTransientConflict
 ├── unit/cli_*_enabled_test.go    # help description lines (or one table test)
+├── unit/cli_play_test.go         # --display-name help text
 ├── contract/play_test.go         # displayName decodes; omitted decodes to ""
 ├── contract/route_refusal_test.go# ROUTE_CHANGING_OUTPUTS decodes with no outputId
+├── integration/play_test.go      # play output with and without displayName
 └── integration/route_test.go     # transfer: retry succeeds, retries run out, other reasons not retried
 ```
 

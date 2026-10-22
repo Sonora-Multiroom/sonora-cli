@@ -4,12 +4,13 @@ No command, flag or exit code is added or removed. Changes below are the only us
 
 ## `enable` / `disable` help
 
-The help keeps its `usage: …` first line, then a blank line, then one description line, then the
-existing `Flags:` block.
+The `--help` output keeps its `usage: …` first line, then a blank line, then one description line, then
+the existing `Flags:` block. Usage errors (a bad flag, a missing argument) print the one-line usage as
+before, without the description.
 
 | Command | Description line |
 |---|---|
-| `disable inputs/<id>` | Disabling stops every route playing the input, paused ones too, and removes an input registered with auto-remove. |
+| `disable inputs/<id>` | Disabling stops every route playing the input, including paused routes and routes sharing its hardware input, and removes an input registered with auto-remove. |
 | `enable inputs/<id>` | Enabling lets new routes use the input again; it starts nothing. |
 | `disable outputs/<id>` | Disabling takes the output out of every route playing on it; a route addressed only to it stops. |
 | `enable outputs/<id>` | Enabling puts the output back into the group routes still playing on its groups; a route stopped by the disable does not come back. |
@@ -34,8 +35,8 @@ JSON: `{"inputId":"…","displayName":"…","routeId":"…","status":"…","mess
 
 With no name from the hub, the `displayName` line/key is absent and the output is identical to today's.
 
-`--display-name` flag description: "display `NAME` for the input; without it the hub names a SoundCloud
-or YouTube link after its track and anything else with a generated name".
+`--display-name` flag description: "display `NAME` for the input, kept as given; without it the hub names
+a SoundCloud or YouTube link after its track and anything else with a generated name".
 
 ## `sonora transfer`
 
@@ -46,6 +47,7 @@ or YouTube link after its track and anything else with a generated name".
 | Transient 409 on all 5 attempts | — | `error: the route is still adding an output; retry in a moment (hub URL: …)` | 14 |
 | Same, with `--verbose` | — | the line above plus `detail: <hub's detail>` | 14 |
 | Any other 409, 404, 4xx/5xx, network error | — | as today, after exactly one transfer request | as today |
+| Transient 409, then any other error on a retry | — | that error, as today, with no further request | as today |
 
 ## README
 

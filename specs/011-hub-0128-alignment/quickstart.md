@@ -23,7 +23,8 @@ Expected: `gofmt` prints nothing, exit 0, and these new tests pass (names are in
 | Transfer: 1 transient refusal then success | `tests/integration/route_test.go` | exit 0, 2 transfer requests, stderr empty |
 | Transfer: always transient | same | exit 14, 5 requests, transient message, under 3 s |
 | Transfer: `OUTPUT_DISABLED` | same | exit 14, 1 request, hub detail shown |
-| Enable/disable help | `tests/unit/cli_*_enabled_test.go` | first line `usage: …`, then the description line from [contracts/cli.md](contracts/cli.md) |
+| Transfer: transient, then `OUTPUT_DISABLED`, 404 or a dropped connection | same | that error as today, 2 requests |
+| Enable/disable help | `tests/unit/cli_*_enabled_test.go` | first line `usage: …`, then the description line from [contracts/cli.md](contracts/cli.md); usage errors unchanged |
 
 ## Manual checks (read-only against production)
 

@@ -60,19 +60,19 @@ does to playback that is already running.
 
 ### Tests for User Story 1 ⚠️ write first, watch them fail
 
-- [ ] T002 [P] [US1] In `tests/unit/cli_inputs_enabled_test.go`, add `TestInputsRunEnable_HelpDescribesPlayback` and `TestInputsRunDisable_HelpDescribesPlayback`. Each calls `inputs.RunEnable` or `inputs.RunDisable` with `[]string{"--help"}` and asserts exit 0, that line 1 is `usage: sonora <verb> inputs/<input-id> [flags]`, that line 2 is empty, and that line 3 is the verb's exact sentence from the `enable`/`disable` `inputs` rows of `specs/011-hub-0128-alignment/contracts/cli.md`.
-- [ ] T003 [P] [US1] Add the same two tests for outputs in `tests/unit/cli_outputs_enabled_test.go`: `TestOutputsRunEnable_HelpDescribesPlayback` and `TestOutputsRunDisable_HelpDescribesPlayback`, using the `outputs` rows.
-- [ ] T004 [P] [US1] Add the same two tests for groups in `tests/unit/cli_groups_enabled_test.go`: `TestGroupsRunEnable_HelpDescribesPlayback` and `TestGroupsRunDisable_HelpDescribesPlayback`, using the `groups` rows.
+- [ ] T002 [P] [US1] In `tests/unit/cli_inputs_enabled_test.go`, add `TestInputsRunEnable_HelpDescribesPlayback` and `TestInputsRunDisable_HelpDescribesPlayback`. Each calls `inputs.RunEnable` or `inputs.RunDisable` with `[]string{"--help"}` and asserts exit 0, that line 1 is `usage: sonora <verb> inputs/<input-id> [flags]`, that line 2 is empty, and that line 3 is the verb's exact sentence from the `enable`/`disable` `inputs` rows of `specs/011-hub-0128-alignment/contracts/cli.md`. Also add `TestInputsRunDisable_UsageErrorOmitsDescription`: with no arguments, stderr contains the `usage: …` line and does not contain the description sentence.
+- [ ] T003 [P] [US1] Add the same two tests for outputs in `tests/unit/cli_outputs_enabled_test.go`: `TestOutputsRunEnable_HelpDescribesPlayback` and `TestOutputsRunDisable_HelpDescribesPlayback`, using the `outputs` rows, plus `TestOutputsRunDisable_UsageErrorOmitsDescription`.
+- [ ] T004 [P] [US1] Add the same two tests for groups in `tests/unit/cli_groups_enabled_test.go`: `TestGroupsRunEnable_HelpDescribesPlayback` and `TestGroupsRunDisable_HelpDescribesPlayback`, using the `groups` rows, plus `TestGroupsRunDisable_UsageErrorOmitsDescription`.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] In `internal/cli/inputs/enabled.go`, `runSetEnabled`: build `usage` as the existing `usage: …` line, then `"\n\n"`, then the verb's description from contracts/cli.md. Use two unexported string constants, one per verb. Do not change `clihelp`. Usage errors now print the description too; that is accepted, because `clihelp.SetUsage` already prints the full usage text on them.
+- [ ] T005 [P] [US1] In `internal/cli/inputs/enabled.go`, `runSetEnabled`: keep `usage` as the one-line `usage: …` string, and pass `usage + "\n\n" + description` only to the `clihelp.PrintUsage` call that serves `--help`. Take the verb's description from contracts/cli.md, as two unexported string constants, one per verb. `clihelp.SetUsage` and the missing-argument message keep the one-line `usage`, so error output is unchanged. Do not change `clihelp`.
 - [ ] T006 [P] [US1] Make the same change, with the `outputs` sentences, in `internal/cli/outputs/enabled.go`.
 - [ ] T007 [P] [US1] Make the same change, with the `groups` sentences, in `internal/cli/groups/enabled.go`.
 - [ ] T008 [US1] In `README.md`, replace the paragraph that starts "`enable <resource>/<id>` and `disable <resource>/<id>` set the input's…" (around line 87) with the five rules of FR-001, keeping its last sentence about which resources are supported:
   - disabling an input stops every route playing it, paused and shared ones included, and removes an input registered with auto-remove;
   - disabling a group stops the routes addressed to it, while routes addressed to a member keep playing;
-  - disabling an output takes it out of every route playing on it;
+  - disabling an output takes it out of every route playing on it: a route addressed to it stops, and a group route keeps playing on its other members;
   - enabling an output puts it back into the live group routes of its enabled groups, under the same route ID, and a route stopped by the disable does not come back;
   - enabling an input or a group starts nothing.
 
@@ -115,7 +115,7 @@ field when it is non-empty.
   - in `RenderPlaybackYAML`, write `displayName: %q` after `inputId` only when it is non-empty;
   - update the comments that say "exactly inputId, routeId, status, message", so they describe the optional fifth field without citing FR numbers.
   This makes T010 and T011 pass.
-- [ ] T015 [US2] In `internal/cli/play/play.go`, change the `--display-name` flag's usage string to: "display `NAME` for the input; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name". This makes T012 pass.
+- [ ] T015 [US2] In `internal/cli/play/play.go`, change the `--display-name` flag's usage string to: "display `NAME` for the input, kept as given; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name". This makes T012 pass.
 - [ ] T016 [US2] In the `play` paragraph of `README.md` (around line 113, "`--display-name NAME` sets the ephemeral input's display name"):
   - say the flag is optional;
   - say that without it the hub names a SoundCloud or YouTube link "Title — Uploader", and anything else with a generated name;
@@ -148,7 +148,9 @@ number of transfer requests, as in the table in [contracts/cli.md](contracts/cli
   - `TestRouteTransfer_TransientRefusalRunsOut`: `transferTransient: 99`. Assert exit 14; stderr containing `the route is still adding an output; retry in a moment`; `transferRequests == 5`; and an elapsed time between 1.4 s and 3 s.
   - `TestRouteTransfer_TransientRefusalRunsOut_Verbose`: the same with `--verbose`. Assert stderr also contains `detail: Route is changing its outputs`.
   - `TestRouteTransfer_OtherRefusalNotRetried`: `transferStatus: 409` with reason `OUTPUT_DISABLED`. Assert exit 14, `transferRequests == 1`, and the hub's detail on stderr.
-  - `TestRouteTransfer_TransientThenRouteGone`: one transient refusal, then a 404 with detail `Route not found: <id>`. Assert the existing route-not-found exit code and 2 requests.
+  - `TestRouteTransfer_TransientThenOtherRefusal`: `transferTransient: 1`, then `transferStatus: 409` with a `transferBody` carrying reason `OUTPUT_DISABLED`, as in `TestRouteTransfer_409_RefusedRoute`. Assert exit 14, the hub's detail on stderr, no transient message, and `transferRequests == 2`.
+  - `TestRouteTransfer_TransientThenRouteGone`: `transferTransient: 1`, then `transferStatus: 404` with a `transferBody` whose detail is `Route not found: <id>` (the transient check runs before `transferStatus`, so the first request is still refused as transient). Assert the existing route-not-found exit code and 2 requests.
+  - `TestRouteTransfer_TransientThenNetworkFailure`: give `mockRouteHub` a field `transferHangUp bool`; when set, a transfer request after the transient ones hijacks the connection (`http.Hijacker`) and closes it without answering. With `transferTransient: 1`, assert the network exit code, the existing network message, and `transferRequests == 2`.
   The existing `TestRouteTransfer_409_RefusedRoute` must still assert exactly one request; add that assertion if it is missing.
 
 ### Implementation for User Story 3
