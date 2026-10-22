@@ -185,6 +185,62 @@ func SetInputEnabled(ctx context.Context, client *http.Client, baseURL, inputID 
 	return &input, nil
 }
 
+// DisplayNameRequest mirrors #/components/schemas/DisplayNameRequest in
+// api/openapi.json. A nil DisplayName is sent as null, which (like a blank
+// name) restores the input's original name.
+type DisplayNameRequest struct {
+	DisplayName *string `json:"displayName"`
+}
+
+// SetInputDisplayName calls PUT {baseURL}/api/v2/inputs/{inputId}/display-name
+// (operationId "setInputDisplayName", hub 0.1.27 and later), renaming a
+// configured or runtime input without interrupting its playback. A nil name
+// restores the original name. The hub trims the name and allows at most 64
+// characters. A rename lasts until a restart for a configured input and until
+// removal for a runtime input. On success (200) the input as it now reads is
+// returned. A 404 is a *NotFoundError naming the input; a 400 (name too long
+// or containing a control character) is an *APIError carrying the hub's
+// detail, falling back to a *StatusError if the body cannot be decoded; any
+// other non-2xx status is a *StatusError.
+func SetInputDisplayName(ctx context.Context, client *http.Client, baseURL, inputID string, name *string) (*Input, error) {
+	body, err := json.Marshal(DisplayNameRequest{DisplayName: name})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/inputs/" + url.PathEscape(inputID) + "/display-name"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "input", ID: inputID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var input Input
+	if err := json.NewDecoder(resp.Body).Decode(&input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateInput(input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &input, nil
+}
+
 // CreateInput calls POST {baseURL}/api/v2/inputs (operationId
 // "createInput"), registering a new ephemeral audio input. On success (201),
 // the decoded Input is returned, validated via the existing validateInput
