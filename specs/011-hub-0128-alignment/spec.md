@@ -154,15 +154,17 @@ allowance, and check output, stderr and exit code.
 **Enable and disable documentation**
 
 - **FR-001**: The README MUST state what each enable and disable does to playback, as the hub 0.1.25
-  contract describes it: disabling an input stops every route playing it (paused and shared ones too)
-  and removes an input registered to remove itself; disabling a group stops the routes addressed to the
-  group while routes addressed to a member keep playing; disabling an output takes it out of every route playing on it, so a route addressed to it stops and a group route keeps playing on its other members;
-  enabling an output puts it back into the live group routes of its enabled groups under the same route ID, and a route stopped by the disable
-  does not come back; enabling an input or a group starts nothing.
+  contract describes it: disabling an input stops every route playing it (paused routes and routes
+  sharing its hardware input too) and removes an input registered to remove itself; disabling a group
+  stops the routes addressed to the group while routes addressed to a member keep playing; disabling an
+  output takes it out of every route playing on it, so a route addressed to it stops and a group route
+  keeps playing on its other members; enabling an output puts it back into the live group routes of its
+  enabled groups under the same route ID, and a route stopped by the disable does not come back;
+  enabling an input or a group starts nothing.
 - **FR-002**: The help of `sonora enable` and `sonora disable`, for each of `inputs`, `outputs` and
   `groups`, MUST include one line on what happens to running playback.
-- **FR-003**: The enable and disable commands' arguments, flags, output, error output and exit codes MUST NOT change; only their `--help`
-  text gains the description line.
+- **FR-003**: The enable and disable commands' arguments, flags, output, error output and exit codes
+  MUST NOT change; only their `--help` text gains the description line.
 
 **Play shows the resolved display name**
 

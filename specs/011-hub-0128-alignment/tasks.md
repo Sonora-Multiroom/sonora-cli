@@ -70,7 +70,7 @@ does to playback that is already running.
 - [ ] T006 [P] [US1] Make the same change, with the `outputs` sentences, in `internal/cli/outputs/enabled.go`.
 - [ ] T007 [P] [US1] Make the same change, with the `groups` sentences, in `internal/cli/groups/enabled.go`.
 - [ ] T008 [US1] In `README.md`, replace the paragraph that starts "`enable <resource>/<id>` and `disable <resource>/<id>` set the input's…" (around line 87) with the five rules of FR-001, keeping its last sentence about which resources are supported:
-  - disabling an input stops every route playing it, paused and shared ones included, and removes an input registered with auto-remove;
+  - disabling an input stops every route playing it, including paused routes and routes sharing its hardware input, and removes an input registered with auto-remove;
   - disabling a group stops the routes addressed to it, while routes addressed to a member keep playing;
   - disabling an output takes it out of every route playing on it: a route addressed to it stops, and a group route keeps playing on its other members;
   - enabling an output puts it back into the live group routes of its enabled groups, under the same route ID, and a route stopped by the disable does not come back;
@@ -150,7 +150,7 @@ number of transfer requests, as in the table in [contracts/cli.md](contracts/cli
   - `TestRouteTransfer_OtherRefusalNotRetried`: `transferStatus: 409` with reason `OUTPUT_DISABLED`. Assert exit 14, `transferRequests == 1`, and the hub's detail on stderr.
   - `TestRouteTransfer_TransientThenOtherRefusal`: `transferTransient: 1`, then `transferStatus: 409` with a `transferBody` carrying reason `OUTPUT_DISABLED`, as in `TestRouteTransfer_409_RefusedRoute`. Assert exit 14, the hub's detail on stderr, no transient message, and `transferRequests == 2`.
   - `TestRouteTransfer_TransientThenRouteGone`: `transferTransient: 1`, then `transferStatus: 404` with a `transferBody` whose detail is `Route not found: <id>` (the transient check runs before `transferStatus`, so the first request is still refused as transient). Assert the existing route-not-found exit code and 2 requests.
-  - `TestRouteTransfer_TransientThenNetworkFailure`: give `mockRouteHub` a field `transferHangUp bool`; when set, a transfer request after the transient ones hijacks the connection (`http.Hijacker`) and closes it without answering. With `transferTransient: 1`, assert the network exit code, the existing network message, and `transferRequests == 2`.
+  - `TestRouteTransfer_TransientThenNetworkFailure`: give `mockRouteHub` a field `transferHangUp bool`; when set, a transfer request after the transient ones hijacks the connection (`http.Hijacker`) and closes it without answering. With `transferTransient: 1`, assert exit 4 (`exitcode.For(hub.ClassNetwork)`), stderr containing `could not reach the hub`, and `transferRequests == 2`. No existing test hijacks a connection; keep the hijack inside the mock's transfer case.
   The existing `TestRouteTransfer_409_RefusedRoute` must still assert exactly one request; add that assertion if it is missing.
 
 ### Implementation for User Story 3
