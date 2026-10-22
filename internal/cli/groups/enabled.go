@@ -13,6 +13,13 @@ import (
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
 )
 
+// enableDescription and disableDescription follow the usage line in
+// --help, saying what each verb does to playback that is already running.
+const (
+	enableDescription  = "Enabling lets new routes use the group again; it starts nothing."
+	disableDescription = "Disabling stops every route addressed to the group; routes addressed to a member output keep playing."
+)
+
 // RunEnable implements `sonora enable groups/<group-id>`.
 func RunEnable(args []string, stdout, stderr io.Writer) int {
 	return runSetEnabled("enable", true, args, stdout, stderr)
@@ -31,6 +38,10 @@ func RunDisable(args []string, stdout, stderr io.Writer) int {
 // code classes in data-model.md's exit code table.
 func runSetEnabled(verb string, enabled bool, args []string, stdout, stderr io.Writer) int {
 	usage := fmt.Sprintf("usage: sonora %s groups/<group-id> [flags]", verb)
+	description := disableDescription
+	if enabled {
+		description = enableDescription
+	}
 
 	fs := flag.NewFlagSet(verb+" groups", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -44,7 +55,7 @@ func runSetEnabled(verb string, enabled bool, args []string, stdout, stderr io.W
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
 	// printing to stderr and exiting 2.
 	if clihelp.Requested(args) {
-		clihelp.PrintUsage(fs, stdout, usage)
+		clihelp.PrintUsage(fs, stdout, usage+"\n\n"+description)
 		return 0
 	}
 

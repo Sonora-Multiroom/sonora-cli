@@ -85,7 +85,18 @@ already-paused route (or resuming an already-active one) still succeeds. Only `r
 supports pause/resume today.
 
 `enable <resource>/<id>` and `disable <resource>/<id>` set the input's, output's, or group's
-enabled state; a disabled input remains registered but is unavailable for new route creation.
+enabled state, and change playback that is already running:
+
+- disabling an input stops every route playing it, including paused routes and routes sharing its
+  hardware input, and removes an input registered with auto-remove;
+- disabling a group stops the routes addressed to it, while routes addressed to a member keep
+  playing;
+- disabling an output takes it out of every route playing on it: a route addressed to it stops, and
+  a group route keeps playing on its other members;
+- enabling an output puts it back into the live group routes of its enabled groups, under the same
+  route ID, and a route stopped by the disable does not come back;
+- enabling an input or a group starts nothing.
+
 `inputs`, `outputs`, and `groups` support enable/disable today.
 
 `mute <resource>/<id>` and `unmute <resource>/<id>` set the output's or group's muted state.
