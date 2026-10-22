@@ -39,6 +39,7 @@ table, common flags, and examples from the terminal.
 | `get <resource>[/<id>]` | `inputs`, `outputs`, `groups`, `routes` | `in`, `out`, `gr`, `rt` |
 | `list <resource>` | same four, collection form only | same |
 | `create inputs/<id> <uri>` | `inputs` only | `in` |
+| `rename inputs/<id> <name>\|--reset` | `inputs` only | `in` |
 | `delete <resource>/<id>` | `routes`, `inputs` | `rt`, `in` |
 | `stop routes[/<id>]` | bare = stop all; `/<id>` = alias of `delete routes/<id>` | `rt` |
 | `stop <resource>/<id>` | `outputs`, `groups` — stop every route in scope | `out`, `gr` |
@@ -66,6 +67,12 @@ interchangeable with full resource names everywhere a resource path appears, e.g
 a new ephemeral input and prints the created input record. `--display-name` is required;
 `--auto-remove` removes the input once its route stops, and `--disabled` creates it disabled
 (enabled by default). Only `inputs` supports creation today.
+
+`rename inputs/<input-id> <name>` changes an input's display name without interrupting its
+playback and prints the input record; `rename inputs/<input-id> --reset` restores the original
+name. Quote a name that contains spaces. The hub trims the name and allows at most 64
+characters. A rename lasts until the hub restarts for a configured input, and until removal for
+a runtime input. Requires hub 0.1.27 or later.
 
 `delete routes/<id>` stops playback and removes the route; `stop routes/<id>` is an exact
 alias. `delete inputs/<id>` removes a previously created ephemeral input (static,

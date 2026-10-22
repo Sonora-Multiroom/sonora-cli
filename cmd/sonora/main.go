@@ -30,6 +30,7 @@ Commands:
   route inputs/<id> <target>          Connect an existing input to a target
   transfer routes/<id> <target>       Move playback to a new target
   create inputs/<id> <uri>            Register a new ephemeral input
+  rename inputs/<id> <name>|--reset   Rename an input, or restore its name
   delete routes/<id>                  Stop and remove a route
   delete inputs/<id>                  Remove an ephemeral input
   stop routes[/<id>]                  Stop all routes, or one by id
@@ -75,6 +76,7 @@ Examples:
   sonora set outputs/office-speaker volume 40
   sonora set groups/living-room volume 40
   sonora create inputs/spotify-1 "https://stream.mp3" --display-name Spotify
+  sonora rename inputs/spotify-1 "Kiss FM"
   sonora delete routes/route-abc-123
   sonora delete inputs/spotify-1
   sonora stop routes
@@ -136,6 +138,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchCreate(args[1:], stdout, stderr)
 	case "delete":
 		return dispatchDelete(args[1:], stdout, stderr)
+	case "rename":
+		return dispatchRename(args[1:], stdout, stderr)
 	case "stop":
 		return dispatchStop(args[1:], stdout, stderr)
 	case "enable", "disable":
@@ -199,6 +203,41 @@ func dispatchCreate(args []string, stdout, stderr io.Writer) int {
 
 	callArgs := append([]string{path.ID}, args[1:]...)
 	return inputs.RunCreate(callArgs, stdout, stderr)
+}
+
+// dispatchRename resolves the resource-path argument following `rename` via
+// respath and calls inputs.RunRename — the hub can rename only inputs. Any
+// other resource is a usage error.
+func dispatchRename(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora rename inputs/<input-id> <name>|--reset [flags]"
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Inputs {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: rename does not support %s; only inputs/<input-id> is supported\n", path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <input-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	return inputs.RunRename(callArgs, stdout, stderr)
 }
 
 // dispatchDelete resolves the resource-path argument following `delete` via
