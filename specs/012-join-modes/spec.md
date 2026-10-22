@@ -124,8 +124,8 @@ on an output. It needs a new hub client operation and new output, and it depends
 so it is more work than the request flags.
 
 **Independent Test**: Run `sonora get outputs/<id> --include-routes` against a fake hub that returns a
-list of routes, an empty list, an unknown duck state, a 404 for the output, and a 404 for the routes
-only (an older hub). Check the YAML, JSON and exit code in each case. Run it without the flag and check
+list of routes, an empty list, an unknown duck state, a 404 for the output, and a 404 or 405 for the
+routes only (an older hub). Check the YAML, JSON and exit code in each case. Run it without the flag and check
 that only one request is sent.
 
 **Acceptance Scenarios**:

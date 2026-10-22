@@ -186,7 +186,7 @@ exactly one request is sent.
   - `TestOutputsGet_IncludeRoutes_RoutesFailOtherwise`: a table of a 500, and a 200 with the body `{"not":"an array"}`. Each gives exit 3, stdout empty, and no older-hub message.
   - `TestOutputsGet_WithoutIncludeRoutes_OneRequest`: no flag gives exactly 1 request, to `/api/v2/outputs/<id>`, and stdout byte-identical to `TestOutputsGet_SuccessYAML`'s expectation.
   - `TestOutputsGet_IncludeRoutes_FlagAfterID` and `…_FlagBeforeID`: both orders work.
-- [ ] T025 [P] [US2] In `cmd/sonora/main_test.go`, add `TestRunGetList_IncludeRoutesElsewhere_UsageError`. It is a table over the argument lists `get outputs --include-routes`, `list outputs --include-routes`, `get inputs/x --include-routes`, `get groups/x --include-routes`, `get routes/x --include-routes`, `get routes --include-routes`, `get master-mute --include-routes`, `get tts-cache --include-routes` and `get outputs --include-routes=true`, each with `--hub-url` pointing at an `httptest` server that counts requests. For each, assert exit 2; that stderr contains `error: --include-routes applies only to 'sonora get outputs/<id>'`; and 0 requests. Also assert that `get outputs/x -- --include-routes` is not caught by the dispatcher (anything after `--` is not scanned).
+- [ ] T025 [P] [US2] In `cmd/sonora/main_test.go`, add `TestRunGetList_IncludeRoutesElsewhere_UsageError`. It is a table over the argument lists `get outputs --include-routes`, `list outputs --include-routes`, `get inputs/x --include-routes`, `get groups/x --include-routes`, `get routes/x --include-routes`, `get routes --include-routes`, `get master-mute --include-routes`, `get tts-cache --include-routes`, `get outputs --include-routes=true` and `get --include-routes outputs/x` (flags follow the resource, as for every other `get` flag), each with `--hub-url` pointing at an `httptest` server that counts requests. For each, assert exit 2; that stderr contains `error: --include-routes applies only to 'sonora get outputs/<id>'`; and 0 requests. Also assert that `get outputs/x -- --include-routes` is not caught by the dispatcher (anything after `--` is not scanned).
 
 ### Implementation for User Story 2
 
@@ -254,28 +254,28 @@ and `list inputs` are unchanged.
   - add `TestRenderInputYAML_NoDefaultJoinModeIsNull`, where a nil value gives a bare `defaultJoinMode: null` as the last line;
   - add `TestRenderInputsYAML_ListUnchanged`, asserting that `RenderInputsYAML` output contains no `defaultJoinMode`.
 - [ ] T034 [P] [US3] In `tests/integration/routes_get_test.go`, add `TestRoutesGet_ShowsJoinModeAndOutputs` (a 0.1.28 body with `joinMode` and `outputs`) and `TestRoutesGet_OlderHubBodyOmitsFields` (a body without both keys, whose YAML equals `TestRoutesGet_SuccessYAML`'s expectation). In `tests/integration/inputs_get_test.go`, add `TestInputsGet_ShowsDefaultJoinMode` and `TestInputsGet_NullDefaultJoinMode`. For each, check that `--json` contains the same keys.
+- [ ] T035 [P] [US3] In the existing integration tests for `create`, `rename` and `enable|disable inputs/<id>` (`tests/integration/inputs_create_test.go`, `inputs_rename_test.go` and `inputs_enabled_test.go`), wherever one compares the exact YAML, add the trailing `defaultJoinMode: null` line, or the value its fake hub sends. Change nothing else in those tests. They fail until T037. This is the deliberate change recorded in research.md §2 and FR-013.
 
 ### Implementation for User Story 3
 
-- [ ] T035 [P] [US3] In `internal/render/routes.go`, `RenderRouteYAML`:
+- [ ] T036 [P] [US3] In `internal/render/routes.go`, `RenderRouteYAML`:
   - after `paused`, write `joinMode: %q` when `r.JoinMode != ""`;
   - when `r.Outputs != nil`, write `outputs: []` for an empty slice, otherwise `outputs:` followed by one `  - %q` line per output;
   - update the doc comment: say the ten fields are always present and the two join-mode fields are left out when the hub did not send them;
   - leave `RenderRoutesYAML`, `RenderRoutesJSON` and `RenderRouteJSON` unchanged.
 
-  This makes T032 pass.
-- [ ] T036 [P] [US3] In `internal/render/inputs.go`, `RenderInputYAML`: after `writeCreatedAt`, write `defaultJoinMode: %q`, or a bare `defaultJoinMode: null` when it is nil. Add a small `writeDefaultJoinMode` helper next to `writeCreatedAt`. Leave `RenderInputsYAML` unchanged. Update the doc comment: this record is also printed by `create`, `rename` and `enable|disable inputs/<id>`. This makes T033 pass.
-- [ ] T037 [US3] Run the existing integration tests for `create`, `rename` and `enable|disable inputs/<id>` (`tests/integration/inputs_create_test.go`, `inputs_rename_test.go` and `inputs_enabled_test.go`). Wherever one compares the exact YAML, add the trailing `defaultJoinMode: null` line, or the value its fake hub sends. Change nothing else in those tests. This is the deliberate change recorded in research.md §2 and FR-013.
+  This makes T032 and the route half of T034 pass.
+- [ ] T037 [P] [US3] In `internal/render/inputs.go`, `RenderInputYAML`: after `writeCreatedAt`, write `defaultJoinMode: %q`, or a bare `defaultJoinMode: null` when it is nil. Add a small `writeDefaultJoinMode` helper next to `writeCreatedAt`. Leave `RenderInputsYAML` unchanged. Update the doc comment: this record is also printed by `create`, `rename` and `enable|disable inputs/<id>`. This makes T033, T035 and the input half of T034 pass.
 - [ ] T038 [US3] In `README.md`, add a line to the `get routes/<id>` section saying it shows `joinMode` and the `outputs` the route plays on right now (hub 0.1.21 or later), and that a group route may list fewer members than its group has. Add a line to the `get inputs/<id>` section about `defaultJoinMode`. Do it after T031 (same file).
 
-**Checkpoint**: T032–T034 pass. `list routes` and `list inputs` are unchanged. The tests changed in
-T037 differ only by the new last line.
+**Checkpoint**: T032–T035 pass. `list routes` and `list inputs` are unchanged. The tests changed in
+T035 differ only by the new last line.
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T039 Run `gofmt -l .` (it must print nothing), `go vet ./...` and `go test -count=1 ./...`, reading each command's own exit code. Fix any failure, including in `tests/unit/hub_godoc_test.go` and `tests/unit/stray_refs_test.go`.
+- [ ] T039 Run `gofmt -l .` (it must print nothing), `go vet ./...` and `go test -count=1 ./...`, reading each command's own exit code. Fix any failure, including in `tests/unit/hub_godoc_test.go` and `tests/unit/stray_refs_test.go`. Also confirm that `git diff main -- go.mod go.sum` prints nothing: the feature adds no dependency.
 - [ ] T040 Work through `specs/012-join-modes/quickstart.md`:
   - the four `--help` outputs, via `go run ./cmd/sonora …`;
   - the **read-only** checks against `http://multiroom.lan:8080`: `get outputs/<id> --include-routes`, the same with `--json`, `get routes/<id>` and `get inputs/<id>`, comparing against `curl -s …/api/v2/outputs/<id>/routes`.
@@ -298,7 +298,8 @@ T037 differ only by the new last line.
     - T015 comes before T016, T017 and T018.
   - **US2**: T020 and T021→T026→T027; T022→T028; T023 and T024→T029; T025→T030.
     - T027 comes before T028, which comes before T029.
-  - **US3**: T032→T035; T033→T036→T037; T034 after T035 and T036 pass.
+  - **US3**: T032→T036; T033 and T035→T037; T034→T036 and T037. Each test task fails before its
+    implementation task starts.
 - **Shared files**:
   - `hub/routes.go`: T012 (US1) and T026 (US2) edit it, so do them one after the other.
   - `README.md`: T019, T031 and T038 edit it, so do them in that order, never in parallel.
@@ -314,7 +315,7 @@ T037 differ only by the new last line.
   - the tests T020–T023 and T025 together, and T024 after T023 (both are outputs-get files, but in
     different suites);
   - T030 can run in parallel with T026–T029.
-- **US3**: T032, T033 and T034 together, then T035 and T036 together.
+- **US3**: T032–T035 together, then T036 and T037 together.
 - **Across stories**: once T001 is done, the three stories can be built side by side, apart from the
   two shared files above.
 

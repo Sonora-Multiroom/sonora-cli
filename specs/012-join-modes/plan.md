@@ -122,6 +122,7 @@ tests/
 ├── contract/outputs_routes_test.go   # NEW: GetRoutesForOutput
 ├── contract/{route,play,inputs_create}_test.go  # field sent only when set
 ├── unit/joinmode_test.go             # NEW
+├── unit/hub_client_test.go           # RouteOnOutput.Lowered, DuckState* constants
 ├── unit/render_{routes,inputs,output_get}_test.go
 ├── unit/cli_{play,route,inputs_create,outputs_get}_test.go  # help text
 ├── integration/{play,route,inputs_create,outputs_get,routes_get,inputs_get}_test.go

@@ -98,6 +98,10 @@ the spec's wording.
 - **Rationale**: the dispatcher is the only place that knows the resource and the verb. Left to each
   command's `flag` set, the user would see "flag provided but not defined", which does not say where
   the flag belongs.
+- **Accepted gaps**: the scan matches only the `--` spelling. A single-dash `-include-routes`, which
+  AGENTS.md rules out, reaches the command's `flag` set and fails there with exit 2 and no request.
+  A flag placed before the resource (`get --include-routes outputs/x`) is rejected with the same
+  message, as every `get` flag must follow the resource.
 
 ## 9. Output shape with `--include-routes`
 
