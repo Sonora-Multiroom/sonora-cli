@@ -141,7 +141,7 @@ that only one request is sent.
    and its output is byte-for-byte the same as before this feature.
 4. **Given** an unknown output, **When** the user runs the command with the flag, **Then** it reports the
    output as not found, exactly as `get outputs/<id>` does today.
-5. **Given** a hub older than 0.1.21, which knows the output but answers 404 for the output's routes,
+5. **Given** a hub older than 0.1.21, which knows the output but answers 404 or 405 for the output's routes,
    **When** the user runs the command with the flag, **Then** it does not say the output was not
    found. It says that this hub cannot list an output's routes and needs 0.1.21 or later, and exits with
    the exit code for an unexpected hub response (3), not the not-found code (5).
@@ -247,7 +247,8 @@ fields and one that omits them, and compare the YAML and JSON output.
   error MUST say the flag applies only to `get outputs/<id>`.
 - **FR-009**: Without `--include-routes`, `sonora get outputs/<id>` MUST send exactly one request, and
   its output MUST be unchanged.
-- **FR-010**: When the output request succeeds and the routes request answers 404, the CLI MUST report
+- **FR-010**: When the output request succeeds and the routes request answers 404 or 405 (a hub with
+  the stop-routes operation on the same path but not the list answers 405), the CLI MUST report
   that the hub does not support listing an output's routes and needs 0.1.21 or later. It MUST exit with
   the unexpected-response exit code (3), and MUST NOT report the output as not found.
 - **FR-011**: With `--include-routes`, any failure MUST leave stdout empty. The CLI never prints the
@@ -258,8 +259,9 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **FR-012**: The YAML of `sonora get routes/<id>` MUST show the route's join mode and the list of outputs
   it plays on, after its current fields. When the hub returns neither field (a hub older than 0.1.21),
   both MUST be left out.
-- **FR-013**: The YAML of `sonora get inputs/<id>` MUST show the input's default join mode, as null when
-  the input has none.
+- **FR-013**: The YAML of every command that prints one input record (`get`, `create`, `rename`,
+  `enable` and `disable inputs/<id>`) MUST show the input's default join mode, as null when the input
+  has none. Their JSON already shows it.
 - **FR-014**: The JSON of `get routes/<id>` and `get inputs/<id>` MUST keep its current shape and contain
   the same join-mode fields as the YAML.
 - **FR-015**: `sonora list routes` and `sonora list inputs` output MUST NOT change.
@@ -296,7 +298,8 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **SC-003**: Against a hub older than 0.1.21, `get outputs/<id> --include-routes` never says that an
   existing output was not found. Its message names the hub version required.
 - **SC-004**: Every command run without the new flags sends the same requests and prints the same
-  output as the previous release, byte for byte, across the existing test suite.
+  output as the previous release, byte for byte, across the existing test suite, apart from the
+  join-mode fields FR-012 and FR-013 add to the route and input YAML.
 - **SC-005**: An invalid join mode is rejected before any request reaches the hub, in 100% of the tested
   cases.
 
