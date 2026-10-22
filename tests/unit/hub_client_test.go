@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -168,6 +169,10 @@ func TestClassifyError_Conflict_Messages(t *testing.T) {
 		{"title only", &hub.APIError{StatusCode: 409, Title: "Route not admitted"}, "Route not admitted"},
 		{"empty body", &hub.APIError{StatusCode: 409}, ""},
 		{"undecodable body", &hub.StatusError{StatusCode: 409}, ""},
+		{"route changing outputs", &hub.APIError{
+			StatusCode: 409, Title: "Route not admitted", Detail: "Route is changing its outputs, try again: route-3f9a1c07b2e4",
+			Reason: hub.ReasonRouteChangingOutputs,
+		}, "the route is still adding an output; retry in a moment"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -461,5 +466,31 @@ func TestNewClient_DefaultTimeoutIsFiveSeconds(t *testing.T) {
 	client := hub.NewClient()
 	if client.Timeout != 5*time.Second {
 		t.Errorf("NewClient().Timeout = %v, want 5s", client.Timeout)
+	}
+}
+
+func TestIsTransientConflict(t *testing.T) {
+	transient := &hub.APIError{StatusCode: 409, Reason: hub.ReasonRouteChangingOutputs}
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"route changing outputs", transient, true},
+		{"wrapped route changing outputs", fmt.Errorf("transfer: %w", transient), true},
+		{"other reason", &hub.APIError{StatusCode: 409, Reason: "OUTPUT_DISABLED"}, false},
+		{"no reason", &hub.APIError{StatusCode: 409}, false},
+		{"422 with the reason", &hub.APIError{StatusCode: 422, Reason: hub.ReasonRouteChangingOutputs}, false},
+		{"undecodable 409", &hub.StatusError{StatusCode: 409}, false},
+		{"not found", &hub.NotFoundError{Resource: "route", ID: "route-3f9a1c07b2e4"}, false},
+		{"network error", &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}, false},
+		{"nil", nil, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := hub.IsTransientConflict(c.err); got != c.want {
+				t.Errorf("IsTransientConflict(%v) = %v, want %v", c.err, got, c.want)
+			}
+		})
 	}
 }

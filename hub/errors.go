@@ -72,14 +72,30 @@ type APIError struct {
 	Detail     string
 	// Reason says why the hub refused a route (409 from CreateRoute,
 	// TransferRoute or Playback): one of INPUT_DISABLED, OUTPUT_DISABLED,
-	// GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED or
-	// INPUT_ALREADY_ON_OUTPUT. The hub may add reasons; treat an unknown one
-	// as a generic conflict. Empty on every other error.
+	// GROUP_DISABLED, ALL_MEMBERS_DISABLED, ROUTE_LIMIT_REACHED,
+	// INPUT_ALREADY_ON_OUTPUT or ROUTE_CHANGING_OUTPUTS. The last one, from
+	// TransferRoute only, is transient (see ReasonRouteChangingOutputs and
+	// IsTransientConflict); the others clear only when the state changes. The
+	// hub may add reasons; treat an unknown one as a generic conflict. Empty on
+	// every other error.
 	Reason string
 	// OutputID names the first output that failed an output-level check of a
-	// route refusal. Empty for INPUT_DISABLED, GROUP_DISABLED and every other
-	// error.
+	// route refusal. Empty for INPUT_DISABLED, GROUP_DISABLED,
+	// ROUTE_CHANGING_OUTPUTS and every other error.
 	OutputID string
+}
+
+// ReasonRouteChangingOutputs is the APIError.Reason of a transfer refused while the
+// route is still adding an output that was just enabled. It clears by itself within
+// moments, so retrying the same request shortly is the right response.
+const ReasonRouteChangingOutputs = "ROUTE_CHANGING_OUTPUTS"
+
+// IsTransientConflict reports whether err is a 409 route refusal that clears without
+// any change of state (today only ReasonRouteChangingOutputs). It is false for every
+// other error, including other 409 refusals.
+func IsTransientConflict(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == 409 && apiErr.Reason == ReasonRouteChangingOutputs
 }
 
 func (e *APIError) Error() string {
@@ -149,6 +165,9 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 			}
 			return ClassValidation, msg
 		case 409:
+			if apiErr.Reason == ReasonRouteChangingOutputs {
+				return ClassConflict, "the route is still adding an output; retry in a moment"
+			}
 			if msg == "" {
 				msg = conflictMessage
 			}

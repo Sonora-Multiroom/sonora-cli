@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Sonora-Multiroom/sonora-cli/hub"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
 )
 
 // mockRouteHub serves /api/v2/inputs/{id}, /api/v2/outputs/{id},
@@ -18,6 +21,10 @@ import (
 // non-2xx status with routesBody as its error body, for exercising the
 // hub-error paths; rawRoutesBody, if set, is written verbatim instead of a
 // 201 success body, for exercising a malformed-response path.
+// transferTransient makes the first that many transfer requests answer the
+// hub's transient 409 (ROUTE_CHANGING_OUTPUTS) before the transfer endpoint's
+// usual behaviour; transferHangUp makes every later transfer request drop the
+// connection without an answer.
 type mockRouteHub struct {
 	inputIDs  map[string]bool
 	outputIDs map[string]bool
@@ -31,9 +38,11 @@ type mockRouteHub struct {
 	deleteStatus int
 	deleteBody   map[string]any
 
-	transferStatus  int
-	transferBody    map[string]any
-	rawTransferBody *string
+	transferStatus    int
+	transferBody      map[string]any
+	rawTransferBody   *string
+	transferTransient int
+	transferHangUp    bool
 
 	pauseStatus  int
 	pauseBody    map[string]any
@@ -122,7 +131,7 @@ func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*htt
 				"startedAt": "2026-01-01T00:00:01Z", "transferable": true, "pauseable": true, "paused": paused,
 			})
 		case strings.HasPrefix(r.URL.Path, "/api/v2/routes/") && strings.HasSuffix(r.URL.Path, "/transfer") && r.Method == http.MethodPost:
-			atomic.AddInt32(&m.transferRequests, 1)
+			n := atomic.AddInt32(&m.transferRequests, 1)
 			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v2/routes/"), "/transfer")
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
@@ -131,6 +140,24 @@ func newMockRouteHub(t *testing.T, inputIDs, outputIDs, groupIDs []string) (*htt
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNotFound)
 				_ = json.NewEncoder(w).Encode(map[string]any{"title": "Not Found", "detail": "route not found"})
+				return
+			}
+			if int(n) <= m.transferTransient {
+				w.Header().Set("Content-Type", "application/problem+json")
+				w.WriteHeader(http.StatusConflict)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"title": "Conflict", "status": 409, "detail": "Route is changing its outputs, try again: " + id,
+					"reason": "ROUTE_CHANGING_OUTPUTS",
+				})
+				return
+			}
+			if m.transferHangUp {
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Errorf("hijack: %v", err)
+					return
+				}
+				_ = conn.Close()
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -649,6 +676,160 @@ func TestRouteTransfer_409_RefusedRoute(t *testing.T) {
 	}
 	if !strings.Contains(res.stderr, "Output 'bedroom-speaker' is disabled") {
 		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 1 {
+		t.Errorf("expected exactly 1 transfer request, got %d", got)
+	}
+}
+
+// transferAfterTransient runs `sonora transfer` against a mock hub that
+// answers the transient refusal transient times first; configure adjusts the
+// mock before the run. It returns the result, the mock and the elapsed time.
+func transferAfterTransient(t *testing.T, transient int, configure func(*mockRouteHub), extraArgs ...string) (cliResult, *mockRouteHub, time.Duration) {
+	t.Helper()
+	srv, m := newMockRouteHub(t, nil, []string{"bedroom-speaker"}, nil)
+	m.routeIDs["route_abc123"] = true
+	m.transferTransient = transient
+	if configure != nil {
+		configure(m)
+	}
+	args := append([]string{"transfer", "routes/route_abc123", "outputs/bedroom-speaker", "--hub-url", srv.URL}, extraArgs...)
+	start := time.Now()
+	res := runCLI(t, args...)
+	return res, m, time.Since(start)
+}
+
+func TestRouteTransfer_TransientRefusalThenSuccess(t *testing.T) {
+	immediate, _, _ := transferAfterTransient(t, 0, nil)
+	res, m, _ := transferAfterTransient(t, 1, nil)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != immediate.stdout {
+		t.Errorf("stdout differs from an immediate success;\ngot:\n%s\nwant:\n%s", res.stdout, immediate.stdout)
+	}
+	if res.stderr != "" {
+		t.Errorf("expected empty stderr, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 2 {
+		t.Errorf("expected 2 transfer requests, got %d", got)
+	}
+}
+
+func TestRouteTransfer_TransientRefusalFourTimesThenSuccess(t *testing.T) {
+	res, m, _ := transferAfterTransient(t, 4, nil)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 5 {
+		t.Errorf("expected 5 transfer requests, got %d", got)
+	}
+}
+
+func TestRouteTransfer_TransientRefusalRunsOut(t *testing.T) {
+	res, m, elapsed := transferAfterTransient(t, 99, nil)
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "the route is still adding an output; retry in a moment") {
+		t.Errorf("expected the transient message in stderr, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 5 {
+		t.Errorf("expected 5 transfer requests, got %d", got)
+	}
+	if elapsed < 1400*time.Millisecond || elapsed > 3*time.Second {
+		t.Errorf("expected the retries to take between 1.4s and 3s, took %v", elapsed)
+	}
+}
+
+func TestRouteTransfer_TransientRefusalRunsOut_Verbose(t *testing.T) {
+	res, _, _ := transferAfterTransient(t, 99, nil, "--verbose")
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "the route is still adding an output; retry in a moment") {
+		t.Errorf("expected the transient message in stderr, got:\n%s", res.stderr)
+	}
+	if !strings.Contains(res.stderr, "detail: Route is changing its outputs") {
+		t.Errorf("expected the hub's detail with --verbose, got:\n%s", res.stderr)
+	}
+}
+
+// outputDisabledRefusal is the hub's 409 body for a transfer to a disabled
+// output.
+var outputDisabledRefusal = map[string]any{
+	"title": "Route not admitted", "detail": "Output 'bedroom-speaker' is disabled",
+	"reason": "OUTPUT_DISABLED", "outputId": "bedroom-speaker",
+}
+
+func TestRouteTransfer_OtherRefusalNotRetried(t *testing.T) {
+	res, m, _ := transferAfterTransient(t, 0, func(m *mockRouteHub) {
+		m.transferStatus = http.StatusConflict
+		m.transferBody = outputDisabledRefusal
+	})
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "Output 'bedroom-speaker' is disabled") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 1 {
+		t.Errorf("expected exactly 1 transfer request, got %d", got)
+	}
+}
+
+func TestRouteTransfer_TransientThenOtherRefusal(t *testing.T) {
+	res, m, _ := transferAfterTransient(t, 1, func(m *mockRouteHub) {
+		m.transferStatus = http.StatusConflict
+		m.transferBody = outputDisabledRefusal
+	})
+
+	if res.exitCode != 14 {
+		t.Fatalf("exit code = %d, want 14; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "Output 'bedroom-speaker' is disabled") {
+		t.Errorf("expected the hub's error detail in stderr, got:\n%s", res.stderr)
+	}
+	if strings.Contains(res.stderr, "still adding an output") {
+		t.Errorf("expected no transient message, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 2 {
+		t.Errorf("expected 2 transfer requests, got %d", got)
+	}
+}
+
+func TestRouteTransfer_TransientThenRouteGone(t *testing.T) {
+	res, m, _ := transferAfterTransient(t, 1, func(m *mockRouteHub) {
+		m.transferStatus = http.StatusNotFound
+		m.transferBody = map[string]any{"title": "Not Found", "detail": "Route not found: route_abc123"}
+	})
+
+	if res.exitCode != 5 {
+		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 2 {
+		t.Errorf("expected 2 transfer requests, got %d", got)
+	}
+}
+
+func TestRouteTransfer_TransientThenNetworkFailure(t *testing.T) {
+	res, m, _ := transferAfterTransient(t, 1, func(m *mockRouteHub) {
+		m.transferHangUp = true
+	})
+
+	if want := exitcode.For(hub.ClassNetwork); res.exitCode != want {
+		t.Fatalf("exit code = %d, want %d; stderr: %s", res.exitCode, want, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "could not reach the hub") {
+		t.Errorf("expected the network message in stderr, got:\n%s", res.stderr)
+	}
+	if got := atomic.LoadInt32(&m.transferRequests); got != 2 {
+		t.Errorf("expected 2 transfer requests, got %d", got)
 	}
 }
 

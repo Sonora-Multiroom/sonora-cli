@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
@@ -17,13 +18,19 @@ import (
 
 const transferUsage = "usage: sonora transfer routes/<route-id> <outputs|groups>/<target-id> [flags]"
 
+// transferRetryDelays are the waits before each retry of a transfer the hub
+// refused as transient: at most 4 retries, 1.5 s of waiting in all.
+var transferRetryDelays = []time.Duration{100 * time.Millisecond, 200 * time.Millisecond, 400 * time.Millisecond, 800 * time.Millisecond}
+
 // RunTransfer implements `sonora transfer routes/<route-id>
 // <outputs|groups>/<target-id>`: it defines and parses this command's
 // flags, validates both resource paths (the first must be routes/<id>, the
 // second outputs/<id> or groups/<id> — no auto-detect, mirroring Run's
 // input/target validation), verifies the target already exists, calls the
 // hub to transfer the route, and renders the result to stdout. The route
-// keeps its routeId (hub 0.1.22 and later). Any failure is reported on stderr, never stdout, so
+// keeps its routeId (hub 0.1.22 and later). A transfer the hub refuses
+// because the route is still adding an output is retried for a moment
+// before it is reported. Any failure is reported on stderr, never stdout, so
 // scripts piping stdout never see error text. It returns the process exit
 // code per data-model.md's exit code table.
 func RunTransfer(args []string, stdout, stderr io.Writer) int {
@@ -135,8 +142,18 @@ func RunTransfer(args []string, stdout, stderr io.Writer) int {
 		return reportError(stderr, err, baseURL, *verbose)
 	}
 
+	// The hub refuses a transfer while the route is still adding an output
+	// that was just enabled, and that refusal clears within moments: retry
+	// only it, quietly, after each of these delays in turn.
 	req := hub.TransferRequest{TargetID: targetID, TargetType: targetType}
 	transferred, err := hub.TransferRoute(ctx, client, baseURL, routeID, req)
+	for _, delay := range transferRetryDelays {
+		if !hub.IsTransientConflict(err) {
+			break
+		}
+		time.Sleep(delay)
+		transferred, err = hub.TransferRoute(ctx, client, baseURL, routeID, req)
+	}
 	if err != nil {
 		var notFoundErr *hub.NotFoundError
 		if errors.As(err, &notFoundErr) {

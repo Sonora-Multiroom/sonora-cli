@@ -54,19 +54,27 @@ func admissionProblem(reason, outputID, detail string) http.HandlerFunc {
 }
 
 func TestRouteRefusal_409_DecodesReasonAndOutputID(t *testing.T) {
+	// call limits a case to one operation (empty: every operation); wantMsg
+	// is ClassifyError's message when it is not the hub's detail.
 	refusals := []struct {
 		reason, outputID, detail string
+		call, wantMsg            string
 	}{
-		{"OUTPUT_DISABLED", "bathroom", "Output 'bathroom' is disabled"},
-		{"ALL_MEMBERS_DISABLED", "bathroom", "Every member of group 'upstairs' is disabled"},
-		{"ROUTE_LIMIT_REACHED", "bathroom", "Output 'bathroom' is at its route limit"},
-		{"INPUT_ALREADY_ON_OUTPUT", "bathroom", "Input 'spotify-1' already plays on 'bathroom'"},
-		{"INPUT_DISABLED", "", "Input 'spotify-1' is disabled"},
-		{"GROUP_DISABLED", "", "Group 'upstairs' is disabled"},
-		{"SOME_FUTURE_REASON", "", "Refused for a reason this client does not know"},
+		{"OUTPUT_DISABLED", "bathroom", "Output 'bathroom' is disabled", "", ""},
+		{"ALL_MEMBERS_DISABLED", "bathroom", "Every member of group 'upstairs' is disabled", "", ""},
+		{"ROUTE_LIMIT_REACHED", "bathroom", "Output 'bathroom' is at its route limit", "", ""},
+		{"INPUT_ALREADY_ON_OUTPUT", "bathroom", "Input 'spotify-1' already plays on 'bathroom'", "", ""},
+		{"INPUT_DISABLED", "", "Input 'spotify-1' is disabled", "", ""},
+		{"GROUP_DISABLED", "", "Group 'upstairs' is disabled", "", ""},
+		{"SOME_FUTURE_REASON", "", "Refused for a reason this client does not know", "", ""},
+		{"ROUTE_CHANGING_OUTPUTS", "", "Route is changing its outputs, try again: route-3f9a1c07b2e4",
+			"TransferRoute", "the route is still adding an output; retry in a moment"},
 	}
 	for name, call := range routeRefusingCalls {
 		for _, tt := range refusals {
+			if tt.call != "" && tt.call != name {
+				continue
+			}
 			t.Run(name+"/"+tt.reason, func(t *testing.T) {
 				srv := httptest.NewServer(admissionProblem(tt.reason, tt.outputID, tt.detail))
 				defer srv.Close()
@@ -83,9 +91,13 @@ func TestRouteRefusal_409_DecodesReasonAndOutputID(t *testing.T) {
 				if *apiErr != want {
 					t.Errorf("APIError = %+v, want %+v", *apiErr, want)
 				}
+				wantMsg := tt.detail
+				if tt.wantMsg != "" {
+					wantMsg = tt.wantMsg
+				}
 				class, msg := hub.ClassifyError(err)
-				if class != hub.ClassConflict || msg != tt.detail {
-					t.Errorf("ClassifyError = (%v, %q), want (ClassConflict, %q)", class, msg, tt.detail)
+				if class != hub.ClassConflict || msg != wantMsg {
+					t.Errorf("ClassifyError = (%v, %q), want (ClassConflict, %q)", class, msg, wantMsg)
 				}
 			})
 		}
