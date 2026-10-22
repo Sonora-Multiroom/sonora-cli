@@ -25,7 +25,7 @@ Expected: `gofmt` prints nothing, the exit code is 0, and these tests pass. The 
 | The same with the output 404 / routes 404 / routes 405 / routes 500 / malformed routes | the same | exit 5 / 3 / 3 / 3 / 3; stdout empty each time; the older-hub message only for 404 and 405 |
 | `get outputs/<id>` without the flag | the same | exactly one request; output byte-identical |
 | `--include-routes` on `get outputs`, `list outputs`, `get inputs/x`, `get groups/x`, `get routes/x`, `get master-mute` | `cmd/sonora/main_test.go` | exit 2, the applies-only message, no request |
-| Route YAML with `joinMode` and two outputs, with an empty outputs list, and with both absent | `tests/unit/render_route_test.go` | lines after `paused`; `outputs: []`; the ten old lines only |
+| Route YAML with `joinMode` and two outputs, with an empty outputs list, and with both absent | `tests/unit/render_routes_test.go` | lines after `paused`; `outputs: []`; the ten old lines only |
 | Input YAML with a default and with null | `tests/unit/render_inputs_test.go` | `defaultJoinMode: "DUCK_OTHERS"` / `defaultJoinMode: null`, last |
 | `list routes`, `list inputs` | the existing tests | unchanged, still passing |
 | The godoc on new `hub` identifiers | `tests/unit/hub_godoc_test.go` | passes; no spec IDs in the comments |
