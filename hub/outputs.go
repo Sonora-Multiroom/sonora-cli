@@ -103,6 +103,92 @@ func GetOutput(ctx context.Context, client *http.Client, baseURL, outputID strin
 	return &output, nil
 }
 
+// Duck states: how a route sounds on one output. The hub may add values;
+// treat an unknown one as DuckStateFull.
+const (
+	DuckStateFull    = "FULL"
+	DuckStateLowered = "LOWERED"
+)
+
+// RouteOnOutput mirrors #/components/schemas/RouteOnOutputResponse in
+// api/openapi.json field-for-field: one route as seen from one output, with
+// its duck state there and whether it is the output's main route. A group
+// route appears under each member output it plays on.
+type RouteOnOutput struct {
+	RouteID    string `json:"routeId"`
+	InputID    string `json:"inputId"`
+	TargetID   string `json:"targetId"`
+	TargetType string `json:"targetType"`
+	Status     string `json:"status"`
+	// JoinMode is how the route joined its target (a JoinMode* value). The
+	// hub may add values; an unknown one is kept as sent.
+	JoinMode     string  `json:"joinMode"`
+	CreatedAt    string  `json:"createdAt"`
+	StartedAt    *string `json:"startedAt"`
+	Transferable bool    `json:"transferable"`
+	Pauseable    bool    `json:"pauseable"`
+	Paused       bool    `json:"paused"`
+	// DuckState is how the route sounds on this output (a DuckState* value),
+	// kept as sent; use Lowered to test it.
+	DuckState string `json:"duckState"`
+	// Main reports whether this is the output's main route: the first
+	// non-ducking route to join it, else the first route.
+	Main bool `json:"main"`
+}
+
+// Lowered reports whether the route is lowered under a ducking route on this
+// output. Any duck state other than DuckStateLowered counts as not lowered.
+func (r RouteOnOutput) Lowered() bool {
+	return r.DuckState == DuckStateLowered
+}
+
+// GetRoutesForOutput calls GET {baseURL}/api/v2/outputs/{outputId}/routes
+// (operationId "getRoutesForOutput") and lists every route playing on the
+// output, addressed to it or to a group it belongs to, in the order they
+// joined it. A null or empty body is an empty slice. A 404 is returned as a
+// *NotFoundError naming the output; any other non-2xx status is a
+// *StatusError; a malformed body, or an entry without a route ID, input and
+// target or with an unknown target type or status, is a *DecodeError. The
+// join mode and duck state are not checked, so unknown values pass through.
+func GetRoutesForOutput(ctx context.Context, client *http.Client, baseURL, outputID string) ([]RouteOnOutput, error) {
+	reqURL, err := url.Parse(strings.TrimRight(baseURL, "/") + "/api/v2/outputs/" + url.PathEscape(outputID) + "/routes")
+	if err != nil {
+		return nil, fmt.Errorf("invalid hub URL %q: %w", baseURL, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "output", ID: outputID}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var routes []RouteOnOutput
+	if err := json.NewDecoder(resp.Body).Decode(&routes); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if routes == nil {
+		routes = []RouteOnOutput{}
+	}
+	for _, r := range routes {
+		if err := validateRouteFields(r.RouteID, r.InputID, r.TargetID, r.TargetType, r.Status); err != nil {
+			return nil, &DecodeError{Err: err}
+		}
+	}
+	return routes, nil
+}
+
 // SetOutputEnabled calls PUT {baseURL}/api/v2/outputs/{outputId}/enabled
 // (operationId "setOutputEnabled") with {"enabled": enabled}. On success
 // (200), the decoded, updated Output is returned (malformed body →

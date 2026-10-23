@@ -66,7 +66,13 @@ interchangeable with full resource names everywhere a resource path appears, e.g
 `create inputs/<input-id> <uri> --display-name <name> [--auto-remove] [--disabled]` registers
 a new ephemeral input and prints the created input record. `--display-name` is required;
 `--auto-remove` removes the input once its route stops, and `--disabled` creates it disabled
-(enabled by default). Only `inputs` supports creation today.
+(enabled by default). `--default-join-mode MODE` sets the [join mode](#join-modes) for routes from
+this input that name none; without it, the input declares none and its routes use `REPLACE`.
+Only `inputs` supports creation today.
+
+```
+sonora create inputs/doorbell <uri> --display-name Doorbell --default-join-mode duck_others
+```
 
 `rename inputs/<input-id> <name>` changes an input's display name without interrupting its
 playback and prints the input record; `rename inputs/<input-id> --reset` restores the original
@@ -125,6 +131,14 @@ playback to a new output or group without interruption. The route keeps its `rou
 may briefly refuse a transfer while the route is still adding that output; the refusal clears by
 itself, and `transfer` retries it for a moment before giving up.
 
+`route inputs/<input-id> <outputs|groups>/<target-id>` starts a route from an existing input to an
+output or group and prints the route. `--join-mode MODE` sets how it joins what already plays on
+the target; without it, the hub uses the input's default join mode, else `REPLACE`.
+
+```
+sonora route inputs/doorbell groups/downstairs --join-mode mix
+```
+
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
 group, creating the ephemeral input and route in one call —
 `sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
@@ -133,7 +147,12 @@ group, creating the ephemeral input and route in one call —
 `--display-name NAME` sets the ephemeral input's display name, and the hub keeps a name you give
 as it is; without it, the hub names a SoundCloud or YouTube link "Title — Uploader" and anything
 else with a generated name. The output shows that name as `displayName` when the hub reports it
-(hub 0.1.28 and later).
+(hub 0.1.28 and later). `--join-mode MODE` sets how the playback joins what already plays on the
+target; without it, `REPLACE`.
+
+```
+sonora play <uri> outputs/kitchen --join-mode duck_others
+```
 
 `speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
 a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts
@@ -162,10 +181,24 @@ accepted bare, with no verb.
 case-insensitively). Run `sonora get <resource> --help` or `sonora list <resource> --help`
 for the full flag reference of any command.
 
+`get outputs/<id> --include-routes` prints the output's record followed by a `routes` list: every
+route playing on the output, including group routes, in the order they joined it, each with its
+`joinMode`, its `duckState` there (`LOWERED` under a ducking route, else `FULL`) and whether it is
+the output's `main` route. The YAML shows nine fields per route; `--json` shows all of them. It
+needs hub 0.1.21 or later: an older hub exits 3 with a message saying so. The flag applies only to
+`get outputs/<id>`; anywhere else it is a usage error (exit 2).
+
+`get routes/<id>` also shows the route's `joinMode` and the `outputs` it plays on right now (hub
+0.1.21 or later; each is left out when an older hub does not send it). A group route may list fewer
+outputs than its group has members. `get inputs/<id>`, and the input record that `create`, `rename`
+and `enable|disable inputs/<id>` print, end with the input's `defaultJoinMode`, or `null` when it
+declares none.
+
 ```
 sonora get outputs --include-disabled
 sonora get routes --status active
 sonora get groups/<id> --json
+sonora get outputs/kitchen --include-routes
 sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
 sonora transfer routes/<route-id> outputs/bedroom-speaker
 sonora stop routes
@@ -176,6 +209,19 @@ sonora get tts-cache
 sonora clear tts-cache --provider openai
 sonora list tts-voices --provider google --language uk-UA
 ```
+
+### Join modes
+
+A route's join mode says what happens to the routes already playing on its target:
+
+- `REPLACE` stops them, except ducking routes;
+- `MIX` plays alongside them;
+- `DUCK_OTHERS` plays alongside them and lowers the rest while it plays, for an announcement over
+  music.
+
+`--join-mode` and `--default-join-mode` accept the value in any case (`duck_others` works) and send
+it upper-cased; any other value is a usage error (exit 2) and sends nothing. Join modes need hub
+0.1.21 or later.
 
 ## Exit codes
 

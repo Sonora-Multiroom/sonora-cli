@@ -166,3 +166,86 @@ func TestRenderRouteJSON_SingleObjectRoundTrips(t *testing.T) {
 		t.Errorf("round-tripped value = %+v, want %+v", decoded, r)
 	}
 }
+
+// joinModeRouteFixture is a route whose ten base fields render as
+// tenRouteLinesYAML.
+func joinModeRouteFixture() hub.Route {
+	return hub.Route{
+		RouteID: "route-abc-123", InputID: "spotify-1", TargetID: "downstairs",
+		TargetType: "OUTPUT_GROUP", Status: "ACTIVE",
+		CreatedAt: "2026-06-22T14:30:00Z", StartedAt: strPtr("2026-06-22T14:30:01Z"),
+		Transferable: true, Pauseable: true, Paused: false,
+	}
+}
+
+const tenRouteLinesYAML = `routeId: "route-abc-123"
+inputId: "spotify-1"
+targetId: "downstairs"
+targetType: "OUTPUT_GROUP"
+status: "ACTIVE"
+createdAt: "2026-06-22T14:30:00Z"
+startedAt: "2026-06-22T14:30:01Z"
+transferable: true
+pauseable: true
+paused: false
+`
+
+func TestRenderRouteYAML_JoinModeAndOutputsAfterPaused(t *testing.T) {
+	r := joinModeRouteFixture()
+	r.JoinMode = "MIX"
+	r.Outputs = []string{"kitchen", "office"}
+
+	want := tenRouteLinesYAML + `joinMode: "MIX"
+outputs:
+  - "kitchen"
+  - "office"
+`
+	if got := render.RenderRouteYAML(r); got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestRenderRouteYAML_EmptyOutputsList(t *testing.T) {
+	r := joinModeRouteFixture()
+	r.JoinMode = "REPLACE"
+	r.Outputs = []string{}
+
+	want := tenRouteLinesYAML + "joinMode: \"REPLACE\"\noutputs: []\n"
+	if got := render.RenderRouteYAML(r); got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestRenderRouteYAML_OlderHubOmitsBoth(t *testing.T) {
+	if got := render.RenderRouteYAML(joinModeRouteFixture()); got != tenRouteLinesYAML {
+		t.Errorf("got:\n%s\nwant:\n%s", got, tenRouteLinesYAML)
+	}
+}
+
+func TestRenderRouteYAML_UnknownJoinModeShownAsSent(t *testing.T) {
+	r := joinModeRouteFixture()
+	r.JoinMode = "CROSSFADE"
+
+	if got := render.RenderRouteYAML(r); !strings.Contains(got, `joinMode: "CROSSFADE"`) {
+		t.Errorf("expected CROSSFADE unchanged, got:\n%s", got)
+	}
+}
+
+func TestRenderRouteJSON_ShapeUnchanged(t *testing.T) {
+	r := joinModeRouteFixture()
+	r.JoinMode = "MIX"
+	r.Outputs = []string{"office", "kitchen"}
+	got := render.RenderRouteJSON(r)
+
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
+		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, got)
+	}
+	if len(decoded) != 12 {
+		t.Errorf("got %d keys, want 12: %s", len(decoded), got)
+	}
+	outputs, _ := decoded["outputs"].([]any)
+	if len(outputs) != 2 || outputs[0] != "office" || outputs[1] != "kitchen" {
+		t.Errorf("expected outputs in the hub's order, got: %s", got)
+	}
+}

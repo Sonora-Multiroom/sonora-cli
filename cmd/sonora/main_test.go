@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Sonora-Multiroom/sonora-cli/internal/version"
@@ -616,4 +619,51 @@ func TestHelpTextListsEveryDispatchedVerb(t *testing.T) {
 			t.Errorf("help text does not list the %q command", verb)
 		}
 	}
+}
+
+func TestRunGetList_IncludeRoutesElsewhere_UsageError(t *testing.T) {
+	const wantErr = "error: --include-routes applies only to 'sonora get outputs/<id>'"
+	for _, args := range [][]string{
+		{"get", "outputs", "--include-routes"},
+		{"list", "outputs", "--include-routes"},
+		{"get", "inputs/x", "--include-routes"},
+		{"get", "groups/x", "--include-routes"},
+		{"get", "routes/x", "--include-routes"},
+		{"get", "routes", "--include-routes"},
+		{"get", "master-mute", "--include-routes"},
+		{"get", "tts-cache", "--include-routes"},
+		{"get", "outputs", "--include-routes=true"},
+		{"get", "--include-routes", "outputs/x"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var count int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				atomic.AddInt32(&count, 1)
+				w.WriteHeader(http.StatusNotFound)
+			}))
+			defer srv.Close()
+
+			var stdout, stderr bytes.Buffer
+			code := run(append(args, "--hub-url", srv.URL), &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), wantErr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), wantErr)
+			}
+			if got := atomic.LoadInt32(&count); got != 0 {
+				t.Errorf("got %d hub requests, want 0", got)
+			}
+		})
+	}
+
+	t.Run("after --", func(t *testing.T) {
+		var stdout, stderr bytes.Buffer
+		run([]string{"get", "outputs/x", "--hub-url", unreachableHubURL, "--", "--include-routes"}, &stdout, &stderr)
+
+		if strings.Contains(stderr.String(), wantErr) {
+			t.Errorf("expected the dispatcher not to scan past --, got stderr: %s", stderr.String())
+		}
+	})
 }

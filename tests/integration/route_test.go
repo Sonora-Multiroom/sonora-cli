@@ -1002,3 +1002,33 @@ func TestRouteResume_NonRoutesResource_IsUsageError(t *testing.T) {
 		t.Errorf("expected zero requests to the pause endpoint, got %d", got)
 	}
 }
+
+func TestRoute_JoinMode_SentUpperCased(t *testing.T) {
+	srv, m := newMockRouteHub(t, []string{"spotify-1"}, nil, []string{"whole-house"})
+	plain := runCLI(t, "route", "inputs/spotify-1", "groups/whole-house", "--hub-url", srv.URL)
+
+	res := runCLI(t, "route", "inputs/spotify-1", "groups/whole-house", "--join-mode", "MIX", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.routesRequest["joinMode"] != "MIX" {
+		t.Errorf("expected joinMode=MIX in request body, got: %+v", m.routesRequest)
+	}
+	if res.stdout != plain.stdout {
+		t.Errorf("expected the same stdout as without --join-mode\nwith:\n%s\nwithout:\n%s", res.stdout, plain.stdout)
+	}
+}
+
+func TestRoute_NoJoinMode_FieldAbsent(t *testing.T) {
+	srv, m := newMockRouteHub(t, []string{"spotify-1"}, nil, []string{"whole-house"})
+
+	res := runCLI(t, "route", "inputs/spotify-1", "groups/whole-house", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if _, ok := m.routesRequest["joinMode"]; ok {
+		t.Errorf("expected joinMode omitted from request body, got: %+v", m.routesRequest)
+	}
+}

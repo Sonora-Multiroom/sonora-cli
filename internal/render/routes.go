@@ -39,8 +39,10 @@ func RenderRoutesYAML(routes []hub.Route) string {
 
 // RenderRouteYAML renders a single route as a bare YAML record (no routes:
 // list wrapper), used by `routes get` since exactly one route is ever
-// returned. All ten fields are always emitted explicitly, including a bare,
-// unquoted startedAt: null before playback starts (FR-007).
+// returned. The ten base fields are always emitted explicitly, including a
+// bare, unquoted startedAt: null before playback starts (FR-007). joinMode
+// and outputs follow, each left out when the hub did not send it (before
+// 0.1.21); outputs: [] means the route plays on no output right now.
 func RenderRouteYAML(r hub.Route) string {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "routeId: %q\n", r.RouteID)
@@ -53,6 +55,19 @@ func RenderRouteYAML(r hub.Route) string {
 	fmt.Fprintf(&b, "transferable: %t\n", r.Transferable)
 	fmt.Fprintf(&b, "pauseable: %t\n", r.Pauseable)
 	fmt.Fprintf(&b, "paused: %t\n", r.Paused)
+	if r.JoinMode != "" {
+		fmt.Fprintf(&b, "joinMode: %q\n", r.JoinMode)
+	}
+	switch {
+	case r.Outputs == nil:
+	case len(r.Outputs) == 0:
+		b.WriteString("outputs: []\n")
+	default:
+		b.WriteString("outputs:\n")
+		for _, o := range r.Outputs {
+			fmt.Fprintf(&b, "  - %q\n", o)
+		}
+	}
 	return b.String()
 }
 

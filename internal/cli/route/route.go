@@ -11,6 +11,7 @@ import (
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/joinmode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
@@ -21,7 +22,8 @@ const usage = "usage: sonora route inputs/<input-id> <outputs|groups>/<target-id
 // Run implements `sonora route inputs/<id> <outputs|groups>/<id>`: it
 // defines and parses this command's flags, validates both resource paths
 // (the input path must be inputs/<id>, the target path outputs/<id> or
-// groups/<id> — no auto-detect, per FR-002a/FR-002b), verifies the input
+// groups/<id> — no auto-detect, per FR-002a/FR-002b) and any join mode,
+// verifies the input
 // and target each already exist, calls the hub to create a route between
 // them, and renders the result to stdout. Any failure is reported on
 // stderr, never stdout, so scripts piping stdout never see error text. It
@@ -34,6 +36,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+	joinModeFlag := fs.String("join-mode", "", "how the route joins what already plays on the target: `MODE` is REPLACE, MIX or DUCK_OTHERS (any case); without it, the input's default join mode, else REPLACE")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
@@ -118,6 +121,19 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	targetID := targetPath.ID
 
+	joinModeProvided := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "join-mode" {
+			joinModeProvided = true
+		}
+	})
+	joinMode, ok := joinmode.Parse(*joinModeFlag)
+	if joinModeProvided && !ok {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, joinmode.ErrorLine(*joinModeFlag))
+		return exitcode.Usage
+	}
+
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -144,6 +160,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	req := hub.CreateRouteRequest{InputID: inputID, TargetID: targetID, TargetType: targetType}
+	if joinModeProvided {
+		req.JoinMode = &joinMode
+	}
 	created, err := hub.CreateRoute(ctx, client, baseURL, req)
 	if err != nil {
 		var notFoundErr *hub.NotFoundError

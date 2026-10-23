@@ -69,6 +69,7 @@ Examples:
   sonora get outputs --include-disabled
   sonora get routes --status active
   sonora get groups/living-room --json
+  sonora get outputs/kitchen --include-routes
   sonora play "https://stream.example.com/live.mp3" outputs/office-speaker
   sonora speak "Dinner is ready" outputs/kitchen
   sonora route inputs/spotify-1 outputs/office-speaker
@@ -168,6 +169,20 @@ func startsWithResource(args []string) bool {
 	}
 	_, err := respath.Parse(args[0])
 	return err == nil
+}
+
+// hasIncludeRoutes reports whether args carry --include-routes (or
+// --include-routes=…) before any "--", after which nothing is a flag.
+func hasIncludeRoutes(args []string) bool {
+	for _, a := range args {
+		if a == "--" {
+			return false
+		}
+		if a == "--include-routes" || strings.HasPrefix(a, "--include-routes=") {
+			return true
+		}
+	}
+	return false
 }
 
 // dispatchCreate resolves the resource-path argument following `create` via
@@ -552,11 +567,21 @@ func dispatchClear(args []string, stdout, stderr io.Writer) int {
 // path that includes an id is a usage error (FR-003); a `get`/`list` with no
 // resource argument at all gets a distinct message enumerating the valid
 // resource names rather than the generic unrecognized-resource error
-// (FR-006a).
+// (FR-006a). --include-routes is accepted only by `get outputs/<id>`; given
+// anywhere else, it is a usage error naming where it belongs, rather than
+// the flag package's "flag provided but not defined".
 func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 	usage := "usage: sonora get <resource>[/<id>] [flags]"
 	if verb == "list" {
 		usage = "usage: sonora list <resource> [flags]"
+	}
+	if hasIncludeRoutes(args) {
+		path, err := respath.Parse(args[0])
+		if verb != "get" || err != nil || path.Kind != respath.Outputs || path.ID == "" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: --include-routes applies only to 'sonora get outputs/<id>'")
+			return 2
+		}
 	}
 	if len(args) > 0 && args[0] == "master-mute" {
 		if verb == "list" {

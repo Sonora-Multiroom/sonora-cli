@@ -80,6 +80,36 @@ func TestCreateInput_RequestBody_OmitsUnsetEnabledAndAutoRemove(t *testing.T) {
 	if _, ok := gotBody["autoRemove"]; ok {
 		t.Errorf("expected autoRemove to be omitted when unset, got body: %+v", gotBody)
 	}
+	if _, ok := gotBody["defaultJoinMode"]; ok {
+		t.Errorf("expected defaultJoinMode to be omitted when unset, got body: %+v", gotBody)
+	}
+}
+
+func TestCreateInput_RequestBody_IncludesDefaultJoinModeWhenSet(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"inputId": "spotify-1", "displayName": "Spotify Stream", "uri": "u1",
+			"enabled": true, "autoRemove": true, "source": "STATIC", "createdAt": "2026-01-01T00:00:00Z", "pauseable": true,
+			"defaultJoinMode": "DUCK_OTHERS",
+		})
+	}))
+	defer srv.Close()
+
+	client := hub.NewClient()
+	mode := hub.JoinModeDuckOthers
+	req := hub.CreateInputRequest{InputID: "spotify-1", DisplayName: "Spotify Stream", URI: "u1", DefaultJoinMode: &mode}
+	_, err := hub.CreateInput(context.Background(), client, srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotBody["defaultJoinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected defaultJoinMode DUCK_OTHERS, got body: %+v", gotBody)
+	}
 }
 
 func TestCreateInput_Success_Decodes(t *testing.T) {

@@ -113,3 +113,80 @@ func TestRoutesGet_EmptyIdentifier_MalformedPath(t *testing.T) {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 }
+
+// routeBodyYAML is the ten base lines of route-abc-123 as `get routes/<id>`
+// prints them.
+const routeBodyYAML = `routeId: "route-abc-123"
+inputId: "spotify-1"
+targetId: "downstairs"
+targetType: "OUTPUT_GROUP"
+status: "ACTIVE"
+createdAt: "2026-06-22T14:30:00Z"
+startedAt: "2026-06-22T14:30:01Z"
+transferable: true
+pauseable: true
+paused: false
+`
+
+func routeBody() map[string]any {
+	return map[string]any{
+		"routeId": "route-abc-123", "inputId": "spotify-1", "targetId": "downstairs", "targetType": "OUTPUT_GROUP",
+		"status": "ACTIVE", "createdAt": "2026-06-22T14:30:00Z", "startedAt": "2026-06-22T14:30:01Z",
+		"transferable": true, "pauseable": true, "paused": false,
+	}
+}
+
+func TestRoutesGet_ShowsJoinModeAndOutputs(t *testing.T) {
+	body := routeBody()
+	body["joinMode"] = "MIX"
+	body["outputs"] = []string{"kitchen", "office"}
+	srv := mockRouteServer(t, map[string]map[string]any{"route-abc-123": body})
+
+	res := runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	want := routeBodyYAML + `joinMode: "MIX"
+outputs:
+  - "kitchen"
+  - "office"
+`
+	if res.stdout != want {
+		t.Errorf("got:\n%s\nwant:\n%s", res.stdout, want)
+	}
+
+	jsonRes := runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL, "--json")
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(jsonRes.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, jsonRes.stdout)
+	}
+	if decoded["joinMode"] != "MIX" || len(decoded["outputs"].([]any)) != 2 {
+		t.Errorf("expected joinMode and outputs in JSON, got: %s", jsonRes.stdout)
+	}
+}
+
+func TestRoutesGet_OlderHubBodyOmitsFields(t *testing.T) {
+	srv := mockRouteServer(t, map[string]map[string]any{"route-abc-123": routeBody()})
+
+	res := runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if res.stdout != routeBodyYAML {
+		t.Errorf("got:\n%s\nwant:\n%s", res.stdout, routeBodyYAML)
+	}
+
+	// The JSON marshals hub.Route as is, so it carries both keys, empty.
+	jsonRes := runCLI(t, "get", "routes/route-abc-123", "--hub-url", srv.URL, "--json")
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(jsonRes.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, jsonRes.stdout)
+	}
+	for _, k := range []string{"joinMode", "outputs"} {
+		if _, ok := decoded[k]; !ok {
+			t.Errorf("expected key %q in JSON, got: %s", k, jsonRes.stdout)
+		}
+	}
+}

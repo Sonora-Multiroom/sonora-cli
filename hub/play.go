@@ -17,6 +17,9 @@ type PlaybackRequest struct {
 	TargetType  string  `json:"targetType"`
 	DisplayName *string `json:"displayName,omitempty"`
 	Volume      *int    `json:"volume,omitempty"`
+	// JoinMode is how the playback joins its target (a JoinMode* value).
+	// Nil means REPLACE.
+	JoinMode *string `json:"joinMode,omitempty"`
 }
 
 // PlaybackResponse mirrors #/components/schemas/PlaybackResponse in

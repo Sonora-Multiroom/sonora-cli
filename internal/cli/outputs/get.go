@@ -2,9 +2,11 @@ package outputs
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
@@ -15,11 +17,12 @@ import (
 
 const getUsage = "usage: sonora get outputs/<output-id> [flags]"
 
-// RunGet implements `sonora get outputs/<output-id>`: it defines and parses
-// this command's flags, resolves the hub URL, fetches the single named
-// output from the hub, and renders it to stdout. Any failure is reported on
-// stderr, never stdout, so scripts piping stdout never see error text. It
-// returns the process exit code per the exit code classes in
+// RunGet implements `sonora get outputs/<output-id> [--include-routes]`: it
+// defines and parses this command's flags, resolves the hub URL, fetches the
+// single named output from the hub (and, with --include-routes, the routes
+// playing on it), and renders it to stdout. Nothing is printed to stdout
+// until every request has succeeded. Any failure is reported on stderr,
+// never stdout, so scripts piping stdout never see error text. It returns the process exit code per the exit code classes in
 // specs/002-outputs-get/data-model.md's exit code table.
 func RunGet(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("outputs get", flag.ContinueOnError)
@@ -29,6 +32,7 @@ func RunGet(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
+	includeRoutes := fs.Bool("include-routes", false, "also list the routes playing on this output, in join order")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
@@ -73,15 +77,37 @@ func RunGet(args []string, stdout, stderr io.Writer) int {
 		return exitcode.Usage
 	}
 
+	ctx := context.Background()
 	client := hub.NewClient()
-	output, err := hub.GetOutput(context.Background(), client, baseURL, outputID)
+	output, err := hub.GetOutput(ctx, client, baseURL, outputID)
 	if err != nil {
-		class, msg := hub.ClassifyError(err)
-		fmt.Fprintf(stderr, "error: %s (hub URL: %s)\n", msg, baseURL)
-		if *verbose {
-			fmt.Fprintf(stderr, "detail: %v\n", err)
+		return reportGetError(stderr, err, baseURL, *verbose)
+	}
+
+	if *includeRoutes {
+		routes, err := hub.GetRoutesForOutput(ctx, client, baseURL, outputID)
+		if err != nil {
+			// The output request has just succeeded, so a 404 here means the
+			// hub lacks the operation (before 0.1.21), not the output. A hub
+			// that has the stop-routes operation on the same path, but not
+			// this one, answers 405.
+			var notFoundErr *hub.NotFoundError
+			var statusErr *hub.StatusError
+			if errors.As(err, &notFoundErr) || (errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusMethodNotAllowed) {
+				fmt.Fprintf(stderr, "error: this hub cannot list an output's routes; it needs hub 0.1.21 or later (hub URL: %s)\n", baseURL)
+				if *verbose {
+					fmt.Fprintf(stderr, "detail: %v\n", err)
+				}
+				return exitcode.For(hub.ClassHub)
+			}
+			return reportGetError(stderr, err, baseURL, *verbose)
 		}
-		return exitcode.For(class)
+		if *jsonOut {
+			fmt.Fprint(stdout, render.RenderOutputWithRoutesJSON(*output, routes))
+		} else {
+			fmt.Fprint(stdout, render.RenderOutputWithRoutesYAML(*output, routes))
+		}
+		return 0
 	}
 
 	if *jsonOut {
@@ -90,4 +116,13 @@ func RunGet(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, render.RenderOutputYAML(*output))
 	}
 	return 0
+}
+
+func reportGetError(stderr io.Writer, err error, baseURL string, verbose bool) int {
+	class, msg := hub.ClassifyError(err)
+	fmt.Fprintf(stderr, "error: %s (hub URL: %s)\n", msg, baseURL)
+	if verbose {
+		fmt.Fprintf(stderr, "detail: %v\n", err)
+	}
+	return exitcode.For(class)
 }

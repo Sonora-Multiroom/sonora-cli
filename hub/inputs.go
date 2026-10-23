@@ -29,16 +29,20 @@ type Input struct {
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
-// api/openapi.json field-for-field. Enabled and AutoRemove are optional
-// (nil omits them from the request body, letting the hub apply its
-// documented default of true for each); a non-nil pointer sends that
-// value explicitly.
+// api/openapi.json field-for-field. Enabled, AutoRemove and DefaultJoinMode
+// are optional (nil omits them from the request body, letting the hub apply
+// its documented default: true for Enabled and AutoRemove, none for
+// DefaultJoinMode); a non-nil pointer sends that value explicitly.
 type CreateInputRequest struct {
 	InputID     string `json:"inputId"`
 	DisplayName string `json:"displayName"`
 	URI         string `json:"uri"`
 	Enabled     *bool  `json:"enabled,omitempty"`
 	AutoRemove  *bool  `json:"autoRemove,omitempty"`
+	// DefaultJoinMode is the join mode for routes from this input whose
+	// request names none (a JoinMode* value). Nil declares none, and such
+	// routes use REPLACE.
+	DefaultJoinMode *string `json:"defaultJoinMode,omitempty"`
 }
 
 func validateInput(i Input) error {

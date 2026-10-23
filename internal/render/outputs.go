@@ -86,6 +86,57 @@ func RenderOutputJSON(o hub.Output) string {
 	return string(data) + "\n"
 }
 
+// RenderOutputWithRoutesYAML renders a single output's record followed by
+// the routes playing on it, used by `get outputs/<id> --include-routes`.
+// Each route shows nine fields; `routes: []` stands for none, with no
+// comment line, which in the middle of a record would read as a separate
+// document.
+func RenderOutputWithRoutesYAML(o hub.Output, routes []hub.RouteOnOutput) string {
+	var b bytes.Buffer
+	b.WriteString(RenderOutputYAML(o))
+	if len(routes) == 0 {
+		b.WriteString("routes: []\n")
+		return b.String()
+	}
+	b.WriteString("routes:\n")
+	for _, r := range routes {
+		fmt.Fprintf(&b, "  - routeId: %q\n", r.RouteID)
+		fmt.Fprintf(&b, "    inputId: %q\n", r.InputID)
+		fmt.Fprintf(&b, "    targetId: %q\n", r.TargetID)
+		fmt.Fprintf(&b, "    targetType: %q\n", r.TargetType)
+		fmt.Fprintf(&b, "    status: %q\n", r.Status)
+		fmt.Fprintf(&b, "    joinMode: %q\n", r.JoinMode)
+		fmt.Fprintf(&b, "    duckState: %q\n", r.DuckState)
+		fmt.Fprintf(&b, "    main: %t\n", r.Main)
+		fmt.Fprintf(&b, "    paused: %t\n", r.Paused)
+	}
+	return b.String()
+}
+
+// outputWithRoutesPayload is one output's fields, promoted to the top
+// level, followed by the routes playing on it.
+type outputWithRoutesPayload struct {
+	hub.Output
+	Routes []hub.RouteOnOutput `json:"routes"`
+}
+
+// RenderOutputWithRoutesJSON renders a single output and the routes playing
+// on it as one strict JSON object: the output's keys, then "routes" with
+// every field of each route ([] for none). Used by `get outputs/<id>
+// --include-routes --json`.
+func RenderOutputWithRoutesJSON(o hub.Output, routes []hub.RouteOnOutput) string {
+	if routes == nil {
+		routes = []hub.RouteOnOutput{}
+	}
+	data, err := json.Marshal(outputWithRoutesPayload{Output: o, Routes: routes})
+	if err != nil {
+		// Every field is a plain scalar or a *string — Marshal cannot fail
+		// for this input shape.
+		panic(err)
+	}
+	return string(data) + "\n"
+}
+
 // RenderJSON renders outputs as strict, parseable JSON: {"outputs": [...]}
 // (FR-007), with the same fields as RenderYAML.
 func RenderJSON(outputs []hub.Output) string {

@@ -101,6 +101,32 @@ func TestRenderInputYAML_AllFieldsAsBareRecord(t *testing.T) {
 			t.Errorf("expected %q in output, got:\n%s", want, got)
 		}
 	}
+
+	mode := "DUCK_OTHERS"
+	i.DefaultJoinMode = &mode
+	if got := render.RenderInputYAML(i); !strings.HasSuffix(got, "createdAt: null\ndefaultJoinMode: \"DUCK_OTHERS\"\n") {
+		t.Errorf("expected defaultJoinMode: \"DUCK_OTHERS\" as the last line, got:\n%s", got)
+	}
+}
+
+func TestRenderInputYAML_NoDefaultJoinModeIsNull(t *testing.T) {
+	i := hub.Input{InputID: "spotify-1", DisplayName: "Spotify Stream", Source: "STATIC"}
+	got := render.RenderInputYAML(i)
+
+	if !strings.HasSuffix(got, "\ndefaultJoinMode: null\n") {
+		t.Errorf("expected a bare defaultJoinMode: null as the last line, got:\n%s", got)
+	}
+}
+
+func TestRenderInputsYAML_ListUnchanged(t *testing.T) {
+	mode := "MIX"
+	got := render.RenderInputsYAML([]hub.Input{
+		{InputID: "spotify-1", DisplayName: "Spotify Stream", Source: "STATIC", DefaultJoinMode: &mode},
+	})
+
+	if strings.Contains(got, "defaultJoinMode") {
+		t.Errorf("expected the list view without defaultJoinMode, got:\n%s", got)
+	}
 }
 
 func TestRenderInputYAML_StaticShowsCreatedAtNullExplicitly(t *testing.T) {

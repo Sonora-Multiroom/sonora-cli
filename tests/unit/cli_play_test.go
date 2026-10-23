@@ -259,3 +259,62 @@ func TestPlayRun_HelpDescribesDisplayName(t *testing.T) {
 		t.Errorf("expected --display-name help to contain %q, got:\n%s", want, stdout.String())
 	}
 }
+
+func TestPlayRun_HelpDescribesJoinMode(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	for _, want := range []string{
+		"-join-mode MODE",
+		"how the playback joins what already plays on the target: MODE is REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected --help to contain %q, got:\n%s", want, stdout.String())
+		}
+	}
+}
+
+func TestPlayRun_InvalidJoinMode_UsageErrorNoRequest(t *testing.T) {
+	for _, mode := range []string{"fade", "", "duck-others"} {
+		t.Run(mode, func(t *testing.T) {
+			srv, count := countingHub(t)
+			var stdout, stderr bytes.Buffer
+			code := play.Run([]string{"uri", "outputs/target", "--join-mode", mode, "--hub-url", srv.URL}, &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if first, _, _ := strings.Cut(stderr.String(), "\n"); first != "usage: sonora play <uri> <outputs|groups>/<id> [flags]" {
+				t.Errorf("expected the usage line first on stderr, got: %s", stderr.String())
+			}
+			if want := `error: unknown join mode "` + mode + `"; valid modes: REPLACE, MIX, DUCK_OTHERS`; !strings.Contains(stderr.String(), want) {
+				t.Errorf("expected stderr to contain %q, got: %s", want, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests to the hub, got %d", got)
+			}
+		})
+	}
+}
+
+func TestPlayRun_InvalidJoinMode_CheckedAfterArguments(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "--join-mode", "fade", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "missing required argument: <target-path>") {
+		t.Errorf("expected the missing-argument message, got: %s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "join mode") {
+		t.Errorf("expected the join mode not to be checked yet, got: %s", stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}

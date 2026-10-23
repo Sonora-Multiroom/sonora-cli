@@ -16,6 +16,14 @@ func writeCreatedAt(b *bytes.Buffer, indent string, createdAt *string) {
 	fmt.Fprintf(b, "%screatedAt: %q\n", indent, *createdAt)
 }
 
+func writeDefaultJoinMode(b *bytes.Buffer, mode *string) {
+	if mode == nil {
+		b.WriteString("defaultJoinMode: null\n")
+		return
+	}
+	fmt.Fprintf(b, "defaultJoinMode: %q\n", *mode)
+}
+
 // RenderInputsYAML renders inputs as a small, fixed-shape YAML document (the
 // default output format per constitution Principle V). Every field is
 // always emitted explicitly, including a bare, unquoted createdAt: null for
@@ -47,9 +55,10 @@ func RenderInputsYAML(inputs []hub.Input) string {
 }
 
 // RenderInputYAML renders a single input as a bare YAML record (no inputs:
-// list wrapper), used by `inputs get` since exactly one input is ever
-// returned. Every field is always emitted explicitly, including a bare,
-// unquoted createdAt: null for a static input.
+// list wrapper), used by `get`, `create`, `rename` and `enable|disable
+// inputs/<id>`, each of which prints exactly one input. Every field is
+// always emitted explicitly, including a bare, unquoted createdAt: null for
+// a static input and defaultJoinMode: null for an input that declares none.
 func RenderInputYAML(i hub.Input) string {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "inputId: %q\n", i.InputID)
@@ -60,6 +69,7 @@ func RenderInputYAML(i hub.Input) string {
 	fmt.Fprintf(&b, "autoRemove: %t\n", i.AutoRemove)
 	fmt.Fprintf(&b, "pauseable: %t\n", i.Pauseable)
 	writeCreatedAt(&b, "", i.CreatedAt)
+	writeDefaultJoinMode(&b, i.DefaultJoinMode)
 	return b.String()
 }
 

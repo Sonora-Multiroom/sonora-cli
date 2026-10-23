@@ -494,3 +494,25 @@ func TestIsTransientConflict(t *testing.T) {
 		})
 	}
 }
+
+func TestRouteOnOutput_Lowered(t *testing.T) {
+	tests := []struct {
+		duckState string
+		want      bool
+	}{
+		{"LOWERED", true},
+		{"FULL", false},
+		{"", false},
+		{"MUFFLED", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.duckState, func(t *testing.T) {
+			if got := (hub.RouteOnOutput{DuckState: tt.duckState}).Lowered(); got != tt.want {
+				t.Errorf("Lowered() with duckState %q = %v, want %v", tt.duckState, got, tt.want)
+			}
+		})
+	}
+	if hub.DuckStateFull != "FULL" || hub.DuckStateLowered != "LOWERED" {
+		t.Errorf("DuckStateFull = %q, DuckStateLowered = %q, want FULL and LOWERED", hub.DuckStateFull, hub.DuckStateLowered)
+	}
+}
