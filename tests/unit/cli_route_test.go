@@ -348,3 +348,43 @@ func TestRouteRunTransfer_TargetPathAliases_MapToExpectedTargetType(t *testing.T
 		}
 	}
 }
+
+func TestRouteRun_HelpDescribesJoinMode(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := route.Run([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	for _, want := range []string{
+		"-join-mode MODE",
+		"how the route joins what already plays on the target: MODE is REPLACE, MIX or DUCK_OTHERS (any case); without it, the input's default join mode, else REPLACE",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected --help to contain %q, got:\n%s", want, stdout.String())
+		}
+	}
+}
+
+func TestRouteRun_InvalidJoinMode_UsageErrorNoRequest(t *testing.T) {
+	for _, mode := range []string{"fade", "", "duck-others"} {
+		t.Run(mode, func(t *testing.T) {
+			srv, count := countingRouteHub(t)
+			var stdout, stderr bytes.Buffer
+			code := route.Run([]string{"inputs/radio", "outputs/target", "--join-mode", mode, "--hub-url", srv.URL}, &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if first, _, _ := strings.Cut(stderr.String(), "\n"); first != "usage: sonora route inputs/<input-id> <outputs|groups>/<target-id> [flags]" {
+				t.Errorf("expected the usage line first on stderr, got: %s", stderr.String())
+			}
+			if want := `error: unknown join mode "` + mode + `"; valid modes: REPLACE, MIX, DUCK_OTHERS`; !strings.Contains(stderr.String(), want) {
+				t.Errorf("expected stderr to contain %q, got: %s", want, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests to the hub, got %d", got)
+			}
+		})
+	}
+}

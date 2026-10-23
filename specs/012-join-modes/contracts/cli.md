@@ -4,9 +4,9 @@
 
 | Command | Flag | `--help` text |
 |---|---|---|
-| `sonora play <uri> <outputs\|groups>/<id>` | `--join-mode MODE` | how the playback joins what already plays on the target: REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE |
-| `sonora route inputs/<id> <outputs\|groups>/<id>` | `--join-mode MODE` | how the route joins what already plays on the target: REPLACE, MIX or DUCK_OTHERS (any case); without it, the input's default join mode, else REPLACE |
-| `sonora create inputs/<id> <uri> --display-name <name>` | `--default-join-mode MODE` | join mode for routes from this input that name none: REPLACE, MIX or DUCK_OTHERS (any case); without it, the input declares none and its routes use REPLACE |
+| `sonora play <uri> <outputs\|groups>/<id>` | `--join-mode MODE` | how the playback joins what already plays on the target: MODE is REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE |
+| `sonora route inputs/<id> <outputs\|groups>/<id>` | `--join-mode MODE` | how the route joins what already plays on the target: MODE is REPLACE, MIX or DUCK_OTHERS (any case); without it, the input's default join mode, else REPLACE |
+| `sonora create inputs/<id> <uri> --display-name <name>` | `--default-join-mode MODE` | join MODE for routes from this input that name none: REPLACE, MIX or DUCK_OTHERS (any case); without it, the input declares none and its routes use REPLACE |
 | `sonora get outputs/<id>` | `--include-routes` | also list the routes playing on this output, in join order |
 
 The `flag` package's `--help` listing is alphabetical; nothing else about the help output changes.

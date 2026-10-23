@@ -47,6 +47,54 @@ func TestCreateRoute_RequestBody_AlwaysIncludesAllFields(t *testing.T) {
 	}
 }
 
+// createRouteBody sends req to a fake hub and returns the body it received.
+func createRouteBody(t *testing.T, req hub.CreateRouteRequest) map[string]any {
+	t.Helper()
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"routeId": "route_1", "inputId": "spotify-1", "targetId": "office-speaker",
+			"targetType": "SINGLE_OUTPUT", "status": "STARTING", "createdAt": "2026-01-01T00:00:00Z",
+			"startedAt": nil, "transferable": true, "pauseable": true, "paused": false,
+			"joinMode": "REPLACE", "outputs": []string{},
+		})
+	}))
+	defer srv.Close()
+
+	if _, err := hub.CreateRoute(context.Background(), hub.NewClient(), srv.URL, req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	return gotBody
+}
+
+func TestCreateRoute_RequestBody_OmitsJoinModeWhenUnset(t *testing.T) {
+	body := createRouteBody(t, hub.CreateRouteRequest{InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT"})
+
+	if _, ok := body["joinMode"]; ok {
+		t.Errorf("expected joinMode omitted, got body: %+v", body)
+	}
+	if len(body) != 3 {
+		t.Errorf("expected exactly inputId, targetId and targetType, got body: %+v", body)
+	}
+	for _, k := range []string{"inputId", "targetId", "targetType"} {
+		if _, ok := body[k]; !ok {
+			t.Errorf("expected key %q, got body: %+v", k, body)
+		}
+	}
+}
+
+func TestCreateRoute_RequestBody_IncludesJoinModeWhenSet(t *testing.T) {
+	mode := hub.JoinModeDuckOthers
+	body := createRouteBody(t, hub.CreateRouteRequest{InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT", JoinMode: &mode})
+
+	if body["joinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected joinMode DUCK_OTHERS, got body: %+v", body)
+	}
+}
+
 func TestCreateRoute_Success_Decodes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2/routes" {

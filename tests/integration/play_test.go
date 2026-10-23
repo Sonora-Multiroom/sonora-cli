@@ -437,3 +437,59 @@ func TestPlay_Success_NoDisplayNameFromOlderHub(t *testing.T) {
 		t.Errorf("expected no displayName in stdout, got:\n%s", res.stdout)
 	}
 }
+
+func TestPlay_JoinMode_SentUpperCased(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+	plain := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--join-mode", "duck_others", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.playRequest["joinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected joinMode=DUCK_OTHERS in request body, got: %+v", m.playRequest)
+	}
+	if res.stdout != plain.stdout {
+		t.Errorf("expected the same stdout as without --join-mode\nwith:\n%s\nwithout:\n%s", res.stdout, plain.stdout)
+	}
+}
+
+func TestPlay_NoJoinMode_FieldAbsent(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if _, ok := m.playRequest["joinMode"]; ok {
+		t.Errorf("expected joinMode omitted from request body, got: %+v", m.playRequest)
+	}
+}
+
+func TestPlay_JoinModeWithVolumeAndDisplayName(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--join-mode", "mix", "--volume", "20", "--display-name", "Chime", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.playRequest["joinMode"] != "MIX" || m.playRequest["volume"] != float64(20) || m.playRequest["displayName"] != "Chime" {
+		t.Errorf("expected joinMode=MIX, volume=20 and displayName=Chime in request body, got: %+v", m.playRequest)
+	}
+}
+
+func TestPlay_JoinMode_GroupTarget(t *testing.T) {
+	srv, m := newMockPlayHub(t, nil, []string{"whole-house"})
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "groups/whole-house", "--join-mode", "MIX", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.playRequest["joinMode"] != "MIX" || m.playRequest["targetType"] != "OUTPUT_GROUP" {
+		t.Errorf("expected joinMode=MIX and targetType=OUTPUT_GROUP in request body, got: %+v", m.playRequest)
+	}
+}

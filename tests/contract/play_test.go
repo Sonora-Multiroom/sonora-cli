@@ -48,6 +48,9 @@ func TestPlayback_RequestBody_OmitsOptionalFieldsWhenUnset(t *testing.T) {
 	if _, ok := gotBody["volume"]; ok {
 		t.Errorf("expected volume omitted, got body: %+v", gotBody)
 	}
+	if _, ok := gotBody["joinMode"]; ok {
+		t.Errorf("expected joinMode omitted, got body: %+v", gotBody)
+	}
 	if gotBody["uri"] != req.URI || gotBody["targetId"] != req.TargetID || gotBody["targetType"] != req.TargetType {
 		t.Errorf("expected uri/targetId/targetType always present, got body: %+v", gotBody)
 	}
@@ -74,9 +77,10 @@ func TestPlayback_RequestBody_IncludesOptionalFieldsWhenSet(t *testing.T) {
 	client := hub.NewClient()
 	name := "Kitchen Radio"
 	volume := 50
+	mode := hub.JoinModeMix
 	req := hub.PlaybackRequest{
 		URI: "https://stream.example.com/live.mp3", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT",
-		DisplayName: &name, Volume: &volume,
+		DisplayName: &name, Volume: &volume, JoinMode: &mode,
 	}
 	_, err := hub.Playback(context.Background(), client, srv.URL, req)
 	if err != nil {
@@ -88,6 +92,9 @@ func TestPlayback_RequestBody_IncludesOptionalFieldsWhenSet(t *testing.T) {
 	}
 	if gotBody["volume"] != float64(volume) {
 		t.Errorf("expected volume %d present, got body: %+v", volume, gotBody)
+	}
+	if gotBody["joinMode"] != "MIX" {
+		t.Errorf("expected joinMode MIX present, got body: %+v", gotBody)
 	}
 }
 

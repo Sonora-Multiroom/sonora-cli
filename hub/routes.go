@@ -32,12 +32,25 @@ type Route struct {
 	Outputs []string `json:"outputs"`
 }
 
+// Join modes: how a route joins the outputs it targets.
+const (
+	// JoinModeReplace stops the routes already playing on the target, except ducking ones.
+	JoinModeReplace = "REPLACE"
+	// JoinModeMix plays alongside the routes already there.
+	JoinModeMix = "MIX"
+	// JoinModeDuckOthers plays alongside them and lowers them while it plays.
+	JoinModeDuckOthers = "DUCK_OTHERS"
+)
+
 // CreateRouteRequest mirrors #/components/schemas/CreateRouteRequest in
 // api/openapi.json field-for-field.
 type CreateRouteRequest struct {
 	InputID    string `json:"inputId"`
 	TargetID   string `json:"targetId"`
 	TargetType string `json:"targetType"`
+	// JoinMode is how the route joins its target (a JoinMode* value). Nil
+	// leaves it to the hub: the input's default join mode, else REPLACE.
+	JoinMode *string `json:"joinMode,omitempty"`
 }
 
 // TransferRequest mirrors #/components/schemas/TransferRequest in
@@ -88,16 +101,22 @@ type PauseRequest struct {
 }
 
 func validateRoute(r Route) error {
-	if r.RouteID == "" || r.InputID == "" || r.TargetID == "" {
+	return validateRouteFields(r.RouteID, r.InputID, r.TargetID, r.TargetType, r.Status)
+}
+
+// validateRouteFields checks the fields every route shape shares: Route and
+// RouteOnOutput.
+func validateRouteFields(routeID, inputID, targetID, targetType, status string) error {
+	if routeID == "" || inputID == "" || targetID == "" {
 		return fmt.Errorf("route missing required routeId/inputId/targetId")
 	}
-	if r.TargetType != "SINGLE_OUTPUT" && r.TargetType != "OUTPUT_GROUP" {
-		return fmt.Errorf("route %q has unrecognized targetType %q", r.RouteID, r.TargetType)
+	if targetType != "SINGLE_OUTPUT" && targetType != "OUTPUT_GROUP" {
+		return fmt.Errorf("route %q has unrecognized targetType %q", routeID, targetType)
 	}
-	switch r.Status {
+	switch status {
 	case "STARTING", "ACTIVE", "STOPPING", "STOPPED", "FAILED":
 	default:
-		return fmt.Errorf("route %q has unrecognized status %q", r.RouteID, r.Status)
+		return fmt.Errorf("route %q has unrecognized status %q", routeID, status)
 	}
 	return nil
 }

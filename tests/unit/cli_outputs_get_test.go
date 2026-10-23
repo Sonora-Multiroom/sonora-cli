@@ -24,6 +24,20 @@ func TestOutputsRunGet_Help(t *testing.T) {
 	}
 }
 
+func TestOutputsRunGet_HelpDescribesIncludeRoutes(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := outputs.RunGet([]string{"--help"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	for _, want := range []string{"-include-routes", "also list the routes playing on this output, in join order"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected --help to contain %q, got:\n%s", want, stdout.String())
+		}
+	}
+}
+
 func TestOutputsRunGet_HelpUsesNewGrammar(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := outputs.RunGet([]string{"--help"}, &stdout, &stderr)

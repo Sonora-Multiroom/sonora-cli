@@ -124,3 +124,29 @@ func TestInputsCreate_MissingArguments(t *testing.T) {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 }
+
+func TestInputsCreate_DefaultJoinMode_SentUpperCased(t *testing.T) {
+	srv, lastBody := mockInputCreateServer(t, nil)
+
+	res := runCLI(t, "create", "inputs/spotify-1", "https://stream.example.com/live.mp3", "--display-name", "Spotify Stream", "--default-join-mode", "Duck_Others", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if (*lastBody)["defaultJoinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected defaultJoinMode=DUCK_OTHERS in request body, got: %+v", *lastBody)
+	}
+}
+
+func TestInputsCreate_NoDefaultJoinMode_FieldAbsent(t *testing.T) {
+	srv, lastBody := mockInputCreateServer(t, nil)
+
+	res := runCLI(t, "create", "inputs/spotify-1", "https://stream.example.com/live.mp3", "--display-name", "Spotify Stream", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if _, ok := (*lastBody)["defaultJoinMode"]; ok {
+		t.Errorf("expected defaultJoinMode omitted from request body, got: %+v", *lastBody)
+	}
+}

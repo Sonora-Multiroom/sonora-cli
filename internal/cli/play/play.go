@@ -11,6 +11,7 @@ import (
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/exitcode"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/joinmode"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/config"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/render"
@@ -19,9 +20,9 @@ import (
 const usage = "usage: sonora play <uri> <outputs|groups>/<id> [flags]"
 
 // Run implements `sonora play <uri> <outputs|groups>/<id>`: it defines and
-// parses this command's flags, validates a client-side volume range,
-// resolves the target path (its type is already known from the path prefix,
-// per internal/cli/respath), calls the hub's playback endpoint, and renders
+// parses this command's flags, validates a client-side volume range and
+// join mode, resolves the target path (its type is already known from the
+// path prefix, per internal/cli/respath), calls the hub's playback endpoint, and renders
 // the result to stdout. Any failure is reported on stderr, never stdout, so
 // scripts piping stdout never see error text. It returns the process exit
 // code per the exit code classes in data-model.md's exit code table.
@@ -35,6 +36,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
 	volumeFlag := fs.Int("volume", -1, "starting volume `N` (0-100), set before playback starts")
 	displayNameFlag := fs.String("display-name", "", "display `NAME` for the input, kept as given; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name")
+	joinModeFlag := fs.String("join-mode", "", "how the playback joins what already plays on the target: `MODE` is REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
@@ -96,12 +98,21 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	targetID := targetPath.ID
 
-	volumeProvided := false
+	volumeProvided, joinModeProvided := false, false
 	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "volume" {
+		switch f.Name {
+		case "volume":
 			volumeProvided = true
+		case "join-mode":
+			joinModeProvided = true
 		}
 	})
+	joinMode, ok := joinmode.Parse(*joinModeFlag)
+	if joinModeProvided && !ok {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, joinmode.ErrorLine(*joinModeFlag))
+		return exitcode.Usage
+	}
 	if volumeProvided && (*volumeFlag < 0 || *volumeFlag > 100) {
 		fmt.Fprintln(stderr, "error: volume must be between 0 and 100")
 		return exitcode.For(hub.ClassValidation)
@@ -126,6 +137,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	if *displayNameFlag != "" {
 		req.DisplayName = displayNameFlag
+	}
+	if joinModeProvided {
+		req.JoinMode = &joinMode
 	}
 
 	resp, err := hub.Playback(ctx, client, baseURL, req)

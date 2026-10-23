@@ -12,4 +12,3 @@ you add, ship or delete an item, update this list.
 
 | Priority | Item | Kind | Effort | Why this priority |
 |---|---|---|---|---|
-| P3 | [Support join modes: list the routes on an output and choose how a route joins](join-modes-in-cli.md) | Feature | Small to medium | The hub has supported several routes per output since 0.1.21, but the CLI can only replace what is playing and cannot show what an output plays; nothing is broken. An output's routes are shown with `get outputs/<id> --include-routes` |

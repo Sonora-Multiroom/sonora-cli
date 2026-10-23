@@ -111,3 +111,68 @@ func TestInputsGet_EmptyIdentifier_MalformedPath(t *testing.T) {
 		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
 	}
 }
+
+const inputRecordYAML = `inputId: "doorbell"
+displayName: "Doorbell"
+uri: "u1"
+source: "STATIC"
+enabled: true
+autoRemove: false
+pauseable: true
+createdAt: null
+`
+
+func inputBody() map[string]any {
+	return map[string]any{
+		"inputId": "doorbell", "displayName": "Doorbell", "uri": "u1", "enabled": true, "autoRemove": false,
+		"source": "STATIC", "createdAt": nil, "pauseable": true,
+	}
+}
+
+func TestInputsGet_ShowsDefaultJoinMode(t *testing.T) {
+	body := inputBody()
+	body["defaultJoinMode"] = "DUCK_OTHERS"
+	srv := mockInputServer(t, map[string]map[string]any{"doorbell": body})
+
+	res := runCLI(t, "get", "inputs/doorbell", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if want := inputRecordYAML + "defaultJoinMode: \"DUCK_OTHERS\"\n"; res.stdout != want {
+		t.Errorf("got:\n%s\nwant:\n%s", res.stdout, want)
+	}
+
+	jsonRes := runCLI(t, "get", "inputs/doorbell", "--hub-url", srv.URL, "--json")
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(jsonRes.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, jsonRes.stdout)
+	}
+	if decoded["defaultJoinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected defaultJoinMode in JSON, got: %s", jsonRes.stdout)
+	}
+}
+
+func TestInputsGet_NullDefaultJoinMode(t *testing.T) {
+	body := inputBody()
+	body["defaultJoinMode"] = nil
+	srv := mockInputServer(t, map[string]map[string]any{"doorbell": body})
+
+	res := runCLI(t, "get", "inputs/doorbell", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if want := inputRecordYAML + "defaultJoinMode: null\n"; res.stdout != want {
+		t.Errorf("got:\n%s\nwant:\n%s", res.stdout, want)
+	}
+
+	jsonRes := runCLI(t, "get", "inputs/doorbell", "--hub-url", srv.URL, "--json")
+	var decoded map[string]any
+	if err := json.Unmarshal([]byte(jsonRes.stdout), &decoded); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\ngot: %s", err, jsonRes.stdout)
+	}
+	if v, ok := decoded["defaultJoinMode"]; !ok || v != nil {
+		t.Errorf("expected \"defaultJoinMode\": null in JSON, got: %s", jsonRes.stdout)
+	}
+}
