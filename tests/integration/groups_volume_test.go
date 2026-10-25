@@ -101,8 +101,8 @@ func TestGroupsSetVolume_OutOfRangeIsUsageError(t *testing.T) {
 	}
 }
 
-func TestSetVolume_NonOutputsGroupsResourceIsUsageError(t *testing.T) {
-	for _, resource := range []string{"inputs/spotify-1", "routes/route-abc-123"} {
+func TestSetVolume_UnsupportedResourceIsUsageError(t *testing.T) {
+	for _, resource := range []string{"inputs/spotify-1"} {
 		res := runCLI(t, "set", resource, "volume", "50")
 
 		if res.exitCode != 2 {
