@@ -314,7 +314,7 @@ func TestPlay_OldGroupOutputFlags_UsageError(t *testing.T) {
 	}
 }
 
-func TestPlay_Volume_SetsRequestVolumeField(t *testing.T) {
+func TestPlay_Volume_SetsRequestOutputVolumeField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
 	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--volume", "50", "--hub-url", srv.URL)
@@ -322,8 +322,11 @@ func TestPlay_Volume_SetsRequestVolumeField(t *testing.T) {
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
-	if m.playRequest["volume"] != float64(50) {
-		t.Errorf("expected volume=50 in request body, got: %+v", m.playRequest)
+	if m.playRequest["outputVolume"] != float64(50) {
+		t.Errorf("expected outputVolume=50 in request body, got: %+v", m.playRequest)
+	}
+	if _, ok := m.playRequest["volume"]; ok {
+		t.Errorf("expected the deprecated volume never sent, got: %+v", m.playRequest)
 	}
 }
 
@@ -335,8 +338,10 @@ func TestPlay_NoVolume_OmitsRequestVolumeField(t *testing.T) {
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
-	if _, ok := m.playRequest["volume"]; ok {
-		t.Errorf("expected volume omitted from request body, got: %+v", m.playRequest)
+	for _, k := range []string{"volume", "outputVolume"} {
+		if _, ok := m.playRequest[k]; ok {
+			t.Errorf("expected %s omitted from request body, got: %+v", k, m.playRequest)
+		}
 	}
 }
 
@@ -476,8 +481,8 @@ func TestPlay_JoinModeWithVolumeAndDisplayName(t *testing.T) {
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
-	if m.playRequest["joinMode"] != "MIX" || m.playRequest["volume"] != float64(20) || m.playRequest["displayName"] != "Chime" {
-		t.Errorf("expected joinMode=MIX, volume=20 and displayName=Chime in request body, got: %+v", m.playRequest)
+	if m.playRequest["joinMode"] != "MIX" || m.playRequest["outputVolume"] != float64(20) || m.playRequest["displayName"] != "Chime" {
+		t.Errorf("expected joinMode=MIX, outputVolume=20 and displayName=Chime in request body, got: %+v", m.playRequest)
 	}
 }
 

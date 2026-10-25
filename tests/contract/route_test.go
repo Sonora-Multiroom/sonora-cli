@@ -95,6 +95,19 @@ func TestCreateRoute_RequestBody_IncludesJoinModeWhenSet(t *testing.T) {
 	}
 }
 
+func TestCreateRoute_RequestBody_IncludesRouteVolumeAndDuckingLevelWhenSet(t *testing.T) {
+	mode := hub.JoinModeDuckOthers
+	volume, level := 80, -25.0
+	body := createRouteBody(t, hub.CreateRouteRequest{
+		InputID: "spotify-1", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT",
+		JoinMode: &mode, RouteVolume: &volume, DuckingLevelDb: &level,
+	})
+
+	if body["routeVolume"] != float64(80) || body["duckingLevelDb"] != float64(-25) {
+		t.Errorf("expected routeVolume 80 and duckingLevelDb -25, got body: %+v", body)
+	}
+}
+
 func TestCreateRoute_Success_Decodes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v2/routes" {
@@ -805,4 +818,58 @@ func TestRoute_DecodesJoinModeAndOutputs(t *testing.T) {
 	if route.JoinMode != "MIX" || len(route.Outputs) != 2 || route.Outputs[0] != "kitchen" || route.Outputs[1] != "office" {
 		t.Errorf("JoinMode/Outputs = %q/%v, want MIX/[kitchen office]", route.JoinMode, route.Outputs)
 	}
+}
+
+func TestRoute_DecodesRouteVolumeAndDuckingLevel(t *testing.T) {
+	tests := []struct {
+		name       string
+		fields     string
+		wantVolume *int
+		wantLevel  *float64
+	}{
+		{"set", `"routeVolume": 100, "duckingLevelDb": -25.0`, new(100), new(-25.0)},
+		{"null", `"routeVolume": null, "duckingLevelDb": null`, nil, nil},
+		{"absent (before hub 0.1.29)", ``, nil, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := `{"routeId": "route_1", "inputId": "doorbell", "targetId": "kitchen", "targetType": "SINGLE_OUTPUT",
+				"status": "ACTIVE", "createdAt": "2026-01-01T00:00:00Z", "startedAt": null,
+				"transferable": true, "pauseable": false, "paused": false, "joinMode": "DUCK_OTHERS"`
+			if tt.fields != "" {
+				body += ", " + tt.fields
+			}
+			body += "}"
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(body))
+			}))
+			defer srv.Close()
+
+			route, err := hub.GetRoute(context.Background(), hub.NewClient(), srv.URL, "route_1")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !equalPtr(route.RouteVolume, tt.wantVolume) || !equalPtr(route.DuckingLevelDb, tt.wantLevel) {
+				t.Errorf("RouteVolume/DuckingLevelDb = %v/%v, want %v/%v",
+					deref(route.RouteVolume), deref(route.DuckingLevelDb), deref(tt.wantVolume), deref(tt.wantLevel))
+			}
+		})
+	}
+}
+
+// equalPtr reports whether a and b are both nil or point to equal values.
+func equalPtr[T comparable](a, b *T) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// deref renders a pointer for a failure message: its value, or nil.
+func deref[T any](p *T) any {
+	if p == nil {
+		return nil
+	}
+	return *p
 }

@@ -152,13 +152,14 @@ func TestRenderOutputWithRoutesJSON_FlatObjectWithRoutes(t *testing.T) {
 		for _, k := range []string{
 			"routeId", "inputId", "targetId", "targetType", "status", "joinMode", "createdAt",
 			"startedAt", "transferable", "pauseable", "paused", "duckState", "main",
+			"routeVolume", "duckingLevelDb",
 		} {
 			if _, ok := m[k]; !ok {
 				t.Errorf("route %d: expected key %q, got: %v", i, k, m)
 			}
 		}
-		if len(m) != 13 {
-			t.Errorf("route %d: got %d keys, want 13: %v", i, len(m), m)
+		if len(m) != 15 {
+			t.Errorf("route %d: got %d keys, want 15: %v", i, len(m), m)
 		}
 	}
 }

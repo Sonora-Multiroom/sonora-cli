@@ -241,8 +241,11 @@ func TestRenderRouteJSON_ShapeUnchanged(t *testing.T) {
 	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
 		t.Fatalf("output is not valid JSON: %v\ngot: %s", err, got)
 	}
-	if len(decoded) != 12 {
-		t.Errorf("got %d keys, want 12: %s", len(decoded), got)
+	if len(decoded) != 14 {
+		t.Errorf("got %d keys, want 14: %s", len(decoded), got)
+	}
+	if decoded["routeVolume"] != nil || decoded["duckingLevelDb"] != nil {
+		t.Errorf("expected routeVolume and duckingLevelDb null when unset, got: %s", got)
 	}
 	outputs, _ := decoded["outputs"].([]any)
 	if len(outputs) != 2 || outputs[0] != "office" || outputs[1] != "kitchen" {

@@ -10,7 +10,7 @@
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.28"
+    "version": "0.1.29"
   },
   "servers": [
     {
@@ -61,6 +61,72 @@
     }
   ],
   "paths": {
+    "/api/v2/routes/{routeId}/volume": {
+      "put": {
+        "tags": [
+          "Routes"
+        ],
+        "summary": "Set a route's own volume",
+        "description": "Sets the volume of this route only, also on a route started without one. The route ramps to it on every output it plays on, replacing those outputs' volumes for this route; no other route and no output's volume changes, so the room's volume control does not reach it. Accepted while the route is starting or paused. A route volume cannot be removed once set.",
+        "operationId": "setRouteVolume",
+        "parameters": [
+          {
+            "name": "routeId",
+            "in": "path",
+            "description": "Unique route identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "route-3f9a1c07b2e4"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Route volume set; the body is the route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error: volume missing or outside 0-100",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Route not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/routes/{routeId}/pause": {
       "put": {
         "tags": [
@@ -1828,94 +1894,24 @@
   },
   "components": {
     "schemas": {
-      "PauseRequest": {
+      "VolumeRequest": {
         "type": "object",
-        "description": "Request body for setting pause state on a route",
+        "description": "Request body for setting volume level",
         "properties": {
-          "paused": {
-            "type": "boolean",
-            "description": "true to pause playback, false to resume playback"
+          "volume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Volume level 0-100 (inclusive)",
+            "examples": [
+              75
+            ],
+            "maximum": 100,
+            "minimum": 0
           }
         },
         "required": [
-          "paused"
+          "volume"
         ]
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "description": "RFC 7807 Problem Details error response",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Static URN identifying the error type",
-            "examples": [
-              "urn:multiroom:error:validation-error"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "description": "Short, stable title for the error type",
-            "examples": [
-              "Validation Error"
-            ]
-          },
-          "detail": {
-            "type": "string",
-            "description": "Human-readable explanation of this specific error",
-            "examples": [
-              "inputId must not be blank"
-            ]
-          },
-          "instance": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Request URI that caused this error",
-            "examples": [
-              "/api/v2/inputs"
-            ]
-          },
-          "status": {
-            "type": "integer",
-            "format": "int32",
-            "description": "HTTP status code",
-            "examples": [
-              400
-            ]
-          },
-          "timestamp": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time",
-            "description": "ISO 8601 UTC timestamp when error occurred",
-            "examples": [
-              "2026-06-22T14:30:00Z"
-            ]
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Why a route was not admitted; present only on route admission errors (409). ROUTE_LIMIT_REACHED: a target output already holds the most routes it may. INPUT_ALREADY_ON_OUTPUT: the input already plays on a target output through another route. INPUT_DISABLED: the input is disabled. OUTPUT_DISABLED: the target output is disabled. GROUP_DISABLED: the target group is disabled. ALL_MEMBERS_DISABLED: every member of the target group is disabled. ROUTE_CHANGING_OUTPUTS: the route is still adding an output, so it cannot be transferred yet; transient, retry shortly. More reasons may be added: treat an unknown one as a generic conflict.",
-            "examples": [
-              "ROUTE_LIMIT_REACHED"
-            ]
-          },
-          "outputId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "The first output that failed the admission check; present only on route admission errors, and absent for INPUT_DISABLED, GROUP_DISABLED and ROUTE_CHANGING_OUTPUTS",
-            "examples": [
-              "kitchen"
-            ]
-          }
-        }
       },
       "RouteResponse": {
         "type": "object",
@@ -2019,26 +2015,118 @@
             "items": {
               "type": "string"
             }
+          },
+          "routeVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The route's own volume (0-100), replacing its outputs' volume for this route only; null when the route follows each output's volume",
+            "examples": [
+              100
+            ]
+          },
+          "duckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "How far a DUCK_OTHERS route lowers the others, in dB; null for other join modes",
+            "examples": [
+              -25.0
+            ]
           }
         }
       },
-      "VolumeRequest": {
+      "ErrorResponse": {
         "type": "object",
-        "description": "Request body for setting volume level",
+        "description": "RFC 7807 Problem Details error response",
         "properties": {
-          "volume": {
+          "type": {
+            "type": "string",
+            "description": "Static URN identifying the error type",
+            "examples": [
+              "urn:multiroom:error:validation-error"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, stable title for the error type",
+            "examples": [
+              "Validation Error"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable explanation of this specific error",
+            "examples": [
+              "inputId must not be blank"
+            ]
+          },
+          "instance": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Request URI that caused this error",
+            "examples": [
+              "/api/v2/inputs"
+            ]
+          },
+          "status": {
             "type": "integer",
             "format": "int32",
-            "description": "Volume level 0-100 (inclusive)",
+            "description": "HTTP status code",
             "examples": [
-              75
+              400
+            ]
+          },
+          "timestamp": {
+            "type": [
+              "string",
+              "null"
             ],
-            "maximum": 100,
-            "minimum": 0
+            "format": "date-time",
+            "description": "ISO 8601 UTC timestamp when error occurred",
+            "examples": [
+              "2026-06-22T14:30:00Z"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why a route was not admitted; present only on route admission errors (409). ROUTE_LIMIT_REACHED: a target output already holds the most routes it may. INPUT_ALREADY_ON_OUTPUT: the input already plays on a target output through another route. INPUT_DISABLED: the input is disabled. OUTPUT_DISABLED: the target output is disabled. GROUP_DISABLED: the target group is disabled. ALL_MEMBERS_DISABLED: every member of the target group is disabled. ROUTE_CHANGING_OUTPUTS: the route is still adding an output, so it cannot be transferred yet; transient, retry shortly. More reasons may be added: treat an unknown one as a generic conflict.",
+            "examples": [
+              "ROUTE_LIMIT_REACHED"
+            ]
+          },
+          "outputId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The first output that failed the admission check; present only on route admission errors, and absent for INPUT_DISABLED, GROUP_DISABLED and ROUTE_CHANGING_OUTPUTS",
+            "examples": [
+              "kitchen"
+            ]
+          }
+        }
+      },
+      "PauseRequest": {
+        "type": "object",
+        "description": "Request body for setting pause state on a route",
+        "properties": {
+          "paused": {
+            "type": "boolean",
+            "description": "true to pause playback, false to resume playback"
           }
         },
         "required": [
-          "volume"
+          "paused"
         ]
       },
       "OutputVolumeResponse": {
@@ -2241,6 +2329,28 @@
             "examples": [
               "DUCK_OTHERS"
             ]
+          },
+          "defaultRouteVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Route volume (0-100) for routes from this input whose request names none; null when none is declared",
+            "examples": [
+              100
+            ]
+          },
+          "defaultDuckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Ducking level in dB for DUCK_OTHERS routes from this input whose request names none; null when none is declared",
+            "examples": [
+              -25.0
+            ]
           }
         }
       },
@@ -2401,6 +2511,32 @@
             "examples": [
               "DUCK_OTHERS"
             ]
+          },
+          "routeVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Volume (0-100) of this route only. It replaces the target outputs' volume for this route and changes no output's volume, so the room's volume control does not reach it (for announcements and alerts). Mute, master mute and each output's configured gain still apply. Omitted: the input's default route volume, else the route follows the outputs' volume",
+            "examples": [
+              100
+            ],
+            "maximum": 100,
+            "minimum": 0
+          },
+          "duckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "How far this route lowers the others, in dB from -60.0 to 0.0. Accepted only when the route's join mode is DUCK_OTHERS (400 otherwise). Omitted: the input's default ducking level, else the system level",
+            "examples": [
+              -25.0
+            ],
+            "maximum": 0.0,
+            "minimum": -60.0
           }
         },
         "required": [
@@ -2485,7 +2621,8 @@
               "null"
             ],
             "format": "int32",
-            "description": "Optional volume level (0-100), set before playback starts",
+            "deprecated": true,
+            "description": "Deprecated alias of outputVolume. Not accepted together with it",
             "examples": [
               75
             ],
@@ -2506,6 +2643,45 @@
             "examples": [
               "DUCK_OTHERS"
             ]
+          },
+          "outputVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Optional volume (0-100) set on the target output, or on every member of a target group, before playback starts. It persists after playback stops and is the room's volume: the volume control of that room changes it. Use routeVolume for this playback only",
+            "examples": [
+              75
+            ],
+            "maximum": 100,
+            "minimum": 0
+          },
+          "routeVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Optional volume (0-100) of this playback only. It replaces the target outputs' volume for this playback and changes no output's volume, so the room's volume control does not reach it (for announcements and alerts). Mute, master mute and each output's configured gain still apply. Omitted: the input's default, else the playback follows the outputs' volume",
+            "examples": [
+              100
+            ],
+            "maximum": 100,
+            "minimum": 0
+          },
+          "duckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "How far this playback lowers the others, in dB from -60.0 to 0.0. Accepted only with joinMode DUCK_OTHERS. Omitted: the system ducking level",
+            "examples": [
+              -25.0
+            ],
+            "maximum": 0.0,
+            "minimum": -60.0
           }
         },
         "required": [
@@ -2602,6 +2778,32 @@
             "examples": [
               "DUCK_OTHERS"
             ]
+          },
+          "defaultRouteVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Route volume (0-100) for routes from this input whose request names none; it replaces the outputs' volume for that route only. Omitted: none declared, routes follow the outputs' volume",
+            "examples": [
+              100
+            ],
+            "maximum": 100,
+            "minimum": 0
+          },
+          "defaultDuckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Ducking level in dB (-60.0 to 0.0) for DUCK_OTHERS routes from this input whose request names none. Omitted: none declared, the system level applies",
+            "examples": [
+              -25.0
+            ],
+            "maximum": 0.0,
+            "minimum": -60.0
           }
         },
         "required": [
@@ -2654,6 +2856,20 @@
           },
           "playbackMode": {
             "type": "string"
+          },
+          "routeVolume": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Volume (0-100) of this announcement only. It replaces the target outputs' volume for the announcement and changes no output's volume, so the room's volume control does not reach it. Omitted: tts.playback.route-volume, else the announcement follows the outputs' volume",
+            "maximum": 100,
+            "minimum": 0
+          },
+          "duckingLevelDb": {
+            "type": "number",
+            "format": "double",
+            "description": "How far this announcement lowers what else plays, in dB from -60.0 to 0.0. Accepted only with playbackMode duck-others (400 with mix). Omitted: tts.playback.ducking-level-db, else the hub's input default and system level",
+            "maximum": 0.0,
+            "minimum": -60.0
           }
         },
         "required": [
@@ -2793,6 +3009,28 @@
           "main": {
             "type": "boolean",
             "description": "Whether this is the output's main route: the first non-ducking route to join it, else the first route"
+          },
+          "routeVolume": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The route's own volume (0-100), replacing the output's volume for this route only; null when the route follows the output's volume",
+            "examples": [
+              100
+            ]
+          },
+          "duckingLevelDb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "How far a DUCK_OTHERS route lowers the others, in dB; null for other join modes",
+            "examples": [
+              -25.0
+            ]
           }
         }
       },

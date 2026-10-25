@@ -30,6 +30,14 @@ type Route struct {
 	// Outputs lists the outputs the route plays on right now, in join order;
 	// a group route lists only the members it plays on.
 	Outputs []string `json:"outputs"`
+	// RouteVolume is the route's own volume (0-100), replacing its outputs'
+	// volume for this route only; nil when the route follows each output's
+	// volume (or the hub predates route volumes). Once set it cannot be
+	// cleared, only changed with SetRouteVolume.
+	RouteVolume *int `json:"routeVolume"`
+	// DuckingLevelDb is how far a DUCK_OTHERS route lowers the others, in
+	// dB; nil for other join modes.
+	DuckingLevelDb *float64 `json:"duckingLevelDb"`
 }
 
 // Join modes: how a route joins the outputs it targets.
@@ -51,6 +59,15 @@ type CreateRouteRequest struct {
 	// JoinMode is how the route joins its target (a JoinMode* value). Nil
 	// leaves it to the hub: the input's default join mode, else REPLACE.
 	JoinMode *string `json:"joinMode,omitempty"`
+	// RouteVolume (0-100) is the route's own volume. Nil leaves it to the
+	// hub: the input's default route volume, else the route follows its
+	// outputs' volume.
+	RouteVolume *int `json:"routeVolume,omitempty"`
+	// DuckingLevelDb (-60.0 to 0.0) is how far a DUCK_OTHERS route lowers
+	// the others, in dB. The hub rejects it (400) when the effective join
+	// mode is not DUCK_OTHERS. Nil leaves it to the hub: the input's
+	// default level, else the configured one.
+	DuckingLevelDb *float64 `json:"duckingLevelDb,omitempty"`
 }
 
 // TransferRequest mirrors #/components/schemas/TransferRequest in
@@ -336,6 +353,57 @@ func SetPauseState(ctx context.Context, client *http.Client, baseURL, routeID st
 			return nil, &StatusError{StatusCode: resp.StatusCode}
 		}
 		return nil, &APIError{StatusCode: resp.StatusCode, Title: errBody.Title, Detail: errBody.Detail}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var route Route
+	if err := json.NewDecoder(resp.Body).Decode(&route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateRoute(route); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &route, nil
+}
+
+// SetRouteVolume calls PUT {baseURL}/api/v2/routes/{routeId}/volume
+// (operationId "setRouteVolume") with {"volume": volume} (0-100), setting
+// the volume of this route only, also on a route started without one. The
+// route ramps to it on every output it plays on; no other route and no
+// output's volume changes. A route volume cannot be cleared once set. On
+// success (200) the decoded and validated Route is returned. A 404 is
+// returned as a *NotFoundError naming the route. A 400 attempts to decode
+// the body as an errorResponse into an *APIError, falling back to a
+// *StatusError if that decode fails; any other non-2xx status is a
+// *StatusError.
+func SetRouteVolume(ctx context.Context, client *http.Client, baseURL, routeID string, volume int) (*Route, error) {
+	body, err := json.Marshal(struct {
+		Volume int `json:"volume"`
+	}{Volume: volume})
+	if err != nil {
+		return nil, err
+	}
+
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/routes/" + url.PathEscape(routeID) + "/volume"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &NotFoundError{Resource: "route", ID: routeID}
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &StatusError{StatusCode: resp.StatusCode}

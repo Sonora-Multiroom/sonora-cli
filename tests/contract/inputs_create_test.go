@@ -80,8 +80,10 @@ func TestCreateInput_RequestBody_OmitsUnsetEnabledAndAutoRemove(t *testing.T) {
 	if _, ok := gotBody["autoRemove"]; ok {
 		t.Errorf("expected autoRemove to be omitted when unset, got body: %+v", gotBody)
 	}
-	if _, ok := gotBody["defaultJoinMode"]; ok {
-		t.Errorf("expected defaultJoinMode to be omitted when unset, got body: %+v", gotBody)
+	for _, k := range []string{"defaultJoinMode", "defaultRouteVolume", "defaultDuckingLevelDb"} {
+		if _, ok := gotBody[k]; ok {
+			t.Errorf("expected %s to be omitted when unset, got body: %+v", k, gotBody)
+		}
 	}
 }
 
@@ -236,5 +238,34 @@ func TestCreateInput_MalformedBody_MissingInputID(t *testing.T) {
 	var decodeErr *hub.DecodeError
 	if !errors.As(err, &decodeErr) {
 		t.Fatalf("expected a *hub.DecodeError, got %T: %v", err, err)
+	}
+}
+
+func TestCreateInput_RequestBody_IncludesRouteDefaultsWhenSet(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"inputId": "doorbell", "displayName": "Doorbell", "uri": "u1",
+			"enabled": true, "autoRemove": false, "source": "EPHEMERAL", "createdAt": "2026-01-01T00:00:00Z", "pauseable": false,
+			"defaultRouteVolume": 90, "defaultDuckingLevelDb": -30.0,
+		})
+	}))
+	defer srv.Close()
+
+	volume, level := 90, -30.0
+	req := hub.CreateInputRequest{InputID: "doorbell", DisplayName: "Doorbell", URI: "u1", DefaultRouteVolume: &volume, DefaultDuckingLevelDb: &level}
+	input, err := hub.CreateInput(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotBody["defaultRouteVolume"] != float64(90) || gotBody["defaultDuckingLevelDb"] != float64(-30) {
+		t.Errorf("expected defaultRouteVolume 90 and defaultDuckingLevelDb -30, got body: %+v", gotBody)
+	}
+	if input.DefaultRouteVolume == nil || *input.DefaultRouteVolume != 90 || input.DefaultDuckingLevelDb == nil || *input.DefaultDuckingLevelDb != -30 {
+		t.Errorf("unexpected decoded input: %+v", input)
 	}
 }
