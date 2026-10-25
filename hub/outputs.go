@@ -134,6 +134,12 @@ type RouteOnOutput struct {
 	// Main reports whether this is the output's main route: the first
 	// non-ducking route to join it, else the first route.
 	Main bool `json:"main"`
+	// RouteVolume is the route's own volume (0-100); nil when it follows
+	// the output's volume. See Route.RouteVolume.
+	RouteVolume *int `json:"routeVolume"`
+	// DuckingLevelDb is how far a DUCK_OTHERS route lowers the others, in
+	// dB; nil for other join modes.
+	DuckingLevelDb *float64 `json:"duckingLevelDb"`
 }
 
 // Lowered reports whether the route is lowered under a ducking route on this

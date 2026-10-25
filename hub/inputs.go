@@ -26,13 +26,20 @@ type Input struct {
 	// routes from this input whose request names none; nil when the input
 	// declares none.
 	DefaultJoinMode *string `json:"defaultJoinMode"`
+	// DefaultRouteVolume (0-100) is the route volume for routes from this
+	// input whose request names none; nil when the input declares none.
+	DefaultRouteVolume *int `json:"defaultRouteVolume"`
+	// DefaultDuckingLevelDb (-60.0 to 0.0) is the ducking level for
+	// DUCK_OTHERS routes from this input whose request names none; nil when
+	// the input declares none.
+	DefaultDuckingLevelDb *float64 `json:"defaultDuckingLevelDb"`
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
-// api/openapi.json field-for-field. Enabled, AutoRemove and DefaultJoinMode
-// are optional (nil omits them from the request body, letting the hub apply
-// its documented default: true for Enabled and AutoRemove, none for
-// DefaultJoinMode); a non-nil pointer sends that value explicitly.
+// api/openapi.json field-for-field. Enabled, AutoRemove and the Default*
+// fields are optional (nil omits them from the request body, letting the
+// hub apply its documented default: true for Enabled and AutoRemove, none
+// for the others); a non-nil pointer sends that value explicitly.
 type CreateInputRequest struct {
 	InputID     string `json:"inputId"`
 	DisplayName string `json:"displayName"`
@@ -43,6 +50,14 @@ type CreateInputRequest struct {
 	// request names none (a JoinMode* value). Nil declares none, and such
 	// routes use REPLACE.
 	DefaultJoinMode *string `json:"defaultJoinMode,omitempty"`
+	// DefaultRouteVolume (0-100) is the route volume for routes from this
+	// input whose request names none. Nil declares none, and such routes
+	// follow their outputs' volume.
+	DefaultRouteVolume *int `json:"defaultRouteVolume,omitempty"`
+	// DefaultDuckingLevelDb (-60.0 to 0.0) is the ducking level, in dB, for
+	// DUCK_OTHERS routes from this input whose request names none; other
+	// routes ignore it. Nil declares none.
+	DefaultDuckingLevelDb *float64 `json:"defaultDuckingLevelDb,omitempty"`
 }
 
 func validateInput(i Input) error {

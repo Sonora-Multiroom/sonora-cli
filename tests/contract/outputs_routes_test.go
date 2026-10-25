@@ -183,3 +183,27 @@ func TestGetRoutesForOutput_MalformedBodyRejected(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRoutesForOutput_DecodesRouteVolumeAndDuckingLevel(t *testing.T) {
+	srv := routesForOutputServer(t, http.StatusOK, `[
+		{"routeId": "route-1", "inputId": "radio", "targetId": "kitchen", "targetType": "SINGLE_OUTPUT",
+		 "status": "ACTIVE", "joinMode": "REPLACE", "createdAt": "2026-09-30T08:00:00Z", "startedAt": null,
+		 "transferable": true, "pauseable": true, "paused": false, "duckState": "LOWERED", "main": true,
+		 "routeVolume": null, "duckingLevelDb": null},
+		{"routeId": "route-2", "inputId": "doorbell", "targetId": "kitchen", "targetType": "SINGLE_OUTPUT",
+		 "status": "ACTIVE", "joinMode": "DUCK_OTHERS", "createdAt": "2026-09-30T08:05:00Z", "startedAt": null,
+		 "transferable": false, "pauseable": false, "paused": false, "duckState": "FULL", "main": false,
+		 "routeVolume": 100, "duckingLevelDb": -25.0}
+	]`)
+
+	routes, err := hub.GetRoutesForOutput(context.Background(), hub.NewClient(), srv.URL, "kitchen")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if routes[0].RouteVolume != nil || routes[0].DuckingLevelDb != nil {
+		t.Errorf("route 0 RouteVolume/DuckingLevelDb = %v/%v, want nil/nil", routes[0].RouteVolume, routes[0].DuckingLevelDb)
+	}
+	if routes[1].RouteVolume == nil || *routes[1].RouteVolume != 100 || routes[1].DuckingLevelDb == nil || *routes[1].DuckingLevelDb != -25 {
+		t.Errorf("route 1 RouteVolume/DuckingLevelDb = %v/%v, want 100/-25", routes[1].RouteVolume, routes[1].DuckingLevelDb)
+	}
+}

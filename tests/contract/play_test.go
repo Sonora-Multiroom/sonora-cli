@@ -45,11 +45,10 @@ func TestPlayback_RequestBody_OmitsOptionalFieldsWhenUnset(t *testing.T) {
 	if _, ok := gotBody["displayName"]; ok {
 		t.Errorf("expected displayName omitted, got body: %+v", gotBody)
 	}
-	if _, ok := gotBody["volume"]; ok {
-		t.Errorf("expected volume omitted, got body: %+v", gotBody)
-	}
-	if _, ok := gotBody["joinMode"]; ok {
-		t.Errorf("expected joinMode omitted, got body: %+v", gotBody)
+	for _, k := range []string{"volume", "outputVolume", "routeVolume", "duckingLevelDb", "joinMode"} {
+		if _, ok := gotBody[k]; ok {
+			t.Errorf("expected %s omitted, got body: %+v", k, gotBody)
+		}
 	}
 	if gotBody["uri"] != req.URI || gotBody["targetId"] != req.TargetID || gotBody["targetType"] != req.TargetType {
 		t.Errorf("expected uri/targetId/targetType always present, got body: %+v", gotBody)
@@ -76,11 +75,11 @@ func TestPlayback_RequestBody_IncludesOptionalFieldsWhenSet(t *testing.T) {
 
 	client := hub.NewClient()
 	name := "Kitchen Radio"
-	volume := 50
-	mode := hub.JoinModeMix
+	outputVolume, routeVolume, level := 50, 90, -12.5
+	mode := hub.JoinModeDuckOthers
 	req := hub.PlaybackRequest{
 		URI: "https://stream.example.com/live.mp3", TargetID: "office-speaker", TargetType: "SINGLE_OUTPUT",
-		DisplayName: &name, Volume: &volume, JoinMode: &mode,
+		DisplayName: &name, OutputVolume: &outputVolume, RouteVolume: &routeVolume, DuckingLevelDb: &level, JoinMode: &mode,
 	}
 	_, err := hub.Playback(context.Background(), client, srv.URL, req)
 	if err != nil {
@@ -90,11 +89,20 @@ func TestPlayback_RequestBody_IncludesOptionalFieldsWhenSet(t *testing.T) {
 	if gotBody["displayName"] != name {
 		t.Errorf("expected displayName %q present, got body: %+v", name, gotBody)
 	}
-	if gotBody["volume"] != float64(volume) {
-		t.Errorf("expected volume %d present, got body: %+v", volume, gotBody)
+	if gotBody["outputVolume"] != float64(outputVolume) {
+		t.Errorf("expected outputVolume %d present, got body: %+v", outputVolume, gotBody)
 	}
-	if gotBody["joinMode"] != "MIX" {
-		t.Errorf("expected joinMode MIX present, got body: %+v", gotBody)
+	if _, ok := gotBody["volume"]; ok {
+		t.Errorf("expected the deprecated volume never sent, got body: %+v", gotBody)
+	}
+	if gotBody["routeVolume"] != float64(routeVolume) {
+		t.Errorf("expected routeVolume %d present, got body: %+v", routeVolume, gotBody)
+	}
+	if gotBody["duckingLevelDb"] != level {
+		t.Errorf("expected duckingLevelDb %v present, got body: %+v", level, gotBody)
+	}
+	if gotBody["joinMode"] != "DUCK_OTHERS" {
+		t.Errorf("expected joinMode DUCK_OTHERS present, got body: %+v", gotBody)
 	}
 }
 

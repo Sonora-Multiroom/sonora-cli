@@ -133,7 +133,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 
 	req := hub.PlaybackRequest{URI: uri, TargetID: targetID, TargetType: targetType}
 	if volumeProvided {
-		req.Volume = volumeFlag
+		req.OutputVolume = volumeFlag
 	}
 	if *displayNameFlag != "" {
 		req.DisplayName = displayNameFlag

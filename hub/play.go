@@ -16,10 +16,23 @@ type PlaybackRequest struct {
 	TargetID    string  `json:"targetId"`
 	TargetType  string  `json:"targetType"`
 	DisplayName *string `json:"displayName,omitempty"`
-	Volume      *int    `json:"volume,omitempty"`
+	// OutputVolume (0-100) sets the target's output volume before playback
+	// starts, and that volume stays after the route ends. Nil leaves it
+	// unchanged. It replaces the hub's deprecated "volume" field, which this
+	// package never sends.
+	OutputVolume *int `json:"outputVolume,omitempty"`
+	// RouteVolume (0-100) is the volume of this playback only: it replaces
+	// the target outputs' volume for this route and changes no output's
+	// volume, so the room's volume control does not reach it. Nil lets the
+	// route follow the outputs' volume.
+	RouteVolume *int `json:"routeVolume,omitempty"`
 	// JoinMode is how the playback joins its target (a JoinMode* value).
 	// Nil means REPLACE.
 	JoinMode *string `json:"joinMode,omitempty"`
+	// DuckingLevelDb (-60.0 to 0.0) is how far a DUCK_OTHERS playback lowers
+	// what else plays, in dB. The hub rejects it (400) for any other join
+	// mode. Nil uses the hub's configured level.
+	DuckingLevelDb *float64 `json:"duckingLevelDb,omitempty"`
 }
 
 // PlaybackResponse mirrors #/components/schemas/PlaybackResponse in
