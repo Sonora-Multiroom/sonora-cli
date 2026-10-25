@@ -51,7 +51,7 @@ table, common flags, and examples from the terminal.
 | `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
-| `set <resource>/<id> volume <0-100>` | `outputs`, `groups` | `out`, `gr` |
+| `set <resource>/<id> volume <0-100>` | `outputs`, `groups`, `routes` | `out`, `gr`, `rt` |
 | `speak <text\|-> <resource>/<id>` | `outputs`, `groups` (hub TTS extension) | `out`, `gr` |
 | `get tts-cache` | TTS audio-cache statistics (hub TTS extension) | — |
 | `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
@@ -123,7 +123,10 @@ Master mute is a layer above each output's own mute: `mute all` silences every o
 
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
-confirmation. Only `outputs`/`volume` and `groups`/`volume` support `set` today.
+confirmation. `set routes/<id> volume <0-100>` sets one route's own volume (hub 0.1.29 and
+later): the route plays at it on every output it plays on, no output's volume changes, and the
+command prints the route. A route volume cannot be removed once set, only changed. Only `volume`
+can be set today.
 
 `transfer routes/<route-id> <outputs|groups>/<target-id>` seamlessly moves an active route's
 playback to a new output or group without interruption. The route keeps its `routeId` (hub
@@ -143,7 +146,12 @@ sonora route inputs/doorbell groups/downstairs --join-mode mix
 group, creating the ephemeral input and route in one call —
 `sonora play <uri> <outputs|groups>/<id>`. It returns as soon as the hub accepts the request
 (no polling for the route to become active). The target's type is given directly by the
-`outputs/`/`groups/` path prefix. `--volume N` (0-100) sets the starting volume. The optional
+`outputs/`/`groups/` path prefix. `--output-volume N` (0-100) sets the target's volume before
+playback starts, and it stays after playback ends. `--route-volume N` (0-100) plays this playback
+alone at that volume, whatever the target's volume, and the room's volume control does not reach
+it: meant for announcements and alerts, not music. `--ducking-level DB` (-60 to 0, decimals
+allowed) says how far a `--join-mode DUCK_OTHERS` playback lowers what else plays; with any other
+join mode it is a usage error. The three flags need hub 0.1.29 or later. The optional
 `--display-name NAME` sets the ephemeral input's display name, and the hub keeps a name you give
 as it is; without it, the hub names a SoundCloud or YouTube link "Title — Uploader" and anything
 else with a generated name. The output shows that name as `displayName` when the hub reports it
@@ -152,6 +160,7 @@ target; without it, `REPLACE`.
 
 ```
 sonora play <uri> outputs/kitchen --join-mode duck_others
+sonora play <uri> groups/downstairs --join-mode duck_others --route-volume 80 --ducking-level -25
 ```
 
 `speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
@@ -199,7 +208,8 @@ sonora get outputs --include-disabled
 sonora get routes --status active
 sonora get groups/<id> --json
 sonora get outputs/kitchen --include-routes
-sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --volume 40
+sonora play "https://stream.example.com/live.mp3" outputs/office-speaker --output-volume 40
+sonora set routes/<route-id> volume 25
 sonora transfer routes/<route-id> outputs/bedroom-speaker
 sonora stop routes
 sonora stop outputs/<id>

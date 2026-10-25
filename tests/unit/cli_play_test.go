@@ -210,22 +210,24 @@ func TestPlayRun_MalformedTargetPath_RejectedBeforeAnyRequest(t *testing.T) {
 }
 
 func TestPlayRun_VolumeOutOfRange_RejectedBeforeAnyRequest(t *testing.T) {
-	for _, volume := range []string{"-1", "150"} {
-		t.Run(volume, func(t *testing.T) {
-			srv, count := countingHub(t)
-			var stdout, stderr bytes.Buffer
-			code := play.Run([]string{"uri", "outputs/target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
+	for _, flag := range []string{"--output-volume", "--route-volume"} {
+		for _, volume := range []string{"-1", "150"} {
+			t.Run(flag+"="+volume, func(t *testing.T) {
+				srv, count := countingHub(t)
+				var stdout, stderr bytes.Buffer
+				code := play.Run([]string{"uri", "outputs/target", flag, volume, "--hub-url", srv.URL}, &stdout, &stderr)
 
-			if code != 6 {
-				t.Fatalf("exit code = %d, want 6; stderr: %s", code, stderr.String())
-			}
-			if got := atomic.LoadInt32(count); got != 0 {
-				t.Errorf("expected zero requests to the hub, got %d", got)
-			}
-			if !strings.Contains(strings.ToLower(stderr.String()), "volume") {
-				t.Errorf("expected a volume range error message, got: %s", stderr.String())
-			}
-		})
+				if code != 6 {
+					t.Fatalf("exit code = %d, want 6; stderr: %s", code, stderr.String())
+				}
+				if got := atomic.LoadInt32(count); got != 0 {
+					t.Errorf("expected zero requests to the hub, got %d", got)
+				}
+				if want := "error: " + flag + " must be between 0 and 100"; !strings.Contains(stderr.String(), want) {
+					t.Errorf("expected stderr to contain %q, got: %s", want, stderr.String())
+				}
+			})
+		}
 	}
 }
 
@@ -234,7 +236,7 @@ func TestPlayRun_VolumeBoundaryValues_ProceedToCallHub(t *testing.T) {
 		t.Run(volume, func(t *testing.T) {
 			srv, count := countingHub(t)
 			var stdout, stderr bytes.Buffer
-			code := play.Run([]string{"uri", "outputs/target", "--volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
+			code := play.Run([]string{"uri", "outputs/target", "--output-volume", volume, "--route-volume", volume, "--hub-url", srv.URL}, &stdout, &stderr)
 
 			// countingHub returns 404 for everything, so this resolves to a
 			// not-found target — the point is that a request was attempted.
@@ -316,5 +318,114 @@ func TestPlayRun_InvalidJoinMode_CheckedAfterArguments(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(count); got != 0 {
 		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_VolumeFlagRemoved(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "outputs/target", "--volume", "40", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "flag provided but not defined: -volume") {
+		t.Errorf("expected an unknown-flag error, got: %s", stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_HelpDescribesVolumesAndDuckingLevel(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := play.Run([]string{"--help"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	for _, want := range []string{"-output-volume N", "-route-volume N", "-ducking-level DB"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("expected --help to contain %q, got:\n%s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "starting volume") {
+		t.Errorf("expected the removed --volume not in --help, got:\n%s", stdout.String())
+	}
+}
+
+func TestPlayRun_DuckingLevelWithoutDuckOthers_UsageErrorNoRequest(t *testing.T) {
+	for name, extra := range map[string][]string{
+		"no join mode": nil,
+		"MIX":          {"--join-mode", "mix"},
+		"REPLACE":      {"--join-mode", "REPLACE"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			srv, count := countingHub(t)
+			var stdout, stderr bytes.Buffer
+			args := append([]string{"uri", "outputs/target", "--ducking-level", "-25", "--hub-url", srv.URL}, extra...)
+			code := play.Run(args, &stdout, &stderr)
+
+			if code != 2 {
+				t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+			}
+			if first, _, _ := strings.Cut(stderr.String(), "\n"); first != "usage: sonora play <uri> <outputs|groups>/<id> [flags]" {
+				t.Errorf("expected the usage line first on stderr, got: %s", stderr.String())
+			}
+			if want := "error: --ducking-level needs --join-mode DUCK_OTHERS"; !strings.Contains(stderr.String(), want) {
+				t.Errorf("expected stderr to contain %q, got: %s", want, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests to the hub, got %d", got)
+			}
+		})
+	}
+}
+
+func TestPlayRun_DuckingLevelOutOfRange_RejectedBeforeAnyRequest(t *testing.T) {
+	for _, level := range []string{"-60.5", "0.1", "3"} {
+		t.Run(level, func(t *testing.T) {
+			srv, count := countingHub(t)
+			var stdout, stderr bytes.Buffer
+			code := play.Run([]string{"uri", "outputs/target", "--join-mode", "duck_others", "--ducking-level", level, "--hub-url", srv.URL}, &stdout, &stderr)
+
+			if code != 6 {
+				t.Fatalf("exit code = %d, want 6; stderr: %s", code, stderr.String())
+			}
+			if want := "error: --ducking-level must be between -60 and 0"; !strings.Contains(stderr.String(), want) {
+				t.Errorf("expected stderr to contain %q, got: %s", want, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests to the hub, got %d", got)
+			}
+		})
+	}
+}
+
+func TestPlayRun_DuckingLevelNotANumber_UsageError(t *testing.T) {
+	srv, count := countingHub(t)
+	var stdout, stderr bytes.Buffer
+	code := play.Run([]string{"uri", "outputs/target", "--join-mode", "DUCK_OTHERS", "--ducking-level", "loud", "--hub-url", srv.URL}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", code, stderr.String())
+	}
+	if got := atomic.LoadInt32(count); got != 0 {
+		t.Errorf("expected zero requests to the hub, got %d", got)
+	}
+}
+
+func TestPlayRun_DuckingLevelBoundaryValues_ProceedToCallHub(t *testing.T) {
+	for _, level := range []string{"-60", "0", "-12.5"} {
+		t.Run(level, func(t *testing.T) {
+			srv, count := countingHub(t)
+			var stdout, stderr bytes.Buffer
+			code := play.Run([]string{"uri", "outputs/target", "--join-mode", "DUCK_OTHERS", "--ducking-level", level, "--hub-url", srv.URL}, &stdout, &stderr)
+
+			if code != 5 {
+				t.Fatalf("exit code = %d, want 5; stderr: %s", code, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got == 0 {
+				t.Error("expected at least one request to the hub for a valid ducking level")
+			}
+		})
 	}
 }

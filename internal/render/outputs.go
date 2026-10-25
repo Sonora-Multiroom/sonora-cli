@@ -88,7 +88,8 @@ func RenderOutputJSON(o hub.Output) string {
 
 // RenderOutputWithRoutesYAML renders a single output's record followed by
 // the routes playing on it, used by `get outputs/<id> --include-routes`.
-// Each route shows nine fields; `routes: []` stands for none, with no
+// Each route shows nine fields, plus routeVolume and duckingLevelDb after
+// joinMode when the hub sent them; `routes: []` stands for none, with no
 // comment line, which in the middle of a record would read as a separate
 // document.
 func RenderOutputWithRoutesYAML(o hub.Output, routes []hub.RouteOnOutput) string {
@@ -106,6 +107,7 @@ func RenderOutputWithRoutesYAML(o hub.Output, routes []hub.RouteOnOutput) string
 		fmt.Fprintf(&b, "    targetType: %q\n", r.TargetType)
 		fmt.Fprintf(&b, "    status: %q\n", r.Status)
 		fmt.Fprintf(&b, "    joinMode: %q\n", r.JoinMode)
+		writeVolumeAndLevel(&b, "    ", "routeVolume", r.RouteVolume, "duckingLevelDb", r.DuckingLevelDb)
 		fmt.Fprintf(&b, "    duckState: %q\n", r.DuckState)
 		fmt.Fprintf(&b, "    main: %t\n", r.Main)
 		fmt.Fprintf(&b, "    paused: %t\n", r.Paused)

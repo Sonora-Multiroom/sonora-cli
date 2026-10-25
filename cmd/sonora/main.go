@@ -46,6 +46,7 @@ Commands:
   unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
   set groups/<id> volume <0-100>      Set a group's volume level
+  set routes/<id> volume <0-100>      Set one route's own volume
   get tts-cache                       Fetch TTS audio-cache statistics
   clear tts-cache                     Clear the TTS audio cache
   list tts-voices --provider NAME     List a TTS provider's voices
@@ -76,6 +77,7 @@ Examples:
   sonora transfer routes/route-abc-123 groups/living-room
   sonora set outputs/office-speaker volume 40
   sonora set groups/living-room volume 40
+  sonora set routes/route-abc-123 volume 25
   sonora create inputs/spotify-1 "https://stream.mp3" --display-name Spotify
   sonora rename inputs/spotify-1 "Kiss FM"
   sonora delete routes/route-abc-123
@@ -501,13 +503,14 @@ func dispatchPause(verb string, args []string, stdout, stderr io.Writer) int {
 }
 
 // dispatchSet resolves the resource-path argument following `set` via
-// respath and calls outputs.RunSetVolume or groups.RunSetVolume — the only
-// resource/attribute combinations `set` currently supports are
-// `outputs`/`volume` and `groups`/`volume` (the literal `volume` word and
+// respath and calls outputs.RunSetVolume, groups.RunSetVolume or
+// routes.RunSetVolume — the only resource/attribute combinations `set`
+// currently supports are `outputs`/`volume`, `groups`/`volume` and
+// `routes`/`volume` (the literal `volume` word and
 // its `<0-100>` value are validated by each RunSetVolume itself). Any other
 // resource is a usage error.
 func dispatchSet(args []string, stdout, stderr io.Writer) int {
-	usage := "usage: sonora set <outputs|groups>/<id> volume <0-100> [flags]"
+	usage := "usage: sonora set <outputs|groups|routes>/<id> volume <0-100> [flags]"
 	if clihelp.Requested(args) && !startsWithResource(args) {
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -523,9 +526,9 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sonora: %v\n", err)
 		return 2
 	}
-	if path.Kind != respath.Outputs && path.Kind != respath.Groups {
+	if path.Kind != respath.Outputs && path.Kind != respath.Groups && path.Kind != respath.Routes {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: set does not support %s; only outputs/<id> volume <0-100> and groups/<id> volume <0-100> are supported\n", path.Kind)
+		fmt.Fprintf(stderr, "error: set does not support %s; only outputs/<id>, groups/<id> and routes/<id> volume <0-100> are supported\n", path.Kind)
 		return 2
 	}
 	if path.ID == "" {
@@ -535,8 +538,11 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 	}
 
 	callArgs := append([]string{path.ID}, args[1:]...)
-	if path.Kind == respath.Groups {
+	switch path.Kind {
+	case respath.Groups:
 		return groups.RunSetVolume(callArgs, stdout, stderr)
+	case respath.Routes:
+		return routes.RunSetVolume(callArgs, stdout, stderr)
 	}
 	return outputs.RunSetVolume(callArgs, stdout, stderr)
 }

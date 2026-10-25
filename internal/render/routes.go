@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/Sonora-Multiroom/sonora-cli/hub"
 )
@@ -14,6 +15,19 @@ func writeStartedAt(b *bytes.Buffer, indent string, startedAt *string) {
 		return
 	}
 	fmt.Fprintf(b, "%sstartedAt: %q\n", indent, *startedAt)
+}
+
+// writeVolumeAndLevel writes a route volume and a ducking level, each only
+// when the hub sent one: a null volume means "follows the outputs' volume"
+// and a null level "not a ducking route", so a line would say nothing. A
+// level prints in its shortest form (-25, -12.5).
+func writeVolumeAndLevel(b *bytes.Buffer, indent, volumeKey string, volume *int, levelKey string, level *float64) {
+	if volume != nil {
+		fmt.Fprintf(b, "%s%s: %d\n", indent, volumeKey, *volume)
+	}
+	if level != nil {
+		fmt.Fprintf(b, "%s%s: %s\n", indent, levelKey, strconv.FormatFloat(*level, 'f', -1, 64))
+	}
 }
 
 // RenderRoutesYAML renders routes as a small, fixed-shape YAML document (the
@@ -43,6 +57,7 @@ func RenderRoutesYAML(routes []hub.Route) string {
 // bare, unquoted startedAt: null before playback starts (FR-007). joinMode
 // and outputs follow, each left out when the hub did not send it (before
 // 0.1.21); outputs: [] means the route plays on no output right now.
+// routeVolume and duckingLevelDb sit between them, each left out when null.
 func RenderRouteYAML(r hub.Route) string {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "routeId: %q\n", r.RouteID)
@@ -58,6 +73,7 @@ func RenderRouteYAML(r hub.Route) string {
 	if r.JoinMode != "" {
 		fmt.Fprintf(&b, "joinMode: %q\n", r.JoinMode)
 	}
+	writeVolumeAndLevel(&b, "", "routeVolume", r.RouteVolume, "duckingLevelDb", r.DuckingLevelDb)
 	switch {
 	case r.Outputs == nil:
 	case len(r.Outputs) == 0:

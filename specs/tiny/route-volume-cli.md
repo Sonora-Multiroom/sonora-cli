@@ -2,7 +2,7 @@
 
 **Branch**: feature/route-volume-cli
 **Date**: 2026-10-25
-**Status**: draft
+**Status**: implemented, tag pending
 **Complexity**: small
 
 ## What
@@ -23,7 +23,9 @@ this tinyspec replaces the backlog item it came from.
 | `internal/render/routes.go` | Modified: `RenderRouteYAML` prints `routeVolume`, `duckingLevelDb` when non-nil |
 | `internal/render/outputs.go` | Modified: `RenderOutputWithRoutesYAML` likewise for each route |
 | `internal/render/inputs.go` | Modified: `RenderInputYAML` prints `defaultRouteVolume`, `defaultDuckingLevelDb` when non-nil |
-| `tests/unit/{cli_play,render_route,render_output_get,render_inputs}_test.go`, `tests/integration/play_test.go` | Modified |
+| `tests/unit/cli_play_test.go`, `tests/integration/play_test.go` | Modified: the new flags and the removed `--volume` |
+| `tests/unit/render_route_volume_test.go` | New: the YAML fields for routes, output routes and inputs |
+| `tests/integration/groups_volume_test.go` | Modified: `routes/<id>` is no longer an unsupported `set` resource |
 | `tests/unit/cli_routes_volume_test.go`, `tests/integration/routes_volume_test.go` | New, mirroring the outputs volume tests |
 | `README.md`, `docs/cli-command-landscape.md` | Modified: play flags, `set routes` row |
 
@@ -58,13 +60,26 @@ this tinyspec replaces the backlog item it came from.
 
 ## Tasks
 
-- [ ] Tests, then `--output-volume`, `--route-volume`, `--ducking-level` in `play.go`
-- [ ] Tests, then `internal/cli/routes/volume.go` and `routes` in `dispatchSet`
-- [ ] Tests, then the YAML renderers for routes, output routes and inputs
-- [ ] README, `docs/cli-command-landscape.md`, `helpText`
-- [ ] `gofmt -l .`, `go vet ./...`, `go test ./...`
+- [x] Tests, then `--output-volume`, `--route-volume`, `--ducking-level` in `play.go`
+- [x] Tests, then `internal/cli/routes/volume.go` and `routes` in `dispatchSet`
+- [x] Tests, then the YAML renderers for routes, output routes and inputs
+- [x] README, `docs/cli-command-landscape.md`, `helpText`
+- [x] `gofmt -l .`, `go vet ./...`, `go test ./...`
 
 ## Done When
 
-- [ ] All tasks checked off; tests pass; no vet or gofmt findings
+- [x] All tasks checked off; tests pass; no vet or gofmt findings
 - [ ] Tag released with the `--volume` removal as a breaking change in its notes
+
+## Verification (2026-10-25)
+
+- Each group of tests failed before its code existed: the `play` flags (7 failing tests), the missing
+  `routes.RunSetVolume` (build failure), and the YAML fields (4 failing tests).
+- `gofmt -l .`: no output. `go vet ./...`: exit 0. `go test ./...`: exit 0, 1265 passing tests and
+  subtests (1223 before).
+- Built binary: `play --help` lists `--output-volume`, `--route-volume`, `--ducking-level` and no
+  `--volume`; `play … --volume 10` is an unknown flag, exit 2, with no request sent; `set --help`
+  names `routes`. `get outputs/office --include-routes` against `multiroom.lan` (read-only) prints the
+  user's route without `routeVolume` or `duckingLevelDb`, which are null.
+- `defaultJoinMode` keeps printing `null` when unset; the four new fields are left out when null, as
+  this spec asks.

@@ -34,7 +34,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
-	volumeFlag := fs.Int("volume", -1, "starting volume `N` (0-100), set before playback starts")
+	outputVolumeFlag := fs.Int("output-volume", -1, "set the target's volume to `N` (0-100) before playback starts; it stays after playback ends")
+	routeVolumeFlag := fs.Int("route-volume", -1, "play this playback only at volume `N` (0-100), whatever the target's volume; the room's volume control does not reach it")
+	duckingLevelFlag := fs.Float64("ducking-level", 0, "with --join-mode DUCK_OTHERS, lower what else plays by `DB` decibels (-60 to 0); without it, the hub's configured level")
 	displayNameFlag := fs.String("display-name", "", "display `NAME` for the input, kept as given; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name")
 	joinModeFlag := fs.String("join-mode", "", "how the playback joins what already plays on the target: `MODE` is REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE")
 
@@ -98,23 +100,33 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	targetID := targetPath.ID
 
-	volumeProvided, joinModeProvided := false, false
-	fs.Visit(func(f *flag.Flag) {
-		switch f.Name {
-		case "volume":
-			volumeProvided = true
-		case "join-mode":
-			joinModeProvided = true
-		}
-	})
+	provided := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { provided[f.Name] = true })
 	joinMode, ok := joinmode.Parse(*joinModeFlag)
-	if joinModeProvided && !ok {
+	if provided["join-mode"] && !ok {
 		fmt.Fprintln(stderr, usage)
 		fmt.Fprintln(stderr, joinmode.ErrorLine(*joinModeFlag))
 		return exitcode.Usage
 	}
-	if volumeProvided && (*volumeFlag < 0 || *volumeFlag > 100) {
-		fmt.Fprintln(stderr, "error: volume must be between 0 and 100")
+	// The hub refuses a ducking level for any other join mode, and play's
+	// join mode is REPLACE unless named, so only an explicit DUCK_OTHERS
+	// can take one.
+	if provided["ducking-level"] && (!provided["join-mode"] || joinMode != hub.JoinModeDuckOthers) {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: --ducking-level needs --join-mode DUCK_OTHERS")
+		return exitcode.Usage
+	}
+	for _, v := range []struct {
+		name  string
+		value int
+	}{{"output-volume", *outputVolumeFlag}, {"route-volume", *routeVolumeFlag}} {
+		if provided[v.name] && (v.value < 0 || v.value > 100) {
+			fmt.Fprintf(stderr, "error: --%s must be between 0 and 100\n", v.name)
+			return exitcode.For(hub.ClassValidation)
+		}
+	}
+	if provided["ducking-level"] && (*duckingLevelFlag < -60 || *duckingLevelFlag > 0) {
+		fmt.Fprintln(stderr, "error: --ducking-level must be between -60 and 0")
 		return exitcode.For(hub.ClassValidation)
 	}
 
@@ -132,13 +144,19 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	req := hub.PlaybackRequest{URI: uri, TargetID: targetID, TargetType: targetType}
-	if volumeProvided {
-		req.OutputVolume = volumeFlag
+	if provided["output-volume"] {
+		req.OutputVolume = outputVolumeFlag
+	}
+	if provided["route-volume"] {
+		req.RouteVolume = routeVolumeFlag
+	}
+	if provided["ducking-level"] {
+		req.DuckingLevelDb = duckingLevelFlag
 	}
 	if *displayNameFlag != "" {
 		req.DisplayName = displayNameFlag
 	}
-	if joinModeProvided {
+	if provided["join-mode"] {
 		req.JoinMode = &joinMode
 	}
 
