@@ -12,3 +12,4 @@ you add, ship or delete an item, update this list.
 
 | Priority | Item | Kind | Effort | Why this priority |
 |---|---|---|---|---|
+| P3 | [Adopt hub 034: route volume and ducking level](adopt-route-volume.md) | API adoption | Small–medium | The hub added `outputVolume`, `routeVolume` and `duckingLevelDb`; `sonora-mcp` and the hub's `play` `volume` removal wait on this |
