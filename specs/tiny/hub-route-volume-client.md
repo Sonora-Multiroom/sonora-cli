@@ -11,7 +11,7 @@ Hub 034 (`multiroom-api` 0.1.29, live on `multiroom.lan` since 2026-10-24) adds 
 `routeVolume` and `duckingLevelDb` to play and route creation, matching response fields, and
 `PUT /api/v2/routes/{routeId}/volume`. Bring `api/openapi.json` and the `hub` package up to that contract
 and release a tag so `sonora-mcp` can bump it. The CLI changes follow in
-[route-volume-cli.md](route-volume-cli.md). Source: `docs/backlog/adopt-route-volume.md` steps 1, 2, 6.
+[route-volume-cli.md](route-volume-cli.md). Source: hub `specs/034-per-route-volume-ducking`, via a backlog item that the two tinyspecs replace.
 
 ## Context
 

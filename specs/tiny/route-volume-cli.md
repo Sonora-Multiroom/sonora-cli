@@ -10,8 +10,8 @@
 Expose hub 034 in the CLI: `sonora play` replaces `--volume` with `--output-volume` and gains
 `--route-volume` and `--ducking-level`; `sonora set routes/<id> volume N` changes a playing route; the
 single-record YAML views show the new fields when set. Depends on
-[hub-route-volume-client.md](hub-route-volume-client.md). Source: `docs/backlog/adopt-route-volume.md`
-steps 3–5.
+[hub-route-volume-client.md](hub-route-volume-client.md). Source: hub `specs/034-per-route-volume-ducking`;
+this tinyspec replaces the backlog item it came from.
 
 ## Context
 
@@ -25,7 +25,7 @@ steps 3–5.
 | `internal/render/inputs.go` | Modified: `RenderInputYAML` prints `defaultRouteVolume`, `defaultDuckingLevelDb` when non-nil |
 | `tests/unit/{cli_play,render_route,render_output_get,render_inputs}_test.go`, `tests/integration/play_test.go` | Modified |
 | `tests/unit/cli_routes_volume_test.go`, `tests/integration/routes_volume_test.go` | New, mirroring the outputs volume tests |
-| `README.md`, `docs/cli-command-landscape.md` | Modified: play flags, `set routes` row; backlog item and `INDEX.md` row removed |
+| `README.md`, `docs/cli-command-landscape.md` | Modified: play flags, `set routes` row |
 
 ## Requirements
 
@@ -53,9 +53,8 @@ steps 3–5.
 2. Tests first: `cli_routes_volume_test.go` and `integration/routes_volume_test.go`. Then
    `routes/volume.go` and `dispatchSet`.
 3. Tests first: render tests with set, null and absent fields. Then the three YAML renderers.
-4. README (play paragraph and example, `set` table row and paragraph), landscape doc, `helpText`;
-   delete `docs/backlog/adopt-route-volume.md` and its `INDEX.md` row. Release a tag noting the
-   removed `--volume`.
+4. README (play paragraph and example, `set` table row and paragraph), landscape doc, `helpText`.
+   Release a tag noting the removed `--volume`.
 
 ## Tasks
 
@@ -63,7 +62,6 @@ steps 3–5.
 - [ ] Tests, then `internal/cli/routes/volume.go` and `routes` in `dispatchSet`
 - [ ] Tests, then the YAML renderers for routes, output routes and inputs
 - [ ] README, `docs/cli-command-landscape.md`, `helpText`
-- [ ] Remove the backlog item and its `INDEX.md` row
 - [ ] `gofmt -l .`, `go vet ./...`, `go test ./...`
 
 ## Done When
