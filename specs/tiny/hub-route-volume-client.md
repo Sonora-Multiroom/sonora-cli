@@ -75,3 +75,22 @@ and release a tag so `sonora-mcp` can bump it. The CLI changes follow in
   `duckingLevelDb` are not adopted here: `hub.SpeakRequest` already lags that schema.
 - New contract tests failed to compile before the `hub` changes (`unknown field DefaultRouteVolume`).
 - `gofmt -l .`: no output. `go vet ./...`: exit 0. `go test ./...`: exit 0.
+- Live, `multiroom.lan` hub 0.1.29, 2026-10-25, read-only calls and requests that can only return 404
+  or 400, through the committed `hub` package (`84164e6`). The user's one playing route
+  (`chromecast` on `office`) was read, not touched.
+  - `ListRoutes`, `GetRoute`: decoded; `routeVolume` and `duckingLevelDb` null → nil.
+  - `GetRoutesForOutput` for `office`, `kitchen`, `bedroom`: 1, 0 and 0 routes, decoded; new fields nil.
+  - `ListInputs` (16 inputs, disabled included) and `GetInput chromecast`: decoded; no input declares
+    a default route volume or ducking level.
+  - `SetRouteVolume` on an unknown route: `*NotFoundError` ("route not found: …"). With volume 101:
+    `*APIError` 400, detail "volumeRequest.volume must be at most 100".
+- Live audible test, 2026-10-25, with the user's permission. Before: `kitchen` volume 30, not muted,
+  enabled, no routes; master mute off; one ALSA device running for the user's `office` route.
+  - `CreateRoute` `kissfm` → `kitchen`, `DUCK_OTHERS`, route volume 15, ducking level −20: `ACTIVE`,
+    `routeVolume` 15 and `duckingLevelDb` −20 decoded from `CreateRoute`, `GetRoute` and
+    `GetRoutesForOutput`.
+  - `SetRouteVolume` 10: 200, the returned route and a fresh `GetRoute` read 10; `kitchen`'s output
+    volume stayed 30.
+  - `DeleteRoute`: no error. After: only the user's route remains, `kitchen` 30 / not muted /
+    enabled, master mute off, `audio.output.routes{output:kitchen}` 0, and the same single ALSA device
+    running (the user's `office` route).
