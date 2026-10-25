@@ -314,10 +314,10 @@ func TestPlay_OldGroupOutputFlags_UsageError(t *testing.T) {
 	}
 }
 
-func TestPlay_Volume_SetsRequestOutputVolumeField(t *testing.T) {
+func TestPlay_OutputVolume_SetsRequestOutputVolumeField(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--volume", "50", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--output-volume", "50", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -338,7 +338,7 @@ func TestPlay_NoVolume_OmitsRequestVolumeField(t *testing.T) {
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
 	}
-	for _, k := range []string{"volume", "outputVolume"} {
+	for _, k := range []string{"volume", "outputVolume", "routeVolume", "duckingLevelDb"} {
 		if _, ok := m.playRequest[k]; ok {
 			t.Errorf("expected %s omitted from request body, got: %+v", k, m.playRequest)
 		}
@@ -476,7 +476,7 @@ func TestPlay_NoJoinMode_FieldAbsent(t *testing.T) {
 func TestPlay_JoinModeWithVolumeAndDisplayName(t *testing.T) {
 	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
 
-	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--join-mode", "mix", "--volume", "20", "--display-name", "Chime", "--hub-url", srv.URL)
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--join-mode", "mix", "--output-volume", "20", "--display-name", "Chime", "--hub-url", srv.URL)
 
 	if res.exitCode != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
@@ -496,5 +496,35 @@ func TestPlay_JoinMode_GroupTarget(t *testing.T) {
 	}
 	if m.playRequest["joinMode"] != "MIX" || m.playRequest["targetType"] != "OUTPUT_GROUP" {
 		t.Errorf("expected joinMode=MIX and targetType=OUTPUT_GROUP in request body, got: %+v", m.playRequest)
+	}
+}
+
+func TestPlay_RouteVolumeAndDuckingLevel_SetRequestFields(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/chime.mp3", "outputs/office-speaker",
+		"--join-mode", "duck_others", "--route-volume", "90", "--ducking-level", "-12.5", "--hub-url", srv.URL)
+
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.playRequest["joinMode"] != "DUCK_OTHERS" || m.playRequest["routeVolume"] != float64(90) || m.playRequest["duckingLevelDb"] != -12.5 {
+		t.Errorf("expected joinMode=DUCK_OTHERS, routeVolume=90 and duckingLevelDb=-12.5 in request body, got: %+v", m.playRequest)
+	}
+	if _, ok := m.playRequest["outputVolume"]; ok {
+		t.Errorf("expected outputVolume omitted from request body, got: %+v", m.playRequest)
+	}
+}
+
+func TestPlay_VolumeFlagRemoved_UsageError(t *testing.T) {
+	srv, m := newMockPlayHub(t, []string{"office-speaker"}, nil)
+
+	res := runCLI(t, "play", "https://stream.example.com/live.mp3", "outputs/office-speaker", "--volume", "50", "--hub-url", srv.URL)
+
+	if res.exitCode != 2 {
+		t.Fatalf("exit code = %d, want 2; stderr: %s", res.exitCode, res.stderr)
+	}
+	if m.playRequest != nil {
+		t.Errorf("expected no play request, got: %+v", m.playRequest)
 	}
 }
