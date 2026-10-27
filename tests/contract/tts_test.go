@@ -97,6 +97,57 @@ func TestSpeak_RequestBody_IncludesOptionalFieldsWhenSet(t *testing.T) {
 	}
 }
 
+func TestSpeak_RequestBody_PlaybackAndProviderTuningFields(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody = nil
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"announcementId": "a1", "cacheHit": false, "queueDepth": 1,
+		})
+	}))
+	defer srv.Close()
+
+	keys := []string{"engine", "pitch", "speakingRate", "stylePrompt", "playbackMode", "routeVolume", "duckingLevelDb"}
+	client := hub.NewClient()
+	base := hub.SpeakRequest{Text: "Hi", TargetName: "kitchen", TargetType: "SINGLE_OUTPUT"}
+
+	if _, err := hub.Speak(context.Background(), client, srv.URL, base); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, key := range keys {
+		if _, ok := gotBody[key]; ok {
+			t.Errorf("expected %q omitted when nil, got body: %+v", key, gotBody)
+		}
+	}
+
+	// Zero values are sent: only nil means "let the hub apply its default".
+	pitch, rate, ducking, volume := 0.0, 1.25, -12.5, 0
+	req := base
+	req.Engine = strPtr("neural")
+	req.Pitch = &pitch
+	req.SpeakingRate = &rate
+	req.StylePrompt = strPtr("cheerful")
+	req.PlaybackMode = strPtr("duck-others")
+	req.RouteVolume = &volume
+	req.DuckingLevelDb = &ducking
+	if _, err := hub.Speak(context.Background(), client, srv.URL, req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := map[string]any{
+		"engine": "neural", "pitch": 0.0, "speakingRate": 1.25, "stylePrompt": "cheerful",
+		"playbackMode": "duck-others", "routeVolume": 0.0, "duckingLevelDb": -12.5,
+	}
+	for _, key := range keys {
+		got, ok := gotBody[key]
+		if !ok || got != want[key] {
+			t.Errorf("%s = %v (present %v), want %v", key, got, ok, want[key])
+		}
+	}
+}
+
 // TestSpeak_RequestBody_OnlyVoiceSet covers 009-tts-commands US3 (T021):
 // a request with only Voice set produces only the voice key.
 func TestSpeak_RequestBody_OnlyVoiceSet(t *testing.T) {

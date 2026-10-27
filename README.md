@@ -163,11 +163,16 @@ sonora play <uri> outputs/kitchen --join-mode duck_others
 sonora play <uri> groups/downstairs --join-mode duck_others --route-volume 80 --ducking-level -25
 ```
 
-`speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]` requests
+`speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]
+[--playback-mode] [--route-volume] [--ducking-level]` requests
 a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts
 it (no waiting for playback), printing `announcementId`/`cacheHit`/`queueDepth`. `<text>` may be
 `-` to read from standard input. Responses are bounded at 15s by default; `--timeout <duration>`
-overrides that bound for a hub whose TTS provider takes longer. `get tts-cache` prints TTS
+overrides that bound for a hub whose TTS provider takes longer. `--playback-mode duck-others|mix`
+sets how the announcement plays over other audio, `--route-volume N` (0–100) plays it at its own
+volume without changing any output's, and `--ducking-level DB` (−60 to 0) sets how far
+`duck-others` lowers the rest; each omitted one takes the TTS extension's configured default, and
+the hub refuses a ducking level with `mix`. `get tts-cache` prints TTS
 audio-cache statistics
 (`totalEntries`/`totalSizeBytes`/`maxSizeBytes`/`entriesByProvider`), and `clear tts-cache
 [--provider <name>]` clears all cache entries, or one provider's, printing `cleared` (`all` or

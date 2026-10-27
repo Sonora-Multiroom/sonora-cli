@@ -22,15 +22,29 @@ const SpeakTimeout = 15 * time.Second
 const maxTTSErrorBody = 64 * 1024
 
 // SpeakRequest mirrors #/components/schemas/SpeakRequest in api/openapi.json
-// field-for-field. ProviderName/Voice/Language are sent only when supplied
-// (omitempty).
+// field-for-field. Every optional field is a pointer sent only when non-nil
+// (omitempty), so a nil field lets the hub apply its configured default and
+// a zero value is still sent.
+//
+// Engine, Pitch, SpeakingRate and StylePrompt are provider-specific.
+// PlaybackMode is "duck-others" or "mix" (the hub answers 400 for anything
+// else). RouteVolume (0-100) sets this announcement's volume only, changing
+// no output's volume. DuckingLevelDb (-60.0 to 0.0) is how far
+// "duck-others" lowers what else plays; the hub refuses it with "mix".
 type SpeakRequest struct {
-	Text         string  `json:"text"`
-	TargetName   string  `json:"targetName"`
-	TargetType   string  `json:"targetType"`
-	ProviderName *string `json:"providerName,omitempty"`
-	Voice        *string `json:"voice,omitempty"`
-	Language     *string `json:"language,omitempty"`
+	Text           string   `json:"text"`
+	TargetName     string   `json:"targetName"`
+	TargetType     string   `json:"targetType"`
+	ProviderName   *string  `json:"providerName,omitempty"`
+	Voice          *string  `json:"voice,omitempty"`
+	Language       *string  `json:"language,omitempty"`
+	Engine         *string  `json:"engine,omitempty"`
+	Pitch          *float64 `json:"pitch,omitempty"`
+	SpeakingRate   *float64 `json:"speakingRate,omitempty"`
+	StylePrompt    *string  `json:"stylePrompt,omitempty"`
+	PlaybackMode   *string  `json:"playbackMode,omitempty"`
+	RouteVolume    *int     `json:"routeVolume,omitempty"`
+	DuckingLevelDb *float64 `json:"duckingLevelDb,omitempty"`
 }
 
 // SpeakAccepted mirrors #/components/schemas/SpeakAcceptedResponse in

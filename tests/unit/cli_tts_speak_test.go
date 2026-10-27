@@ -546,16 +546,104 @@ func TestRunSpeak_ProviderVoiceLanguage_EmptyValue(t *testing.T) {
 	}
 }
 
-// TestRunSpeak_Help_ListsAllSevenFlags covers 009-tts-commands US3 (T022)
-// and US6 (T050), which extends it with --timeout.
-func TestRunSpeak_Help_ListsAllSevenFlags(t *testing.T) {
+func TestRunSpeak_PlaybackFlags_Forwarded(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want map[string]any
+	}{
+		{"playback mode", []string{"--playback-mode", "mix"}, map[string]any{"playbackMode": "mix"}},
+		// The hub decides which modes exist, so an unknown one is sent as is.
+		{"unknown playback mode", []string{"--playback-mode", "loud"}, map[string]any{"playbackMode": "loud"}},
+		{"route volume", []string{"--route-volume", "0"}, map[string]any{"routeVolume": 0.0}},
+		// The extension's configured mode may be duck-others, so a level
+		// needs no explicit --playback-mode.
+		{"ducking level alone", []string{"--ducking-level", "-12.5"}, map[string]any{"duckingLevelDb": -12.5}},
+		{"all three", []string{"--playback-mode", "duck-others", "--route-volume", "30", "--ducking-level", "-25"},
+			map[string]any{"playbackMode": "duck-others", "routeVolume": 30.0, "duckingLevelDb": -25.0}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, h := newSpeakSuccessHub(t)
+			var stdout, stderr bytes.Buffer
+			args := append([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL}, c.args...)
+			code := tts.RunSpeak(args, strings.NewReader(""), &stdout, &stderr)
+
+			if code != 0 {
+				t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+			}
+			for _, key := range []string{"playbackMode", "routeVolume", "duckingLevelDb"} {
+				got, ok := h.lastBody[key]
+				want, wantOK := c.want[key]
+				if ok != wantOK || got != want {
+					t.Errorf("%s = %v (present %v), want %v (present %v)", key, got, ok, want, wantOK)
+				}
+			}
+		})
+	}
+}
+
+func TestRunSpeak_NoPlaybackFlags_BodyUnchanged(t *testing.T) {
+	srv, h := newSpeakSuccessHub(t)
+	var stdout, stderr bytes.Buffer
+	code := tts.RunSpeak([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL}, strings.NewReader(""), &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if len(h.lastBody) != 3 {
+		t.Errorf("expected only text, targetName, targetType, got: %+v", h.lastBody)
+	}
+}
+
+func TestRunSpeak_PlaybackFlags_Rejected(t *testing.T) {
+	cases := []struct {
+		name     string
+		args     []string
+		wantCode int
+		wantMsg  string
+	}{
+		{"empty playback mode", []string{"--playback-mode", ""}, 2, "--playback-mode must not be empty"},
+		{"blank playback mode", []string{"--playback-mode", "  "}, 2, "--playback-mode must not be empty"},
+		{"route volume below 0", []string{"--route-volume", "-1"}, 6, "--route-volume must be between 0 and 100"},
+		{"route volume above 100", []string{"--route-volume", "101"}, 6, "--route-volume must be between 0 and 100"},
+		{"ducking level above 0", []string{"--ducking-level", "0.5"}, 6, "--ducking-level must be between -60 and 0"},
+		{"ducking level below -60", []string{"--ducking-level", "-61"}, 6, "--ducking-level must be between -60 and 0"},
+		{"non-numeric route volume", []string{"--route-volume", "loud"}, 2, "--route-volume"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, count := countingSpeakHub(t)
+			var stdout, stderr bytes.Buffer
+			args := append([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL}, c.args...)
+			code := tts.RunSpeak(args, strings.NewReader(""), &stdout, &stderr)
+
+			if code != c.wantCode {
+				t.Fatalf("exit code = %d, want %d; stderr: %s", code, c.wantCode, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), c.wantMsg) {
+				t.Errorf("expected stderr to contain %q, got: %s", c.wantMsg, stderr.String())
+			}
+			if got := atomic.LoadInt32(count); got != 0 {
+				t.Errorf("expected zero requests, got %d", got)
+			}
+			if stdout.Len() != 0 {
+				t.Errorf("expected empty stdout, got: %s", stdout.String())
+			}
+		})
+	}
+}
+
+// TestRunSpeak_Help_ListsAllFlags covers 009-tts-commands US3 (T022)
+// and US6 (T050), which extends it with --timeout, and the playback flags.
+func TestRunSpeak_Help_ListsAllFlags(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := tts.RunSpeak([]string{"--help"}, strings.NewReader(""), &stdout, &stderr)
 
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
 	}
-	for _, flag := range []string{"--hub-url", "--json", "--language", "--provider", "--timeout", "--verbose", "--voice"} {
+	for _, flag := range []string{"--ducking-level", "--hub-url", "--json", "--language", "--playback-mode", "--provider", "--route-volume", "--timeout", "--verbose", "--voice"} {
 		if !strings.Contains(stdout.String(), flag) {
 			t.Errorf("expected help to list %q, got:\n%s", flag, stdout.String())
 		}
