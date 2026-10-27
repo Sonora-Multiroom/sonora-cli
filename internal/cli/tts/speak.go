@@ -37,6 +37,9 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	voiceFlag := fs.String("voice", "", "provider-specific voice `ID` override")
 	languageFlag := fs.String("language", "", "BCP 47 language `TAG` override")
 	timeoutFlag := fs.String("timeout", "", "override the default 15s response-wait bound")
+	playbackModeFlag := fs.String("playback-mode", "", "play over other audio as `MODE` (duck-others or mix); without it, the TTS extension's configured mode")
+	routeVolumeFlag := fs.Int("route-volume", -1, "play this announcement only at volume `N` (0-100), whatever the target's volume; the room's volume control does not reach it")
+	duckingLevelFlag := fs.Float64("ducking-level", 0, "with playback mode duck-others, lower what else plays by `DB` decibels (-60 to 0); without it, the configured level")
 
 	if clihelp.Requested(args) {
 		clihelp.PrintUsage(fs, stdout, speakUsage)
@@ -69,15 +72,25 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	provided := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { provided[f.Name] = true })
-	for _, name := range []string{"provider", "voice", "language"} {
+	for _, name := range []string{"provider", "voice", "language", "playback-mode"} {
 		if !provided[name] {
 			continue
 		}
-		val := map[string]string{"provider": *providerFlag, "voice": *voiceFlag, "language": *languageFlag}[name]
+		val := map[string]string{"provider": *providerFlag, "voice": *voiceFlag, "language": *languageFlag, "playback-mode": *playbackModeFlag}[name]
 		if strings.TrimSpace(val) == "" {
 			fmt.Fprintf(stderr, "error: --%s must not be empty\n", name)
 			return exitcode.Usage
 		}
+	}
+	// The playback mode and whether it takes a ducking level are left to the
+	// hub: the TTS extension's configured mode applies when none is named.
+	if provided["route-volume"] && (*routeVolumeFlag < 0 || *routeVolumeFlag > 100) {
+		fmt.Fprintln(stderr, "error: --route-volume must be between 0 and 100")
+		return exitcode.For(hub.ClassValidation)
+	}
+	if provided["ducking-level"] && (*duckingLevelFlag < -60 || *duckingLevelFlag > 0) {
+		fmt.Fprintln(stderr, "error: --ducking-level must be between -60 and 0")
+		return exitcode.For(hub.ClassValidation)
 	}
 
 	speakTimeout := hub.SpeakTimeout
@@ -147,6 +160,15 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	if provided["language"] {
 		req.Language = languageFlag
+	}
+	if provided["playback-mode"] {
+		req.PlaybackMode = playbackModeFlag
+	}
+	if provided["route-volume"] {
+		req.RouteVolume = routeVolumeFlag
+	}
+	if provided["ducking-level"] {
+		req.DuckingLevelDb = duckingLevelFlag
 	}
 
 	client := hub.NewClientWithTimeout(speakTimeout)
