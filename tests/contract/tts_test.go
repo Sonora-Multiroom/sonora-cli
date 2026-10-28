@@ -459,6 +459,22 @@ func TestGetTTSCacheStats_Decodes(t *testing.T) {
 	}
 }
 
+// A caller that returns TTSCacheStats as JSON (sonora-mcp's getTtsCacheStats
+// tool) must get the spec's property names, not the Go field names.
+func TestTTSCacheStats_MarshalsWithSpecFieldNames(t *testing.T) {
+	data, err := json.Marshal(hub.TTSCacheStats{
+		TotalEntries: 42, TotalSizeBytes: 15728640, MaxSizeBytes: 524288000,
+		EntriesByProvider: map[string]int32{"piper-local": 7},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	want := `{"totalEntries":42,"totalSizeBytes":15728640,"maxSizeBytes":524288000,"entriesByProvider":{"piper-local":7}}`
+	if string(data) != want {
+		t.Errorf("got %s, want %s", data, want)
+	}
+}
+
 func testGetTTSCacheStats_EmptyMap(t *testing.T, body string) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
