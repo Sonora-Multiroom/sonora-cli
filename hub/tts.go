@@ -160,10 +160,10 @@ func Speak(ctx context.Context, client *http.Client, baseURL string, req SpeakRe
 // field-for-field. EntriesByProvider is never nil after decoding: an absent
 // or null value is normalised to an empty map.
 type TTSCacheStats struct {
-	TotalEntries      int32
-	TotalSizeBytes    int64
-	MaxSizeBytes      int64
-	EntriesByProvider map[string]int32
+	TotalEntries      int32            `json:"totalEntries"`
+	TotalSizeBytes    int64            `json:"totalSizeBytes"`
+	MaxSizeBytes      int64            `json:"maxSizeBytes"`
+	EntriesByProvider map[string]int32 `json:"entriesByProvider"`
 }
 
 // cacheStatsWire is the decode target for a 200 body: pointer fields on the
