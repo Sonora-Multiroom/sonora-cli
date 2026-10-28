@@ -383,6 +383,96 @@ func TestTTSUnavailableError_Unwrap(t *testing.T) {
 	}
 }
 
+func TestClassifyError_TTSNotOfferedError(t *testing.T) {
+	for name, err := range map[string]error{
+		"bare":    &hub.TTSNotOfferedError{},
+		"wrapped": fmt.Errorf("speak: %w", &hub.TTSNotOfferedError{}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(err)
+			if class != hub.ClassTTSUnavailable {
+				t.Errorf("got class %v, want ClassTTSUnavailable", class)
+			}
+			if want := "text-to-speech is not available on this hub"; msg != want {
+				t.Errorf("got message %q, want %q", msg, want)
+			}
+		})
+	}
+}
+
+func TestDiagnoseTTSUnavailable(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   hub.TTSUnavailableError
+		cause  bool
+	}{
+		{"no tts entry", 200, `{"loadingEnabled":true,"extensions":[]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled}, false},
+		{"no tts entry, loadingEnabled absent", 200, `{"extensions":[]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled}, false},
+		{"no tts entry, loading disabled", 200, `{"loadingEnabled":false,"extensions":[]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled, LoadingDisabled: true}, false},
+		{"match by id only", 200, `{"extensions":[{"id":"other","name":"tts","status":"ACTIVE"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled}, false},
+		{"DISABLED", 200, `{"extensions":[{"id":"tts","status":"DISABLED"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisDisabled}, false},
+		{"REJECTED", 200, `{"extensions":[{"id":"tts","status":"REJECTED","rejectionReason":"failed:\nline 2"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected, Reason: "failed: line 2"}, false},
+		{"REJECTED, null reason", 200, `{"extensions":[{"id":"tts","status":"REJECTED","rejectionReason":null}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected}, false},
+		{"INERT", 200, `{"extensions":[{"id":"tts","status":"INERT"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisInert}, false},
+		{"ACTIVE", 200, `{"extensions":[{"id":"tts","status":"ACTIVE"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisVersionMismatch}, false},
+		{"unknown status", 200, `{"extensions":[{"id":"tts","status":"SOMETHING_ELSE"}]}`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown}, false},
+		{"inventory 500", 500, ``,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown}, true},
+		{"malformed inventory", 200, `not json`,
+			hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, count := extensionsServer(t, c.status, c.body)
+			got := hub.DiagnoseTTSUnavailable(context.Background(), hub.NewClient(), srv.URL)
+			if got == nil {
+				t.Fatal("got nil, want a *TTSUnavailableError")
+			}
+			if (got.Cause != nil) != c.cause {
+				t.Errorf("Cause = %v, want set: %v", got.Cause, c.cause)
+			}
+			got.Cause = nil
+			if *got != c.want {
+				t.Errorf("got %+v, want %+v", *got, c.want)
+			}
+			if n := atomic.LoadInt32(count); n != 1 {
+				t.Errorf("expected exactly 1 inventory request, got %d", n)
+			}
+		})
+	}
+}
+
+func TestDiagnoseTTSUnavailable_Inventory404_HubAddress(t *testing.T) {
+	srv, _ := extensionsServer(t, 404, "")
+	got := hub.DiagnoseTTSUnavailable(context.Background(), hub.NewClient(), srv.URL)
+	want := hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: srv.URL}
+	if got == nil || *got != want {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestDiagnoseTTSUnavailable_UsesCallerContext(t *testing.T) {
+	srv, _ := extensionsServer(t, 200, `{"extensions":[]}`)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	got := hub.DiagnoseTTSUnavailable(ctx, hub.NewClient(), srv.URL)
+	if got == nil || got.Diagnosis != hub.DiagnosisUnknown || !errors.Is(got.Cause, context.Canceled) {
+		t.Errorf("got %+v, want DiagnosisUnknown caused by context.Canceled", got)
+	}
+}
+
 func TestNewClientWithTimeout_EnforcesGivenTimeout(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(300 * time.Millisecond)

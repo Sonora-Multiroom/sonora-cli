@@ -114,14 +114,20 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 		return ClassNone, ""
 	}
 
-	// TTS branches: *TTSUnavailableError and *TTSError are checked first,
-	// since neither can be produced by any of the branches below.
+	// TTS branches: *TTSUnavailableError, *TTSNotOfferedError and *TTSError
+	// are checked first, since none can be produced by any of the branches
+	// below.
 	var unavailErr *TTSUnavailableError
 	if errors.As(err, &unavailErr) {
 		if unavailErr.Diagnosis == DiagnosisHubAddress {
 			return ClassNetwork, unavailErr.Error()
 		}
 		return ClassTTSUnavailable, unavailErr.Error()
+	}
+
+	var notOfferedErr *TTSNotOfferedError
+	if errors.As(err, &notOfferedErr) {
+		return ClassTTSUnavailable, "text-to-speech is not available on this hub"
 	}
 
 	var ttsErr *TTSError

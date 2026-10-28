@@ -66,44 +66,9 @@ func ReportError(stderr io.Writer, err error, baseURL string, verbose bool) int 
 	return exitcode.For(class)
 }
 
-// diagnoseUnavailable runs the research.md §5 diagnosis: it calls
-// hub.ListExtensions once, with a fresh 5s hub.NewClient() (even when the
-// failing TTS call used the longer speak client), and maps the result onto
-// a TTSDiagnosis. Matching uses the extension's machine id "tts" only, never
-// its display name.
+// diagnoseUnavailable runs the research.md §5 diagnosis through
+// hub.DiagnoseTTSUnavailable, with a fresh 5s hub.NewClient() (even when the
+// failing TTS call used the longer speak client).
 func diagnoseUnavailable(baseURL string) error {
-	client := hub.NewClient()
-	inv, err := hub.ListExtensions(context.Background(), client, baseURL)
-	if err != nil {
-		var statusErr *hub.StatusError
-		if errors.As(err, &statusErr) && statusErr.StatusCode == 404 {
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: baseURL}
-		}
-		return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown, Cause: err}
-	}
-
-	for _, ext := range inv.Extensions {
-		if ext.ID != "tts" {
-			continue
-		}
-		switch ext.Status {
-		case "DISABLED":
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisDisabled}
-		case "REJECTED":
-			reason := ""
-			if ext.RejectionReason != nil {
-				reason = hub.SingleLine(*ext.RejectionReason)
-			}
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisRejected, Reason: reason}
-		case "INERT":
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisInert}
-		case "ACTIVE":
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisVersionMismatch}
-		default:
-			return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisUnknown}
-		}
-	}
-
-	loadingDisabled := inv.LoadingEnabled != nil && !*inv.LoadingEnabled
-	return &hub.TTSUnavailableError{Diagnosis: hub.DiagnosisNotInstalled, LoadingDisabled: loadingDisabled}
+	return hub.DiagnoseTTSUnavailable(context.Background(), hub.NewClient(), baseURL)
 }
