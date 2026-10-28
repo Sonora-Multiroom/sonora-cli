@@ -2,7 +2,7 @@
 
 **Branch**: fix/hub-tts-unavailable-diagnosis
 **Date**: 2026-10-28
-**Status**: implemented, tag pending
+**Status**: released in v0.3.3
 **Complexity**: small
 
 ## What
@@ -64,7 +64,7 @@ sonora-mcp's TTS tools can report why TTS is unavailable. Source: an uncommitted
 ## Done When
 
 - [x] All tasks checked off; tests pass; no vet or gofmt findings
-- [ ] Tag `v0.3.3` released with the reclassification in its notes
+- [x] Tag `v0.3.3` released with the reclassification in its notes
 
 ## Verification (2026-10-28)
 
