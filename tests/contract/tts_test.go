@@ -886,3 +886,136 @@ func TestListTTSVoices_404_NotOffered(t *testing.T) {
 		t.Fatalf("expected a *hub.TTSNotOfferedError, got %T: %v", err, err)
 	}
 }
+
+// --- 013-info-and-tts-warm: WarmTTSCache. Shapes mirror
+// #/components/schemas/WarmRequest and WarmResponse and the
+// POST /api/tts/cache/warm operation in api/openapi.json. ---
+
+func f64Ptr(f float64) *float64 { return &f }
+
+func warmServer(t *testing.T, status int, body string) (*httptest.Server, *map[string]any, *http.Request) {
+	t.Helper()
+	gotBody := map[string]any{}
+	gotReq := &http.Request{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*gotReq = *r.Clone(context.Background())
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &gotBody, gotReq
+}
+
+func TestWarmTTSCache_RequestOmitsOptionalFieldsWhenUnset(t *testing.T) {
+	srv, gotBody, gotReq := warmServer(t, 200, `{"cacheHit":false}`)
+
+	res, err := hub.WarmTTSCache(context.Background(), hub.NewClient(), srv.URL, hub.WarmRequest{Text: "Dinner"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotReq.Method != http.MethodPost || gotReq.URL.Path != "/api/tts/cache/warm" {
+		t.Errorf("got %s %s, want POST /api/tts/cache/warm", gotReq.Method, gotReq.URL.Path)
+	}
+	if ct := gotReq.Header.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	if len(*gotBody) != 1 || (*gotBody)["text"] != "Dinner" {
+		t.Errorf("expected only text, got %+v", *gotBody)
+	}
+	if res.CacheHit {
+		t.Error("CacheHit = true, want false")
+	}
+}
+
+func TestWarmTTSCache_RequestSendsAllEightFieldsWithSpecNames(t *testing.T) {
+	srv, gotBody, _ := warmServer(t, 200, `{"cacheHit":true}`)
+
+	req := hub.WarmRequest{
+		Text: "Dinner", ProviderName: strPtr("piper-local"), Voice: strPtr("v"), Language: strPtr("uk-UA"),
+		Engine: strPtr("e"), Pitch: f64Ptr(1.5), SpeakingRate: f64Ptr(0.8), StylePrompt: strPtr("calm"),
+	}
+	res, err := hub.WarmTTSCache(context.Background(), hub.NewClient(), srv.URL, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !res.CacheHit {
+		t.Error("CacheHit = false, want true")
+	}
+	data, _ := json.Marshal(*gotBody)
+	want := specSchemaProperties(t, "WarmRequest")
+	if got := keysOf(t, data); !equalStrings(got, want) {
+		t.Errorf("sent keys %v, want the spec's %v", got, want)
+	}
+	if (*gotBody)["pitch"] != 1.5 || (*gotBody)["speakingRate"] != 0.8 {
+		t.Errorf("numeric fields not sent as numbers: %+v", *gotBody)
+	}
+}
+
+func TestWarmResult_MarshalsWithSpecFieldNames(t *testing.T) {
+	data, err := json.Marshal(hub.WarmResult{CacheHit: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := keysOf(t, data), specSchemaProperties(t, "WarmResponse"); !equalStrings(got, want) {
+		t.Errorf("keys %v, want the spec's %v", got, want)
+	}
+}
+
+func TestWarmTTSCache_MissingCacheHitIsDecodeError(t *testing.T) {
+	for name, body := range map[string]string{
+		"missing":  `{}`,
+		"null":     `{"cacheHit":null}`,
+		"not json": `nope`,
+		"wrong":    `{"cacheHit":"yes"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			srv, _, _ := warmServer(t, 200, body)
+			res, err := hub.WarmTTSCache(context.Background(), hub.NewClient(), srv.URL, hub.WarmRequest{Text: "x"})
+			var decodeErr *hub.DecodeError
+			if !errors.As(err, &decodeErr) {
+				t.Fatalf("expected *hub.DecodeError, got %T: %v (result %+v)", err, err, res)
+			}
+		})
+	}
+}
+
+func TestWarmTTSCache_404_NotOffered(t *testing.T) {
+	srv, _, _ := warmServer(t, 404, ``)
+	_, err := hub.WarmTTSCache(context.Background(), hub.NewClient(), srv.URL, hub.WarmRequest{Text: "x"})
+	var notOffered *hub.TTSNotOfferedError
+	if !errors.As(err, &notOffered) {
+		t.Fatalf("expected *hub.TTSNotOfferedError, got %T: %v", err, err)
+	}
+}
+
+func TestWarmTTSCache_ErrorClasses(t *testing.T) {
+	cases := []struct {
+		status int
+		code   string
+		class  hub.ErrorClass
+	}{
+		{400, "INVALID_REQUEST", hub.ClassValidation},
+		{400, "PROVIDER_NOT_FOUND", hub.ClassNotFound},
+		{503, "PROVIDER_ERROR", hub.ClassServiceUnavailable},
+		{503, "PROVIDER_TIMEOUT", hub.ClassServiceUnavailable},
+		{503, "CACHE_WRITE_FAILED", hub.ClassServiceUnavailable},
+	}
+	for _, c := range cases {
+		t.Run(c.code, func(t *testing.T) {
+			srv, _, _ := warmServer(t, c.status, `{"error":"`+c.code+`","message":"boom"}`)
+			_, err := hub.WarmTTSCache(context.Background(), hub.NewClient(), srv.URL, hub.WarmRequest{Text: "x"})
+			var ttsErr *hub.TTSError
+			if !errors.As(err, &ttsErr) {
+				t.Fatalf("expected *hub.TTSError, got %T: %v", err, err)
+			}
+			if ttsErr.Code != c.code || ttsErr.StatusCode != c.status {
+				t.Errorf("got code %q status %d", ttsErr.Code, ttsErr.StatusCode)
+			}
+			if class, _ := hub.ClassifyError(err); class != c.class {
+				t.Errorf("class = %v, want %v", class, c.class)
+			}
+		})
+	}
+}

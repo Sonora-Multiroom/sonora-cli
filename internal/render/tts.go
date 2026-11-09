@@ -192,3 +192,21 @@ func RenderTTSCacheClearedJSON(provider *string) string {
 	}
 	return string(data) + "\n"
 }
+
+// RenderWarmYAML renders a cache warm-up result as a bare YAML record:
+// `cacheHit: false` when the phrase was just synthesized, `cacheHit: true`
+// when it was already stored.
+func RenderWarmYAML(r hub.WarmResult) string {
+	return fmt.Sprintf("cacheHit: %t\n", r.CacheHit)
+}
+
+// RenderWarmJSON renders a cache warm-up result as a strict JSON object,
+// `{"cacheHit":false}`.
+func RenderWarmJSON(r hub.WarmResult) string {
+	data, err := json.Marshal(r)
+	if err != nil {
+		// hub.WarmResult's only field is a plain bool — Marshal cannot fail.
+		panic(err)
+	}
+	return string(data) + "\n"
+}

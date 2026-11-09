@@ -606,3 +606,33 @@ func TestRouteOnOutput_Lowered(t *testing.T) {
 		t.Errorf("DuckStateFull = %q, DuckStateLowered = %q, want FULL and LOWERED", hub.DuckStateFull, hub.DuckStateLowered)
 	}
 }
+
+// --- 013-info-and-tts-warm: InfoNotOfferedError and CACHE_WRITE_FAILED. ---
+
+func TestClassifyError_InfoNotOfferedError(t *testing.T) {
+	for name, err := range map[string]error{
+		"bare":    &hub.InfoNotOfferedError{},
+		"wrapped": fmt.Errorf("info: %w", &hub.InfoNotOfferedError{}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(err)
+			if class != hub.ClassHub {
+				t.Errorf("got class %v, want ClassHub", class)
+			}
+			if want := "this hub does not offer hub info (needs hub 0.1.33 or later)"; msg != want {
+				t.Errorf("got message %q, want %q", msg, want)
+			}
+		})
+	}
+}
+
+func TestClassifyError_TTSError_CacheWriteFailed(t *testing.T) {
+	err := &hub.TTSError{StatusCode: 503, Code: "CACHE_WRITE_FAILED", Message: "disk full"}
+	class, msg := hub.ClassifyError(err)
+	if class != hub.ClassServiceUnavailable {
+		t.Errorf("got class %v, want ClassServiceUnavailable", class)
+	}
+	if want := "CACHE_WRITE_FAILED: disk full"; msg != want {
+		t.Errorf("got message %q, want %q", msg, want)
+	}
+}

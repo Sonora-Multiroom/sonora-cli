@@ -49,6 +49,7 @@ table, common flags, and examples from the terminal.
 | `disable <resource>/<id>` | `inputs`, `outputs`, `groups` | `in`, `out`, `gr` |
 | `mute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
+| `get info` | which hub is running and since when (hub 0.1.33+) | — |
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups`, `routes` | `out`, `gr`, `rt` |
@@ -56,6 +57,7 @@ table, common flags, and examples from the terminal.
 | `get tts-cache` | TTS audio-cache statistics (hub TTS extension) | — |
 | `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
 | `list tts-voices --provider <name>` | a TTS provider's voices (hub TTS extension) | — |
+| `warm tts-cache <text\|->` | synthesize a phrase into the TTS cache, playing nothing (hub 0.1.33+, TTS extension) | — |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -121,6 +123,21 @@ keywords, not `<resource>/<id>` paths — `master-mute` never takes an id and ha
 Master mute is a layer above each output's own mute: `mute all` silences every output, and
 `unmute all` restores each output's own mute, so an output muted on its own stays muted.
 
+`get info` shows which hub the CLI is talking to: `product` (always `multiroom`), `version`,
+`apiVersion`, and, when the hub sends them, `startedAt` (an RFC 3339 time that changes only when the
+hub restarts) and `uptimeSeconds`. `version` and `apiVersion` can be `unknown`; do not assume
+semantic versions. It takes no arguments and has no `list` form. A hub older than 0.1.33 answers
+`this hub does not offer hub info (needs hub 0.1.33 or later)` and exits 3; every other command
+keeps working with such a hub.
+
+```yaml
+product: "multiroom"
+version: "0.1.33"
+apiVersion: "0.1.33"
+startedAt: "2026-11-06T10:06:59.512Z"
+uptimeSeconds: 16981
+```
+
 `set outputs/<id> volume <0-100>` and `set groups/<id> volume <0-100>` set the output's or
 group's volume level and print the applied `outputId`/`groupId`/`volume`/`updatedAt`
 confirmation. `set routes/<id> volume <0-100>` sets one route's own volume (hub 0.1.29 and
@@ -183,6 +200,16 @@ provider offers (`shortName`/`fullName`/`engine`/`language`/`gender`, with an ab
 need the hub's TTS extension to be installed and active; if it isn't, the CLI diagnoses why and
 exits 13.
 
+`warm tts-cache <text|-> [--provider] [--voice] [--language] [--timeout]` has the hub synthesize
+a phrase into its audio cache without playing it, so a later `speak` with the same text,
+`--provider`, `--voice` and `--language` starts at once. It prints `cacheHit: false` when the
+phrase was just synthesized and stored, or `cacheHit: true` when it was already there (`--json`
+gives `{"cacheHit":false}`). `<text>` may be `-` to read standard input, and the flags work as
+for `speak`. A 503 from the hub (for example `CACHE_WRITE_FAILED`) ends with `; nothing was
+stored, repeating the request is safe` and exits 10. An unknown provider exits 5, a rejected
+request 6, and a missing TTS extension is diagnosed and exits 13, as for `speak`. It needs hub
+0.1.33 or later.
+
 Every command supports `--json` (strict JSON instead of the default YAML), `--hub-url`
 (override the hub base URL), and `--verbose` (print underlying error detail on failure).
 These are per-command flags, so write them **after** the resource path — `sonora get outputs
@@ -220,8 +247,10 @@ sonora stop routes
 sonora stop outputs/<id>
 sonora stop groups/<id>
 sonora speak "Dinner is ready" outputs/kitchen
+sonora get info
 sonora get tts-cache
 sonora clear tts-cache --provider openai
+sonora warm tts-cache "Dinner is ready" --provider piper-local
 sonora list tts-voices --provider google --language uk-UA
 ```
 

@@ -156,6 +156,75 @@ func Speak(ctx context.Context, client *http.Client, baseURL string, req SpeakRe
 	return &SpeakAccepted{AnnouncementID: *wire.AnnouncementID, CacheHit: *wire.CacheHit, QueueDepth: *wire.QueueDepth}, nil
 }
 
+// WarmRequest mirrors #/components/schemas/WarmRequest in api/openapi.json
+// field-for-field. Optional fields are pointers sent only when non-nil, so a
+// nil field lets the hub apply its configured default. The cache entry is
+// keyed by the text and these voice options, so a later Speak with the same
+// ones finds it.
+type WarmRequest struct {
+	Text         string   `json:"text"`
+	ProviderName *string  `json:"providerName,omitempty"`
+	Voice        *string  `json:"voice,omitempty"`
+	Language     *string  `json:"language,omitempty"`
+	Engine       *string  `json:"engine,omitempty"`
+	Pitch        *float64 `json:"pitch,omitempty"`
+	SpeakingRate *float64 `json:"speakingRate,omitempty"`
+	StylePrompt  *string  `json:"stylePrompt,omitempty"`
+}
+
+// WarmResult mirrors #/components/schemas/WarmResponse in api/openapi.json.
+// CacheHit is true when the audio was already stored and no provider was
+// called, false when it was just synthesized and stored.
+type WarmResult struct {
+	CacheHit bool `json:"cacheHit"`
+}
+
+// warmWire is the decode target for a 2xx body: a pointer tells a missing
+// cacheHit apart from false.
+type warmWire struct {
+	CacheHit *bool `json:"cacheHit"`
+}
+
+// WarmTTSCache calls POST {baseURL}/api/tts/cache/warm (operationId
+// "warmCache"): the hub synthesizes the text and stores it in its audio
+// cache without playing it. A 404 is returned as *TTSNotOfferedError; any
+// other non-2xx goes through decodeTTSError. A 2xx body without cacheHit is a
+// *DecodeError.
+func WarmTTSCache(ctx context.Context, client *http.Client, baseURL string, req WarmRequest) (*WarmResult, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/api/tts/cache/warm", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &TTSNotOfferedError{}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, decodeTTSError(resp)
+	}
+
+	var wire warmWire
+	if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if wire.CacheHit == nil {
+		return nil, &DecodeError{Err: fmt.Errorf("warm response missing required cacheHit")}
+	}
+	return &WarmResult{CacheHit: *wire.CacheHit}, nil
+}
+
 // TTSCacheStats mirrors #/components/schemas/CacheStats in api/openapi.json
 // field-for-field. EntriesByProvider is never nil after decoding: an absent
 // or null value is normalised to an empty map.
