@@ -22,6 +22,9 @@
   A phrase already stored costs nothing. The result says whether the audio was already stored
   (`cacheHit`). It is part of the hub's optional TTS extension and is not rate limited.
 
+Origin: TTS cache warm-up is TTS-010 (`sonora-tts`, `010-cache-warm-without-playback`). Hub info has no
+feature number: it shipped in `sonora-multiroom` as a change without a spec folder (PR #2, hub 0.1.33).
+
 The users are people running `sonora` interactively or from scripts, and developers of sonora-mcp, which
 uses this module's public `hub` package.
 
@@ -74,8 +77,9 @@ and see `cacheHit: true`.
    as `speak` does.
 5. **Given** `--json`, **When** the operator warms a phrase, **Then** the output is one JSON object with
    `cacheHit`.
-6. **Given** an unknown provider or empty text, **When** the operator warms, **Then** the command fails as
-   a usage error that shows the hub's message.
+6. **Given** empty text or a request the hub rejects as invalid, **When** the operator warms, **Then** the
+   command fails as a usage error that shows the hub's message. **Given** an unknown provider, **Then** it
+   fails as a not-found error with the hub's message, as `speak` does.
 7. **Given** the provider fails or the audio cannot be stored, **When** the operator warms, **Then** the
    command fails with the hub's message and says that repeating the request is safe.
 8. **Given** a hub without the TTS extension, **When** the operator warms, **Then** the command reports
@@ -100,13 +104,14 @@ and the decoded result.
    record with each field is returned, and marshalling it gives the hub's property names.
 2. **Given** a warm request with all eight spec fields, **When** the function is called, **Then** only
    the fields that were set are sent, and `cacheHit` is returned.
-3. **Given** a 400, 404 or 503 answer, **When** either function is called, **Then** the error is one
-   `hub.ClassifyError` already understands.
+3. **Given** an answer the operation declares as an error (info: 404 or any other non-2xx; warm: 400, 404
+   or 503), **When** the function is called, **Then** the error is one `hub.ClassifyError` already
+   understands.
 
 ### Edge Cases
 
-- A 200 body for hub info that is not JSON or lacks `product` is a malformed-response error, not an empty
-  record.
+- A 200 body for hub info that is not JSON, or lacks `product`, `version` or `apiVersion`, is a
+  malformed-response error, not an empty record.
 - Hub info shows `product` as the hub sent it; a value other than `multiroom` is shown, not hidden or
   rejected.
 - Warm text that is only whitespace: the hub decides; the CLI rejects only empty text.
@@ -134,7 +139,7 @@ and the decoded result.
 - **FR-006**: The warm command MUST print `cacheHit` as YAML by default and as one JSON object with
   `--json`, and MUST NOT play anything.
 - **FR-007**: The warm command MUST map hub answers as `speak` does: 400 is a usage error with the hub's
-  message, a missing TTS extension is "TTS unavailable", and 503 is a failure whose message says that
+  message, a missing TTS extension gives the "text-to-speech is not available" message, and 503 is a failure whose message says that
   repeating is safe.
 - **FR-008**: Both new commands MUST follow the existing conventions: strict GNU flag style, exit codes,
   errors on standard error, output on standard output, and an entry in `help`.

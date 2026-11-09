@@ -24,7 +24,7 @@ and Phase 5 only checks the public-package rules.
 
 - [ ] T001 Confirm the baseline: run `gofmt -l .`, `go vet ./...` and `go test ./...` on branch
   `013-info-and-tts-warm` and record the result in `specs/013-info-and-tts-warm/verification.md` (create it
-  with a dated "Baseline" section). The working tree already holds the unrelated `Group.system` change
+  with a dated "Baseline" section). The baseline already includes the committed, unrelated `Group.system` mirror
   (`hub/groups.go`, `internal/render/groups.go`, their tests); do not touch it.
 - [ ] T002 Confirm `api/openapi.json` declares what the feature mirrors: `HubInfoResponse` (five optional
   properties, no `required` list), `WarmRequest` (`text` plus seven optional fields) and `WarmResponse`
@@ -138,7 +138,10 @@ played. Live: needs the user's permission (writes one cache entry); see `quickst
   - hub 400, unknown provider, extension absent (the diagnosed "text-to-speech is not available" message)
     and unreachable hub give the messages and exit codes of `speak`;
   - 503 prints the hub's message followed by `; nothing was stored, repeating the request is safe`;
-  - `--timeout` changes the request bound from the 15 s default.
+  - `--timeout` changes the request bound from the 15 s default;
+  - cache round trip (SC-002): the mock keeps a cache keyed by text and voice options; warming a phrase and
+    then running `speak` with the same text, `--provider`, `--voice` and `--language` reports a cache hit,
+    and `speak` with different options does not.
 
 ### Implementation
 
@@ -175,8 +178,8 @@ and T012; this phase adds only what they do not cover.
   `WarmTTSCache`). If the godoc test does not enumerate exports by itself, extend it so each new
   identifier has a comment with no `research.md`, `FR-` or `Principle` reference. Fix any failure in
   `hub/info.go`, `hub/tts.go` or `hub/errors.go`.
-- [ ] T020 [US3] Check `hub/` stays protocol-only and stdlib-only: `go list -deps ./hub | grep -v
-  '^[a-z/]*$'` shows no third-party module, and no new file in `hub/` imports anything from `internal/`.
+- [ ] T020 [US3] Check `hub/` stays protocol-only and stdlib-only: `go list -deps -f '{{if not
+  .Standard}}{{.ImportPath}}{{end}}' ./hub` lists only this module's own packages, and no new file in `hub/` imports anything from `internal/`.
   Record the result in `verification.md`.
 
 **Checkpoint**: sonora-mcp can use `hub.GetInfo` and `hub.WarmTTSCache` from the next minor tag.
@@ -197,7 +200,13 @@ and T012; this phase adds only what they do not cover.
 - [ ] T024 Run the `quickstart.md` live steps. `get info` is read-only. `warm tts-cache` writes one entry
   to the production cache: ask the user first, use `--provider piper-local`, note the entry count before
   and after (`sonora get tts-cache`), and do not run `clear tts-cache`. Record the results.
+  The cache round trip (SC-002) is audible: with the user's permission, record the volume and mute state of
+  the target output first, keep the volume low, warm a `piper-local` phrase, then `speak` the same phrase
+  with the same options and expect `cacheHit: true`; restore state and run the ALSA/metrics checks from the
+  repository-parent `AGENTS.md`.
 - [ ] T025 Mark every finished task `[X]` in this file.
+- [ ] T026 Release (only when the user asks): after merge, cut a minor tag for the additive `hub` API so
+  sonora-mcp can bump to it; never move or re-create a published tag.
 
 ---
 
