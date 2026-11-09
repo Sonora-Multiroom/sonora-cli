@@ -9,6 +9,7 @@ import (
 
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/groups"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/hubinfo"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/inputs"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/mastermute"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
@@ -42,6 +43,7 @@ Commands:
   mute outputs|groups/<id>            Mute an output or group
   unmute outputs|groups/<id>          Unmute an output or group
   get master-mute                     Fetch the system-wide master-mute state
+  get info                            Show which hub is running and since when
   mute all                            Mute all outputs system-wide
   unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
@@ -49,6 +51,7 @@ Commands:
   set routes/<id> volume <0-100>      Set one route's own volume
   get tts-cache                       Fetch TTS audio-cache statistics
   clear tts-cache                     Clear the TTS audio cache
+  warm tts-cache <text|->             Cache a phrase without playing it
   list tts-voices --provider NAME     List a TTS provider's voices
   help                                Show this help
 
@@ -92,11 +95,13 @@ Examples:
   sonora enable groups/living-room
   sonora mute outputs/office-speaker
   sonora unmute groups/living-room
+  sonora get info
   sonora get master-mute
   sonora mute all
   sonora unmute all
   sonora get tts-cache
   sonora clear tts-cache --provider openai
+  sonora warm tts-cache "Dinner is ready" --provider piper-local
   sonora list tts-voices --provider google --language uk-UA
 
 Run 'sonora <verb> <resource> --help' for a command's own flag reference,
@@ -155,6 +160,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchSet(args[1:], stdout, stderr)
 	case "clear":
 		return dispatchClear(args[1:], stdout, stderr)
+	case "warm":
+		return dispatchWarm(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "sonora: unknown command %q\n", args[0])
 		return 2
@@ -567,6 +574,23 @@ func dispatchClear(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
+// dispatchWarm resolves the argument following `warm`: the only resource it
+// supports is the literal keyword `tts-cache`. Any other argument, or none,
+// is a usage error naming tts-cache as the only supported resource.
+func dispatchWarm(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora warm tts-cache <text|-> [flags]"
+	if len(args) > 0 && args[0] == "tts-cache" {
+		return tts.RunWarm(args[1:], os.Stdin, stdout, stderr)
+	}
+	if clihelp.Requested(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	fmt.Fprintln(stderr, usage)
+	fmt.Fprintln(stderr, "error: warm supports only tts-cache")
+	return 2
+}
+
 // dispatchGetList resolves the resource-path argument following `get`/`list`
 // via respath and translates it into the matching resource package's
 // existing RunList/RunGet call (research.md §2). A `list` given a resource
@@ -588,6 +612,14 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "error: --include-routes applies only to 'sonora get outputs/<id>'")
 			return 2
 		}
+	}
+	if len(args) > 0 && args[0] == "info" {
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not support info; use 'sonora get info' instead")
+			return 2
+		}
+		return hubinfo.RunGet(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "master-mute" {
 		if verb == "list" {

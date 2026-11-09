@@ -19,6 +19,9 @@ type Group struct {
 	OutputIDs   []string `json:"outputIds"`
 	Muted       bool     `json:"muted"`
 	Enabled     bool     `json:"enabled"`
+	// System is true for a group the hub maintains itself (the broadcast
+	// group); hubs before 0.1.33 omit it, which decodes to false.
+	System bool `json:"system"`
 }
 
 // ListGroups calls GET {baseURL}/api/v2/groups, optionally including

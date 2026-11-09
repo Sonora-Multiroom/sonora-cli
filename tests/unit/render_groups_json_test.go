@@ -22,7 +22,7 @@ func TestRenderGroupsJSON_EmptyMembershipIsEmptyArray(t *testing.T) {
 	if strings.Contains(got, "null") {
 		t.Errorf("expected no null in the rendered list, got:\n%s", got)
 	}
-	want := `{"groupId":"empty","displayName":"Empty","outputIds":[],"muted":false,"enabled":false}`
+	want := `{"groupId":"empty","displayName":"Empty","outputIds":[],"muted":false,"enabled":false,"system":false}`
 	if !strings.Contains(got, want) {
 		t.Errorf("expected %s, got:\n%s", want, got)
 	}

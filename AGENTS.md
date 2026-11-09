@@ -18,6 +18,12 @@
   Single-dash multi-letter forms (`-version`, `-help`) are invalid and must not be
   added.
 
+## Live testing
+
+- Piper (`--provider piper-local`) on the Pi takes about 19 s to synthesize an uncached phrase, longer
+  than the 15 s default bound. Pass `--timeout 60s` to `sonora speak` and `sonora warm tts-cache` when
+  testing live; on a timeout the hub still stores the audio, so a retry is a cache hit.
+
 ## Git / PR conventions
 
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)

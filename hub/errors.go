@@ -53,6 +53,14 @@ func (e *DecodeError) Error() string {
 
 func (e *DecodeError) Unwrap() error { return e.Err }
 
+// InfoNotOfferedError indicates the hub answered 404 to GET /api/v2/info,
+// which is what a hub older than 0.1.33 does: it does not offer hub info.
+type InfoNotOfferedError struct{}
+
+func (e *InfoNotOfferedError) Error() string {
+	return "the hub does not offer GET /api/v2/info"
+}
+
 // NotFoundError indicates the hub responded 404 for a specific resource
 // identifier (e.g. "output", "input"), distinct from a generic StatusError.
 type NotFoundError struct {
@@ -125,6 +133,11 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 		return ClassTTSUnavailable, unavailErr.Error()
 	}
 
+	var infoNotOffered *InfoNotOfferedError
+	if errors.As(err, &infoNotOffered) {
+		return ClassHub, "this hub does not offer hub info (needs hub 0.1.33 or later)"
+	}
+
 	var notOfferedErr *TTSNotOfferedError
 	if errors.As(err, &notOfferedErr) {
 		return ClassTTSUnavailable, "text-to-speech is not available on this hub"
@@ -140,7 +153,7 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 			return ClassValidation, msg
 		case "PROVIDER_NOT_FOUND":
 			return ClassNotFound, msg
-		case "PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED", "PROVIDER_ERROR", "FORMAT_NORMALIZATION_FAILED":
+		case "PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED", "PROVIDER_ERROR", "FORMAT_NORMALIZATION_FAILED", "CACHE_WRITE_FAILED":
 			return ClassServiceUnavailable, msg
 		}
 		switch ttsErr.StatusCode {
