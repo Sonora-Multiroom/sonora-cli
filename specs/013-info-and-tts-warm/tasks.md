@@ -232,3 +232,7 @@ and T012; this phase adds only what they do not cover.
 2. Phase 3 (MVP): validate with the mock hub, then read-only against the live hub.
 3. Phase 4: validate with the mock hub; live only with permission.
 4. Phase 5 and 6: public-package rules, README, final checks.
+
+## Phase 7: Convergence
+
+- [X] T027 Reconcile whitespace-only warm text per spec Edge Cases (contradicts): the spec says the CLI rejects only empty text and leaves whitespace-only text to the hub, but `RunWarm` in `internal/cli/tts/warm.go` rejects text that is blank after trimming (as `speak` does), and `contracts/cli.md` and T014 require that. Decide one way and make all agree: either change `RunWarm` and the tests in `tests/integration/tts_warm_test.go` (blank text, blank stdin) to reject only empty text, or amend the spec Edge Cases line and keep the code.

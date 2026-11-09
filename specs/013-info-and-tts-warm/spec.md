@@ -114,7 +114,8 @@ and the decoded result.
   malformed-response error, not an empty record.
 - Hub info shows `product` as the hub sent it; a value other than `multiroom` is shown, not hidden or
   rejected.
-- Warm text that is only whitespace: the hub decides; the CLI rejects only empty text.
+- Warm text that is empty or only whitespace: the CLI rejects it as a usage error before any request,
+  as `speak` does.
 - A hub whose `startedAt` or `uptimeSeconds` is missing still decodes; the missing field is shown as
   absent, not as zero.
 - Warm-up takes as long as the provider takes; the same default time bound and `--timeout` as `speak`
