@@ -150,3 +150,19 @@ func TestListGroups_MalformedBodyRejected_MissingDisplayName(t *testing.T) {
 		t.Errorf("expected a *hub.DecodeError, got %T: %v", err, err)
 	}
 }
+
+func TestListGroups_DecodesSystem(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"groupId":"broadcast","displayName":"Broadcast","outputIds":[],"muted":false,"enabled":true,"system":true},` +
+			`{"groupId":"mine","displayName":"Mine","outputIds":[],"muted":false,"enabled":true}]`))
+	}))
+	defer srv.Close()
+
+	groups, err := hub.ListGroups(context.Background(), srv.Client(), srv.URL, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !groups[0].System || groups[1].System {
+		t.Errorf("want broadcast system and mine not (field absent on older hubs), got %+v", groups)
+	}
+}

@@ -10,7 +10,7 @@
       "name": "AGPL-3.0",
       "url": "https://www.gnu.org/licenses/agpl-3.0.html"
     },
-    "version": "0.1.29"
+    "version": "0.1.33"
   },
   "servers": [
     {
@@ -22,6 +22,10 @@
     {
       "name": "TTS Cache",
       "description": "The on-disk cache of synthesized audio"
+    },
+    {
+      "name": "Info",
+      "description": "Which hub is running, its versions, and when it started"
     },
     {
       "name": "Inputs",
@@ -1256,6 +1260,58 @@
         }
       }
     },
+    "/api/tts/cache/warm": {
+      "post": {
+        "tags": [
+          "TTS Cache"
+        ],
+        "summary": "Synthesize and store a phrase without playing it",
+        "description": "Stores the audio so a later announcement of the same text and voice is served from the cache with no provider call. Nothing is played, queued or pinned. A phrase already stored costs nothing and counts as just used. The extension does not rate limit warm-ups",
+        "operationId": "warmCache",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The audio is stored (cacheHit false) or already was (true)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarmResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or unknown provider",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The provider failed, or the audio could not be stored (CACHE_WRITE_FAILED); nothing was stored and repeating the request is safe",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/routes/{routeId}": {
       "get": {
         "tags": [
@@ -1611,6 +1667,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/info": {
+      "get": {
+        "tags": [
+          "Info"
+        ],
+        "summary": "Get hub info",
+        "description": "Takes no parameters and touches no device. `200` with `product` equal to `multiroom` identifies the hub. A changed `startedAt` means the hub restarted, which drops every playing route and the on/off overrides. A hub without this endpoint answers 404.",
+        "operationId": "getInfo",
+        "responses": {
+          "200": {
+            "description": "Hub info returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubInfoResponse"
                 }
               }
             }
@@ -2463,6 +2541,10 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether group is enabled for new route creation"
+          },
+          "system": {
+            "type": "boolean",
+            "description": "Whether the hub maintains this group itself (the broadcast group of every room) rather than the operator configuring it"
           }
         }
       },
@@ -2905,6 +2987,50 @@
           }
         }
       },
+      "WarmRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "voice": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "engine": {
+            "type": "string"
+          },
+          "pitch": {
+            "type": "number",
+            "format": "double"
+          },
+          "speakingRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "stylePrompt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "WarmResponse": {
+        "type": "object",
+        "properties": {
+          "cacheHit": {
+            "type": "boolean",
+            "description": "true if the audio was already stored and no provider was called"
+          }
+        }
+      },
       "RouteOnOutputResponse": {
         "type": "object",
         "description": "A route playing on an output, with its duck state there and whether it is the output's main route",
@@ -3031,6 +3157,39 @@
             "examples": [
               -25.0
             ]
+          }
+        }
+      },
+      "HubInfoResponse": {
+        "type": "object",
+        "description": "Which hub is running, and since when",
+        "properties": {
+          "product": {
+            "type": "string",
+            "description": "Always `multiroom`; tells the hub from another server on the same address",
+            "example": "multiroom"
+          },
+          "version": {
+            "type": "string",
+            "description": "The hub's build version. `unknown` when the build carries no version, so a client must not assume a semantic version",
+            "example": "0.1.32"
+          },
+          "apiVersion": {
+            "type": "string",
+            "description": "The REST API version the hub provides. `unknown` when the build carries no version, so a client must not assume a semantic version",
+            "example": "0.1.32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the hub process started. Equal on every call of one process, so a change means a restart. It can be wrong after a cold boot of the host (clock not yet synchronised): compare it, do not trust it",
+            "example": "2026-10-04T14:30:00.123Z"
+          },
+          "uptimeSeconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Whole seconds since the process started",
+            "example": 86400
           }
         }
       },

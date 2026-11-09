@@ -20,7 +20,7 @@ func writeOutputIDs(b *bytes.Buffer, indent string, outputIDs []string) {
 }
 
 // RenderGroupsYAML renders groups as a small, fixed-shape YAML document (the
-// default output format per constitution Principle V), showing all five
+// default output format per constitution Principle V), showing all six
 // fields per group in the documented order (FR-004).
 func RenderGroupsYAML(groups []hub.Group) string {
 	var b bytes.Buffer
@@ -36,6 +36,7 @@ func RenderGroupsYAML(groups []hub.Group) string {
 		writeOutputIDs(&b, "    ", g.OutputIDs)
 		fmt.Fprintf(&b, "    muted: %t\n", g.Muted)
 		fmt.Fprintf(&b, "    enabled: %t\n", g.Enabled)
+		fmt.Fprintf(&b, "    system: %t\n", g.System)
 	}
 	return b.String()
 }
@@ -51,6 +52,7 @@ func RenderGroupYAML(g hub.Group) string {
 	writeOutputIDs(&b, "", g.OutputIDs)
 	fmt.Fprintf(&b, "muted: %t\n", g.Muted)
 	fmt.Fprintf(&b, "enabled: %t\n", g.Enabled)
+	fmt.Fprintf(&b, "system: %t\n", g.System)
 	return b.String()
 }
 
