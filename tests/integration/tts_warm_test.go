@@ -156,6 +156,42 @@ func TestWarm_OptionsReachHub_FlagsBeforeAndAfterText(t *testing.T) {
 	}
 }
 
+// TestWarm_StylePrompt_Forwarded: sent as given, empty or blank included
+// (the hub reads "" as "turn the configured style prompt off"), and absent
+// without the flag.
+func TestWarm_StylePrompt_Forwarded(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want any // nil: the key must be absent
+	}{
+		{"value", []string{"--style-prompt", "calmly"}, "calmly"},
+		{"empty", []string{"--style-prompt", ""}, ""},
+		{"blank", []string{"--style-prompt", "  "}, "  "},
+		{"absent", nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, m := newMockWarmHub(t)
+			args := append([]string{"warm", "tts-cache", "dinner", "--hub-url", srv.URL}, c.args...)
+			res := runCLI(t, args...)
+			if res.exitCode != 0 {
+				t.Fatalf("exit code = %d; stderr: %s", res.exitCode, res.stderr)
+			}
+			got, ok := m.body["stylePrompt"]
+			if c.want == nil {
+				if ok || len(m.body) != 1 {
+					t.Errorf("only text should be sent, body = %+v", m.body)
+				}
+				return
+			}
+			if !ok || got != c.want {
+				t.Errorf("stylePrompt = %q (present %v), want %q", got, ok, c.want)
+			}
+		})
+	}
+}
+
 func TestWarm_StdinTrimsTrailingLineBreaks(t *testing.T) {
 	srv, m := newMockWarmHub(t)
 

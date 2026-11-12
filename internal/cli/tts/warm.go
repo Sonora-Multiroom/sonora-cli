@@ -25,9 +25,9 @@ const nothingStoredNote = "; nothing was stored, repeating the request is safe"
 // RunWarm implements `sonora warm tts-cache <text|->`: it has the hub
 // synthesize the phrase into its audio cache without playing it, so a later
 // `speak` with the same text and voice options starts at once. The text and
-// "-" (standard input) handling and the --provider, --voice, --language and
-// --timeout checks are those of `speak`. Failures go to stderr; it returns
-// the process exit code.
+// "-" (standard input) handling and the --provider, --voice, --language,
+// --style-prompt and --timeout handling are those of `speak`. Failures go to
+// stderr; it returns the process exit code.
 func RunWarm(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("warm tts-cache", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -40,6 +40,7 @@ func RunWarm(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	voiceFlag := fs.String("voice", "", "provider-specific voice `ID` override")
 	languageFlag := fs.String("language", "", "BCP 47 language `TAG` override")
 	timeoutFlag := fs.String("timeout", "", "override the default 15s response-wait bound")
+	stylePromptFlag := fs.String("style-prompt", "", stylePromptUsage)
 
 	if clihelp.Requested(args) {
 		clihelp.PrintUsage(fs, stdout, warmUsage)
@@ -112,6 +113,10 @@ func RunWarm(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	if provided["language"] {
 		req.Language = languageFlag
+	}
+	// As for speak: an empty or blank style prompt is sent as given.
+	if provided["style-prompt"] {
+		req.StylePrompt = stylePromptFlag
 	}
 
 	client := hub.NewClientWithTimeout(warmTimeout)
