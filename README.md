@@ -181,7 +181,7 @@ sonora play <uri> groups/downstairs --join-mode duck_others --route-volume 80 --
 ```
 
 `speak <text|-> <outputs|groups>/<id> [--provider] [--voice] [--language] [--timeout]
-[--playback-mode] [--route-volume] [--ducking-level]` requests
+[--playback-mode] [--route-volume] [--ducking-level] [--style-prompt]` requests
 a TTS announcement via the hub's optional TTS extension and returns as soon as the hub accepts
 it (no waiting for playback), printing `announcementId`/`cacheHit`/`queueDepth`. `<text>` may be
 `-` to read from standard input. Responses are bounded at 15s by default; `--timeout <duration>`
@@ -189,7 +189,9 @@ overrides that bound for a hub whose TTS provider takes longer. `--playback-mode
 sets how the announcement plays over other audio, `--route-volume N` (0–100) plays it at its own
 volume without changing any output's, and `--ducking-level DB` (−60 to 0) sets how far
 `duck-others` lowers the rest; each omitted one takes the TTS extension's configured default, and
-the hub refuses a ducking level with `mix`. `get tts-cache` prints TTS
+the hub refuses a ducking level with `mix`. `--style-prompt TEXT` (`google-gemini` providers only)
+says how the announcement is delivered; `--style-prompt ""` turns the provider's configured prompt
+off, and the hub refuses the flag for any other provider type. `get tts-cache` prints TTS
 audio-cache statistics
 (`totalEntries`/`totalSizeBytes`/`maxSizeBytes`/`entriesByProvider`), and `clear tts-cache
 [--provider <name>]` clears all cache entries, or one provider's, printing `cleared` (`all` or
@@ -200,11 +202,11 @@ provider offers (`shortName`/`fullName`/`engine`/`language`/`gender`, with an ab
 need the hub's TTS extension to be installed and active; if it isn't, the CLI diagnoses why and
 exits 13.
 
-`warm tts-cache <text|-> [--provider] [--voice] [--language] [--timeout]` has the hub synthesize
-a phrase into its audio cache without playing it, so a later `speak` with the same text,
-`--provider`, `--voice` and `--language` starts at once. It prints `cacheHit: false` when the
-phrase was just synthesized and stored, or `cacheHit: true` when it was already there (`--json`
-gives `{"cacheHit":false}`). `<text>` may be `-` to read standard input, and the flags work as
+`warm tts-cache <text|-> [--provider] [--voice] [--language] [--style-prompt] [--timeout]` has the
+hub synthesize a phrase into its audio cache without playing it, so a later `speak` with the same
+text, `--provider`, `--voice`, `--language` and `--style-prompt` starts at once. It prints
+`cacheHit: false` when the phrase was just synthesized and stored, or `cacheHit: true` when it was
+already there (`--json` gives `{"cacheHit":false}`). `<text>` may be `-` to read standard input, and the flags work as
 for `speak`. A 503 from the hub (for example `CACHE_WRITE_FAILED`) ends with `; nothing was
 stored, repeating the request is safe` and exits 10. An unknown provider exits 5, a rejected
 request 6, and a missing TTS extension is diagnosed and exits 13, as for `speak`. It needs hub

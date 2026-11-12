@@ -596,6 +596,44 @@ func TestRunSpeak_NoPlaybackFlags_BodyUnchanged(t *testing.T) {
 	}
 }
 
+// TestRunSpeak_StylePrompt_Forwarded: the value is sent as given, and an
+// empty or blank one is sent too, because the hub reads "" as "turn the
+// provider's configured style prompt off".
+func TestRunSpeak_StylePrompt_Forwarded(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want any // nil: the key must be absent
+	}{
+		{"value", []string{"--style-prompt", "calmly"}, "calmly"},
+		{"empty", []string{"--style-prompt", ""}, ""},
+		{"blank", []string{"--style-prompt", "  "}, "  "},
+		{"absent", nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv, h := newSpeakSuccessHub(t)
+			var stdout, stderr bytes.Buffer
+			args := append([]string{"Hi", "outputs/kitchen", "--hub-url", srv.URL}, c.args...)
+			code := tts.RunSpeak(args, strings.NewReader(""), &stdout, &stderr)
+
+			if code != 0 {
+				t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+			}
+			got, ok := h.lastBody["stylePrompt"]
+			if c.want == nil {
+				if ok {
+					t.Errorf("stylePrompt = %v, want absent", got)
+				}
+				return
+			}
+			if !ok || got != c.want {
+				t.Errorf("stylePrompt = %q (present %v), want %q", got, ok, c.want)
+			}
+		})
+	}
+}
+
 func TestRunSpeak_PlaybackFlags_Rejected(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -643,7 +681,7 @@ func TestRunSpeak_Help_ListsAllFlags(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
 	}
-	for _, flag := range []string{"--ducking-level", "--hub-url", "--json", "--language", "--playback-mode", "--provider", "--route-volume", "--timeout", "--verbose", "--voice"} {
+	for _, flag := range []string{"--ducking-level", "--hub-url", "--json", "--language", "--playback-mode", "--provider", "--route-volume", "--style-prompt", "--timeout", "--verbose", "--voice"} {
 		if !strings.Contains(stdout.String(), flag) {
 			t.Errorf("expected help to list %q, got:\n%s", flag, stdout.String())
 		}

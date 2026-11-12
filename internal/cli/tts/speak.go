@@ -18,6 +18,10 @@ import (
 
 const speakUsage = "usage: sonora speak <text|-> <outputs|groups>/<id> [flags]"
 
+// stylePromptUsage is the --style-prompt help shared by speak and warm, so a
+// warmed phrase is described with the words used to speak it.
+const stylePromptUsage = "google-gemini only: deliver the announcement as `TEXT` describes; \"\" turns the configured style prompt off; without it, the provider's configured prompt"
+
 // RunSpeak implements `sonora speak <text|-> <outputs|groups>/<id>`: it
 // defines and parses this command's flags, resolves the target and text
 // (reading standard input when the text argument is "-"), calls the hub's
@@ -40,6 +44,7 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	playbackModeFlag := fs.String("playback-mode", "", "play over other audio as `MODE` (duck-others or mix); without it, the TTS extension's configured mode")
 	routeVolumeFlag := fs.Int("route-volume", -1, "play this announcement only at volume `N` (0-100), whatever the target's volume; the room's volume control does not reach it")
 	duckingLevelFlag := fs.Float64("ducking-level", 0, "with playback mode duck-others, lower what else plays by `DB` decibels (-60 to 0); without it, the configured level")
+	stylePromptFlag := fs.String("style-prompt", "", stylePromptUsage)
 
 	if clihelp.Requested(args) {
 		clihelp.PrintUsage(fs, stdout, speakUsage)
@@ -169,6 +174,11 @@ func RunSpeak(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	if provided["ducking-level"] {
 		req.DuckingLevelDb = duckingLevelFlag
+	}
+	// An empty or blank style prompt is sent as given: the hub reads it as
+	// "turn the configured prompt off" (sonora-tts TTS-004).
+	if provided["style-prompt"] {
+		req.StylePrompt = stylePromptFlag
 	}
 
 	client := hub.NewClientWithTimeout(speakTimeout)
