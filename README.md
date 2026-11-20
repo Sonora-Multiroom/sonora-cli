@@ -264,19 +264,14 @@ sonora list tts-voices --provider google --language uk-UA
 
 ### Chimes
 
-A chime is a short sound that plays before a route's audio (hub 0.1.34 and later). `sonora list chimes`
-(or `get chimes`) lists the ones the hub has loaded, each with its `id` and `durationMillis`; an empty
-list means none is configured. `sonora get chimes/<id>` shows one, and an unknown id exits 5 like any
-other missing resource. `chimes` has no short alias and is not a play or route target. `--chime ID` on
-`play` and `route` names one, and `--chime none` asks for no chime whatever the input's, output's or
-group's own setting says. Without the flag the hub decides: the
-input's default chime, then the target's. A chime is a request, not a guarantee: the hub skips it
-when every target output is already playing.
+A chime is a short sound played before a route's audio (hub 0.1.34+).
 
-`get outputs`, `get groups` and `get inputs` show an output's or group's `chime` and an input's
-`defaultChime` only when one is set (`none` counts as set). An id the CLI sends is not checked first:
-the hub answers an unknown one with 400 (`Unknown chime: <id>`), which the CLI prints. A blank
-`--chime` is a usage error (exit 2) and sends nothing.
+- `sonora list chimes` lists the hub's chimes (`id`, `durationMillis`); `get chimes/<id>` shows one.
+- `--chime ID` on `play` and `route` picks one; `--chime none` turns it off. Without the flag, the
+  input's default chime applies, then the target's.
+- The hub skips the chime when every target output is already playing, and answers an unknown id with
+  400 (`Unknown chime: <id>`).
+- `get outputs`, `groups` and `inputs` show `chime` / `defaultChime` only when set.
 
 ### Join modes
 
