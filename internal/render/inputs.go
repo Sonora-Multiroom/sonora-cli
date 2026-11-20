@@ -50,6 +50,7 @@ func RenderInputsYAML(inputs []hub.Input) string {
 		fmt.Fprintf(&b, "    autoRemove: %t\n", i.AutoRemove)
 		fmt.Fprintf(&b, "    pauseable: %t\n", i.Pauseable)
 		writeCreatedAt(&b, "    ", i.CreatedAt)
+		writeChime(&b, "    ", "defaultChime", i.DefaultChime)
 	}
 	return b.String()
 }
@@ -59,7 +60,8 @@ func RenderInputsYAML(inputs []hub.Input) string {
 // inputs/<id>`, each of which prints exactly one input. Every field is
 // always emitted explicitly, including a bare, unquoted createdAt: null for
 // a static input and defaultJoinMode: null for an input that declares none.
-// defaultRouteVolume and defaultDuckingLevelDb follow only when declared.
+// defaultRouteVolume, defaultDuckingLevelDb and defaultChime follow only when
+// declared.
 func RenderInputYAML(i hub.Input) string {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "inputId: %q\n", i.InputID)
@@ -72,6 +74,7 @@ func RenderInputYAML(i hub.Input) string {
 	writeCreatedAt(&b, "", i.CreatedAt)
 	writeDefaultJoinMode(&b, i.DefaultJoinMode)
 	writeVolumeAndLevel(&b, "", "defaultRouteVolume", i.DefaultRouteVolume, "defaultDuckingLevelDb", i.DefaultDuckingLevelDb)
+	writeChime(&b, "", "defaultChime", i.DefaultChime)
 	return b.String()
 }
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/chimes"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/groups"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/hubinfo"
@@ -44,6 +45,7 @@ Commands:
   unmute outputs|groups/<id>          Unmute an output or group
   get master-mute                     Fetch the system-wide master-mute state
   get info                            Show which hub is running and since when
+  get chimes                          List the chimes a route can start with
   mute all                            Mute all outputs system-wide
   unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
@@ -96,6 +98,7 @@ Examples:
   sonora mute outputs/office-speaker
   sonora unmute groups/living-room
   sonora get info
+  sonora get chimes
   sonora get master-mute
   sonora mute all
   sonora unmute all
@@ -620,6 +623,20 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return hubinfo.RunGet(args[1:], stdout, stderr)
+	}
+	// chimes is a collection of its own, like info: no id, and only `get`.
+	if len(args) > 0 && (args[0] == "chimes" || strings.HasPrefix(args[0], "chimes/")) {
+		if args[0] != "chimes" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: chimes takes no id; use 'sonora get chimes' instead")
+			return 2
+		}
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not support chimes; use 'sonora get chimes' instead")
+			return 2
+		}
+		return chimes.RunGet(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "master-mute" {
 		if verb == "list" {

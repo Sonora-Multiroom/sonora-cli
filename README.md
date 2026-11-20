@@ -50,6 +50,7 @@ table, common flags, and examples from the terminal.
 | `mute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `get info` | which hub is running and since when (hub 0.1.33+) | — |
+| `get chimes` | the chimes the hub can play before a route (hub 0.1.34+) | — |
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups`, `routes` | `out`, `gr`, `rt` |
@@ -153,10 +154,12 @@ itself, and `transfer` retries it for a moment before giving up.
 
 `route inputs/<input-id> <outputs|groups>/<target-id>` starts a route from an existing input to an
 output or group and prints the route. `--join-mode MODE` sets how it joins what already plays on
-the target; without it, the hub uses the input's default join mode, else `REPLACE`.
+the target; without it, the hub uses the input's default join mode, else `REPLACE`. `--chime ID|none`
+starts it with a [chime](#chimes).
 
 ```
 sonora route inputs/doorbell groups/downstairs --join-mode mix
+sonora route inputs/doorbell groups/downstairs --chime ding
 ```
 
 `play` wraps a single hub operation: instant playback of an audio URI to an output or output
@@ -173,10 +176,11 @@ join mode it is a usage error. The three flags need hub 0.1.29 or later. The opt
 as it is; without it, the hub names a SoundCloud or YouTube link "Title — Uploader" and anything
 else with a generated name. The output shows that name as `displayName` when the hub reports it
 (hub 0.1.28 and later). `--join-mode MODE` sets how the playback joins what already plays on the
-target; without it, `REPLACE`.
+target; without it, `REPLACE`. `--chime ID|none` starts it with a [chime](#chimes).
 
 ```
 sonora play <uri> outputs/kitchen --join-mode duck_others
+sonora play <uri> outputs/kitchen --chime none
 sonora play <uri> groups/downstairs --join-mode duck_others --route-volume 80 --ducking-level -25
 ```
 
@@ -250,11 +254,26 @@ sonora stop outputs/<id>
 sonora stop groups/<id>
 sonora speak "Dinner is ready" outputs/kitchen
 sonora get info
+sonora get chimes
 sonora get tts-cache
 sonora clear tts-cache --provider openai
 sonora warm tts-cache "Dinner is ready" --provider piper-local
 sonora list tts-voices --provider google --language uk-UA
 ```
+
+### Chimes
+
+A chime is a short sound that plays before a route's audio (hub 0.1.34 and later). `sonora get chimes`
+lists the ones the hub has loaded, each with its `id` and `durationMillis`; an empty list means none
+is configured. `--chime ID` on `play` and `route` names one, and `--chime none` asks for no chime
+whatever the input's, output's or group's own setting says. Without the flag the hub decides: the
+input's default chime, then the target's. A chime is a request, not a guarantee: the hub skips it
+when every target output is already playing.
+
+`get outputs`, `get groups` and `get inputs` show an output's or group's `chime` and an input's
+`defaultChime` only when one is set (`none` counts as set). An id the CLI sends is not checked first:
+the hub answers an unknown one with 400 (`Unknown chime: <id>`), which the CLI prints. A blank
+`--chime` is a usage error (exit 2) and sends nothing.
 
 ### Join modes
 

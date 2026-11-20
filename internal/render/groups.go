@@ -37,6 +37,7 @@ func RenderGroupsYAML(groups []hub.Group) string {
 		fmt.Fprintf(&b, "    muted: %t\n", g.Muted)
 		fmt.Fprintf(&b, "    enabled: %t\n", g.Enabled)
 		fmt.Fprintf(&b, "    system: %t\n", g.System)
+		writeChime(&b, "    ", "chime", g.Chime)
 	}
 	return b.String()
 }
@@ -53,6 +54,7 @@ func RenderGroupYAML(g hub.Group) string {
 	fmt.Fprintf(&b, "muted: %t\n", g.Muted)
 	fmt.Fprintf(&b, "enabled: %t\n", g.Enabled)
 	fmt.Fprintf(&b, "system: %t\n", g.System)
+	writeChime(&b, "", "chime", g.Chime)
 	return b.String()
 }
 
