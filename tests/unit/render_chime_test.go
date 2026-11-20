@@ -134,3 +134,13 @@ func TestRenderChimes(t *testing.T) {
 		t.Errorf("nil JSON: %s want: %s", got, want)
 	}
 }
+
+func TestRenderChime(t *testing.T) {
+	c := hub.Chime{ID: "gong", DurationMillis: 3200}
+	if got, want := render.RenderChimeYAML(c), "id: \"gong\"\ndurationMillis: 3200\n"; got != want {
+		t.Errorf("YAML:\n%s\nwant:\n%s", got, want)
+	}
+	if got, want := render.RenderChimeJSON(c), `{"id":"gong","durationMillis":3200}`+"\n"; got != want {
+		t.Errorf("JSON: %s want: %s", got, want)
+	}
+}

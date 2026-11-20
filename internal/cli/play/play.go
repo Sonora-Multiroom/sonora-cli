@@ -39,7 +39,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	duckingLevelFlag := fs.Float64("ducking-level", 0, "with --join-mode DUCK_OTHERS, lower what else plays by `DB` decibels (-60 to 0); without it, the hub's configured level")
 	displayNameFlag := fs.String("display-name", "", "display `NAME` for the input, kept as given; without it the hub names a SoundCloud or YouTube link after its track and anything else with a generated name")
 	joinModeFlag := fs.String("join-mode", "", "how the playback joins what already plays on the target: `MODE` is REPLACE, MIX or DUCK_OTHERS (any case); without it, REPLACE")
-	chimeFlag := fs.String("chime", "", "play the chime with this `ID` before the audio, or none for no chime (see 'sonora get chimes'); without it, the target's chime")
+	chimeFlag := fs.String("chime", "", "play the chime with this `ID` before the audio, or none for no chime (see 'sonora list chimes'); without it, the target's chime")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,

@@ -81,6 +81,13 @@ func Parse(arg string) (Path, error) {
 	return Path{Kind: kind}, nil
 }
 
+// ValidID reports whether id satisfies the identifier rule that Parse applies
+// to the id segment, for resources addressed by id outside the ResourceKind
+// enum (chimes, which are never a play or route target).
+func ValidID(id string) bool {
+	return idPattern.MatchString(id)
+}
+
 // Names returns the canonical resource names, in a fixed order, for use in
 // usage/error messages (FR-006a).
 func Names() []string {

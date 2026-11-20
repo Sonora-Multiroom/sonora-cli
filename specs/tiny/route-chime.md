@@ -8,7 +8,7 @@
 ## What
 
 Hub 0.1.34 lets a route start with a short sound. Bring `api/openapi.json` and the `hub` package up to that
-contract, add `--chime` to `sonora play` and `sonora route`, `sonora get chimes`, and show a set chime in
+contract, add `--chime` to `sonora play` and `sonora route`, `sonora list chimes` and `sonora get chimes/<id>`, and show a set chime in
 `get outputs`, `get groups` and `get inputs`. The `sonora-mcp` bump follows the tag and is not part of this.
 Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chime-api.md`.
 
@@ -22,15 +22,17 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 | `hub/outputs.go`, `hub/groups.go` | `Output.Chime`, `Group.Chime` |
 | `hub/chimes.go` | New: `Chime`, `ListChimes`, `ChimeNone` |
 | `internal/cli/play/play.go`, `internal/cli/route/route.go` | `--chime` flag |
-| `internal/cli/chimes/get.go` | New: `sonora get chimes`, modelled on `internal/cli/hubinfo/info.go` |
-| `cmd/sonora/main.go` | `dispatchGetList`: route `chimes` like `info` (`list chimes` is a usage error) |
+| `internal/cli/chimes/get.go` | New: `sonora list chimes` and `sonora get chimes[/<id>]` |
+| `internal/cli/respath/respath.go` | `ValidID`: the id rule, for `chimes/<id>` outside the resource enum |
+| `cmd/sonora/main.go` | `dispatchGetList`: route `chimes` and `chimes/<id>` |
 | `internal/render/{outputs,groups,inputs,chimes}.go` | Chime keys, only when set; new chimes renderer |
 | `tests/contract/`, `tests/unit/` | New and extended tests |
 | `README.md`, `docs/backlog/` | Document the flag and command; trim the backlog item |
 
 ## Requirements
 
-1. `api/openapi.json` is the hub's 0.1.34 document, LF endings; `go test ./tests/unit/` (`api.Spec`) passes.
+1. `api/openapi.json` is the hub's document as served (0.1.35, a superset of 0.1.34; see Verification for
+   what it brings in that is not adopted), LF endings; `go test ./tests/unit/` (`api.Spec`) passes.
 2. `Chime` is sent only when non-nil, on play, route and (hub package) input creation. Absent decodes to
    nil on `Output`, `Group` and `Input`; `none` is a value, never nil. JSON views omit a nil chime.
 3. `ListChimes(ctx, client, baseURL) ([]Chime, error)` calls `GET /api/v2/chimes`; `Chime` has `ID` and
@@ -41,9 +43,16 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 5. **Open question 1, decided:** an unknown id is not checked client-side. The hub's 400
    (`Unknown chime: <id>`) is reported through the existing `APIError` path, so the flag costs no extra
    request and cannot disagree with the hub.
-6. `sonora get chimes` prints `chimes:` with `id` and `durationMillis` per entry (YAML default, `--json`);
-   an empty list prints `# no chimes found` and `chimes: []`, as inputs do.
-7. `get outputs[/id]`, `get groups[/id]` print `chime:` and `get inputs[/id]` prints `defaultChime:` only
+6. Chimes are a collection keyed by id, addressed like `outputs`: `sonora list chimes` and `sonora get
+   chimes` print `chimes:` with `id` and `durationMillis` per entry (YAML default, `--json`); an empty
+   list prints `# no chimes found` and `chimes: []`, as inputs do. `list chimes/<id>` is a usage error,
+   as for every collection.
+7. `sonora get chimes/<id>` prints that chime as a bare record (`id`, `durationMillis`; `--json` an
+   object). The hub has no `GET /api/v2/chimes/{id}`, so the CLI lists the chimes and picks the entry; an
+   unknown id is `chime not found: <id>`, exit 5, as for other resources. The id is checked against the
+   resource id rule (`^[a-zA-Z0-9_-]{1,255}$`) first; a malformed one is a usage error. `chimes` is not a
+   play or route target, so it stays out of the `respath` resource enum, and has no alias.
+8. `get outputs[/id]`, `get groups[/id]` print `chime:` and `get inputs[/id]` prints `defaultChime:` only
    when set, in YAML and JSON; output with no chime is byte-identical to today.
 
 ## Plan
@@ -59,9 +68,11 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 - [x] Contract tests: `chime` on play and route bodies (set, `none`, omitted); `ListChimes` (200, empty, malformed, path and method)
 - [x] Contract tests: `chime` / `defaultChime` decoded on output, group, input (set, `none`, absent) and sent on input creation
 - [x] Unit tests: `--chime` (value, `none`, blank, absent) on play and route; 400 `Unknown chime` reaches stderr
-- [x] Unit tests: renderers show the keys only when set (YAML and JSON); `get chimes` YAML, JSON, empty; `list chimes` rejected
+- [x] Unit tests: renderers show the keys only when set (YAML and JSON); `get chimes` YAML, JSON, empty
+- [x] Tests: `list chimes` lists; `get chimes/<id>` YAML, JSON, unknown id (exit 5), malformed id; `list chimes/<id>` rejected
 - [x] Implement `hub/` changes and `hub/chimes.go`
 - [x] Implement `--chime` in play and route; `internal/cli/chimes`; dispatch in `main.go`; renderers
+- [x] Implement `list chimes` and `get chimes/<id>`; README
 - [x] README and backlog updates
 - [x] `gofmt -l .`, `go vet ./...`, `go test ./...`
 
@@ -69,6 +80,7 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 
 - [x] All tasks checked off; tests pass; no vet or gofmt findings; `git ls-files --eol` shows no `w/crlf`
 - [x] Read-only live check on `multiroom.lan`: `sonora get chimes` lists the hub's chimes
+- [x] Read-only live check: `list chimes`, `get chimes/<id>` (known and unknown id)
 - [ ] Tag released (additive, no breaking change); `sonora-mcp` bump is a separate item
 
 ## Verification (2026-11-20)
@@ -83,3 +95,10 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 - Live, `multiroom.lan` hub 0.1.35, read-only, built binary: `get chimes` (YAML and `--json`) lists
   `cabin`, `tritone`, `bingbong`, `alert` with the hub's durations; `get outputs|groups|inputs` print no
   chime key because none is set there. No route was started, so `--chime` was tested against mock hubs only.
+
+## Verification (2026-11-21): chimes as an id-keyed collection
+
+- `gofmt -l .`: no output. `go vet ./...`: exit 0. `go test ./...`: exit 0. No `w/crlf` file.
+- Live, `multiroom.lan`, read-only, built binary: `list chimes` lists `cabin`, `tritone`, `bingbong`,
+  `alert`; `get chimes/cabin` prints `id: "cabin"`, `durationMillis: 3144` (and the JSON object with
+  `--json`); `get chimes/nope` prints `chime not found: nope`, exit 5.

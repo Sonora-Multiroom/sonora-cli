@@ -50,7 +50,7 @@ table, common flags, and examples from the terminal.
 | `mute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `unmute <resource>/<id>` | `outputs`, `groups` | `out`, `gr` |
 | `get info` | which hub is running and since when (hub 0.1.33+) | — |
-| `get chimes` | the chimes the hub can play before a route (hub 0.1.34+) | — |
+| `list chimes`, `get chimes[/<id>]` | the chimes the hub can play before a route (hub 0.1.34+) | — |
 | `get master-mute` | system-wide singleton, no id | — |
 | `mute all` / `unmute all` | system-wide singleton, no id | — |
 | `set <resource>/<id> volume <0-100>` | `outputs`, `groups`, `routes` | `out`, `gr`, `rt` |
@@ -254,7 +254,8 @@ sonora stop outputs/<id>
 sonora stop groups/<id>
 sonora speak "Dinner is ready" outputs/kitchen
 sonora get info
-sonora get chimes
+sonora list chimes
+sonora get chimes/cabin
 sonora get tts-cache
 sonora clear tts-cache --provider openai
 sonora warm tts-cache "Dinner is ready" --provider piper-local
@@ -263,10 +264,12 @@ sonora list tts-voices --provider google --language uk-UA
 
 ### Chimes
 
-A chime is a short sound that plays before a route's audio (hub 0.1.34 and later). `sonora get chimes`
-lists the ones the hub has loaded, each with its `id` and `durationMillis`; an empty list means none
-is configured. `--chime ID` on `play` and `route` names one, and `--chime none` asks for no chime
-whatever the input's, output's or group's own setting says. Without the flag the hub decides: the
+A chime is a short sound that plays before a route's audio (hub 0.1.34 and later). `sonora list chimes`
+(or `get chimes`) lists the ones the hub has loaded, each with its `id` and `durationMillis`; an empty
+list means none is configured. `sonora get chimes/<id>` shows one, and an unknown id exits 5 like any
+other missing resource. `chimes` has no short alias and is not a play or route target. `--chime ID` on
+`play` and `route` names one, and `--chime none` asks for no chime whatever the input's, output's or
+group's own setting says. Without the flag the hub decides: the
 input's default chime, then the target's. A chime is a request, not a guarantee: the hub skips it
 when every target output is already playing.
 

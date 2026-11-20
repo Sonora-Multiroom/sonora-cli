@@ -208,14 +208,66 @@ func TestGetChimes_OlderHub404_ExitsHubError(t *testing.T) {
 	}
 }
 
+func TestListChimes_SameAsGet(t *testing.T) {
+	srv := mockOutputsServer(t, chimesBody)
+	for _, extra := range [][]string{nil, {"--json"}} {
+		get := runCLI(t, append([]string{"get", "chimes", "--hub-url", srv.URL}, extra...)...)
+		list := runCLI(t, append([]string{"list", "chimes", "--hub-url", srv.URL}, extra...)...)
+
+		if list.exitCode != 0 {
+			t.Fatalf("%v: exit code = %d, want 0; stderr: %s", extra, list.exitCode, list.stderr)
+		}
+		if list.stdout != get.stdout {
+			t.Errorf("%v: list stdout:\n%s\nget stdout:\n%s", extra, list.stdout, get.stdout)
+		}
+	}
+}
+
+func TestGetChime_ByID(t *testing.T) {
+	srv := mockOutputsServer(t, chimesBody)
+
+	res := runCLI(t, "get", "chimes/gong", "--hub-url", srv.URL)
+	if res.exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if want := "id: \"gong\"\ndurationMillis: 3200\n"; res.stdout != want {
+		t.Errorf("stdout:\n%s\nwant:\n%s", res.stdout, want)
+	}
+
+	res = runCLI(t, "get", "chimes/gong", "--json", "--hub-url", srv.URL)
+	if res.exitCode != 0 {
+		t.Fatalf("--json: exit code = %d, want 0; stderr: %s", res.exitCode, res.stderr)
+	}
+	if want := `{"id":"gong","durationMillis":3200}` + "\n"; res.stdout != want {
+		t.Errorf("--json stdout: %s want: %s", res.stdout, want)
+	}
+}
+
+func TestGetChime_UnknownID_NotFound(t *testing.T) {
+	srv := mockOutputsServer(t, chimesBody)
+
+	res := runCLI(t, "get", "chimes/nope", "--hub-url", srv.URL)
+
+	if res.exitCode != 5 {
+		t.Fatalf("exit code = %d, want 5; stderr: %s", res.exitCode, res.stderr)
+	}
+	if !strings.Contains(res.stderr, "chime not found: nope") {
+		t.Errorf("expected 'chime not found: nope' on stderr, got:\n%s", res.stderr)
+	}
+	if res.stdout != "" {
+		t.Errorf("expected empty stdout, got:\n%s", res.stdout)
+	}
+}
+
 func TestGetChimes_UsageErrors(t *testing.T) {
 	srv := mockOutputsServer(t, chimesBody)
 	for name, args := range map[string][]string{
-		"list verb":       {"list", "chimes"},
-		"with an id":      {"get", "chimes/ding"},
 		"extra argument":  {"get", "chimes", "ding"},
 		"unknown flag":    {"get", "chimes", "--nope"},
 		"list with an id": {"list", "chimes/ding"},
+		"malformed id":    {"get", "chimes/a.b"},
+		"empty id":        {"get", "chimes/"},
+		"id then extra":   {"get", "chimes/ding", "gong"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			res := runCLI(t, append(args, "--hub-url", srv.URL)...)

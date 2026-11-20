@@ -52,3 +52,20 @@ func RenderChimesJSON(chimes []hub.Chime) string {
 	}
 	return string(data) + "\n"
 }
+
+// RenderChimeYAML renders one chime as a bare YAML record (no chimes: list
+// wrapper), used by `get chimes/<id>`.
+func RenderChimeYAML(c hub.Chime) string {
+	return fmt.Sprintf("id: %q\ndurationMillis: %d\n", c.ID, c.DurationMillis)
+}
+
+// RenderChimeJSON renders one chime as a strict JSON object, used by
+// `get chimes/<id> --json`.
+func RenderChimeJSON(c hub.Chime) string {
+	data, err := json.Marshal(c)
+	if err != nil {
+		// A string and an int: Marshal cannot fail.
+		panic(err)
+	}
+	return string(data) + "\n"
+}

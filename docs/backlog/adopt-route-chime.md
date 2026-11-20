@@ -1,7 +1,7 @@
 # Adopt HUB-040 in sonora-mcp: a chime before a route
 
 **Status:** Proposed, not started. The CLI half shipped (tinyspec `specs/tiny/route-chime.md`: the `hub`
-package, `--chime`, `get chimes`); what remains is the `sonora-mcp` bump.
+package, `--chime`, `list chimes`); what remains is the `sonora-mcp` bump.
 
 **Origin:** HUB-040 (API 0.1.34) lets a route start with a short sound. The hub's backlog item
 `route-chime.md` lists the clients as the next step.

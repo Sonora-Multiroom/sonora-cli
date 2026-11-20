@@ -38,7 +38,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	verbose := fs.Bool("verbose", false, "print the underlying error detail on failure")
 	hubURLFlag := fs.String("hub-url", "", "hub base `URL` override")
 	joinModeFlag := fs.String("join-mode", "", "how the route joins what already plays on the target: `MODE` is REPLACE, MIX or DUCK_OTHERS (any case); without it, the input's default join mode, else REPLACE")
-	chimeFlag := fs.String("chime", "", "play the chime with this `ID` before the route's audio, or none for no chime (see 'sonora get chimes'); without it, the input's default chime, else the target's")
+	chimeFlag := fs.String("chime", "", "play the chime with this `ID` before the route's audio, or none for no chime (see 'sonora list chimes'); without it, the input's default chime, else the target's")
 
 	// An explicit --help is a request, not a failure: serve it on stdout
 	// and exit 0. Left to flag.Parse it would surface as flag.ErrHelp,
