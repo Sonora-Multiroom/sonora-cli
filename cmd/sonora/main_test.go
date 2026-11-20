@@ -667,3 +667,22 @@ func TestRunGetList_IncludeRoutesElsewhere_UsageError(t *testing.T) {
 		}
 	})
 }
+
+// TestRunGetList_MissingResource_NamesEveryResource: a bare `get` or `list`
+// names every resource that verb accepts, including the ones outside respath.
+func TestRunGetList_MissingResource_NamesEveryResource(t *testing.T) {
+	for verb, want := range map[string]string{
+		"get":  "valid resources: inputs, outputs, groups, routes, chimes, info, master-mute, tts-cache\n",
+		"list": "valid resources: inputs, outputs, groups, routes, chimes, tts-voices\n",
+	} {
+		var stdout, stderr bytes.Buffer
+		code := run([]string{verb}, &stdout, &stderr)
+
+		if code != 2 {
+			t.Fatalf("%s: exit code = %d, want 2; stderr: %s", verb, code, stderr.String())
+		}
+		if !strings.HasSuffix(stderr.String(), want) {
+			t.Errorf("%s: stderr = %q, want suffix %q", verb, stderr.String(), want)
+		}
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/chimes"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/clihelp"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/groups"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/hubinfo"
@@ -44,6 +45,8 @@ Commands:
   unmute outputs|groups/<id>          Unmute an output or group
   get master-mute                     Fetch the system-wide master-mute state
   get info                            Show which hub is running and since when
+  list chimes                         List the chimes a route can start with
+  get chimes/<id>                     Fetch one chime
   mute all                            Mute all outputs system-wide
   unmute all                          Unmute all outputs system-wide
   set outputs/<id> volume <0-100>     Set an output's volume level
@@ -96,6 +99,7 @@ Examples:
   sonora mute outputs/office-speaker
   sonora unmute groups/living-room
   sonora get info
+  sonora list chimes
   sonora get master-mute
   sonora mute all
   sonora unmute all
@@ -621,6 +625,25 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 		}
 		return hubinfo.RunGet(args[1:], stdout, stderr)
 	}
+	// chimes is a collection keyed by id, addressed like outputs, but kept out
+	// of respath's resource kinds because a chime is never a play or route
+	// target.
+	if len(args) > 0 && args[0] == "chimes" {
+		return chimes.RunList(verb, args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && strings.HasPrefix(args[0], "chimes/") {
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not accept an id; use 'sonora get chimes/<id>' instead")
+			return 2
+		}
+		id := strings.TrimPrefix(args[0], "chimes/")
+		if !respath.ValidID(id) {
+			fmt.Fprintf(stderr, "sonora: malformed identifier %q in %q\n", id, args[0])
+			return 2
+		}
+		return chimes.RunGet(id, args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "master-mute" {
 		if verb == "list" {
 			fmt.Fprintln(stderr, usage)
@@ -659,7 +682,14 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: missing resource argument; valid resources: %s\n", strings.Join(respath.Names(), ", "))
+		// The respath kinds, then the resources this function routes itself.
+		valid := respath.Names()
+		if verb == "list" {
+			valid = append(valid, "chimes", "tts-voices")
+		} else {
+			valid = append(valid, "chimes", "info", "master-mute", "tts-cache")
+		}
+		fmt.Fprintf(stderr, "error: missing resource argument; valid resources: %s\n", strings.Join(valid, ", "))
 		return 2
 	}
 

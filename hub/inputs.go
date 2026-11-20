@@ -33,6 +33,11 @@ type Input struct {
 	// DUCK_OTHERS routes from this input whose request names none; nil when
 	// the input declares none.
 	DefaultDuckingLevelDb *float64 `json:"defaultDuckingLevelDb"`
+	// DefaultChime is the chime for routes from this input whose request
+	// names none, as configured: a chime id or ChimeNone; nil when the input
+	// declares none. An id the hub has not loaded is reported but ignored;
+	// compare with ListChimes.
+	DefaultChime *string `json:"defaultChime,omitempty"`
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
@@ -58,6 +63,11 @@ type CreateInputRequest struct {
 	// DUCK_OTHERS routes from this input whose request names none; other
 	// routes ignore it. Nil declares none.
 	DefaultDuckingLevelDb *float64 `json:"defaultDuckingLevelDb,omitempty"`
+	// DefaultChime is the chime for routes from this input whose request
+	// names none: a chime id from ListChimes, or ChimeNone for no chime
+	// whatever the target's setting. Nil declares none, and the target's
+	// chime decides. The hub answers 400 for an id it has not loaded.
+	DefaultChime *string `json:"defaultChime,omitempty"`
 }
 
 func validateInput(i Input) error {

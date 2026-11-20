@@ -28,6 +28,7 @@ func RenderYAML(outputs []hub.Output) string {
 		fmt.Fprintf(&b, "    muted: %t\n", o.Muted)
 		fmt.Fprintf(&b, "    available: %t\n", o.Available)
 		fmt.Fprintf(&b, "    enabled: %t\n", o.Enabled)
+		writeChime(&b, "    ", "chime", o.Chime)
 	}
 	return b.String()
 }
@@ -44,6 +45,7 @@ func RenderOutputYAML(o hub.Output) string {
 	fmt.Fprintf(&b, "muted: %t\n", o.Muted)
 	fmt.Fprintf(&b, "available: %t\n", o.Available)
 	fmt.Fprintf(&b, "enabled: %t\n", o.Enabled)
+	writeChime(&b, "", "chime", o.Chime)
 	return b.String()
 }
 

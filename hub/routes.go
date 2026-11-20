@@ -68,6 +68,11 @@ type CreateRouteRequest struct {
 	// mode is not DUCK_OTHERS. Nil leaves it to the hub: the input's
 	// default level, else the configured one.
 	DuckingLevelDb *float64 `json:"duckingLevelDb,omitempty"`
+	// Chime is the sound that plays before the route's audio: a chime id from
+	// ListChimes, or ChimeNone for no chime. Nil leaves it to the hub: the
+	// input's default chime, then the target's. The hub answers 400 for an id
+	// it has not loaded.
+	Chime *string `json:"chime,omitempty"`
 }
 
 // TransferRequest mirrors #/components/schemas/TransferRequest in

@@ -20,6 +20,10 @@ type Output struct {
 	Muted       bool   `json:"muted"`
 	Available   bool   `json:"available"`
 	Enabled     bool   `json:"enabled"`
+	// Chime is the chime that plays before a route starting on this output, as
+	// configured: a chime id or ChimeNone; nil when none is set. An id the hub
+	// has not loaded is reported but ignored; compare with ListChimes.
+	Chime *string `json:"chime,omitempty"`
 }
 
 // ListOutputs calls GET {baseURL}/api/v2/outputs, optionally including

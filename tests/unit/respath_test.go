@@ -165,3 +165,14 @@ func TestNames_EnumeratesCanonicalResources(t *testing.T) {
 		}
 	}
 }
+
+func TestValidID(t *testing.T) {
+	for id, want := range map[string]bool{
+		"cabin": true, "door_bell-2": true, strings.Repeat("a", 255): true,
+		"": false, "a.b": false, "a/b": false, strings.Repeat("a", 256): false,
+	} {
+		if got := respath.ValidID(id); got != want {
+			t.Errorf("ValidID(%q) = %t, want %t", id, got, want)
+		}
+	}
+}
