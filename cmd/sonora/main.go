@@ -682,7 +682,14 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, usage)
-		fmt.Fprintf(stderr, "error: missing resource argument; valid resources: %s\n", strings.Join(respath.Names(), ", "))
+		// The respath kinds, then the resources this function routes itself.
+		valid := respath.Names()
+		if verb == "list" {
+			valid = append(valid, "chimes", "tts-voices")
+		} else {
+			valid = append(valid, "chimes", "info", "master-mute", "tts-cache")
+		}
+		fmt.Fprintf(stderr, "error: missing resource argument; valid resources: %s\n", strings.Join(valid, ", "))
 		return 2
 	}
 

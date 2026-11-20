@@ -54,6 +54,9 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
    play or route target, so it stays out of the `respath` resource enum, and has no alias.
 8. `get outputs[/id]`, `get groups[/id]` print `chime:` and `get inputs[/id]` prints `defaultChime:` only
    when set, in YAML and JSON; output with no chime is byte-identical to today.
+9. `sonora get` and `sonora list` without a resource name every resource that verb accepts, not only the
+   four `respath` kinds: `get` adds `chimes`, `info`, `master-mute`, `tts-cache`; `list` adds `chimes`,
+   `tts-voices`. (Review finding; it predates chimes, which made the gap wider.)
 
 ## Plan
 
@@ -74,6 +77,7 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 - [x] Implement `--chime` in play and route; `internal/cli/chimes`; dispatch in `main.go`; renderers
 - [x] Implement `list chimes` and `get chimes/<id>`; README
 - [x] README and backlog updates
+- [x] Review fix: the missing-resource message of `get` and `list` names every resource for that verb
 - [x] `gofmt -l .`, `go vet ./...`, `go test ./...`
 
 ## Done When
