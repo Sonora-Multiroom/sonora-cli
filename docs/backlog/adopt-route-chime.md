@@ -1,32 +1,26 @@
-# Adopt HUB-040: a chime before a route
+# Adopt HUB-040 in sonora-mcp: a chime before a route
 
-**Status:** Proposed, not started.
+**Status:** Proposed, not started. The CLI half shipped (tinyspec `specs/tiny/route-chime.md`: the `hub`
+package, `--chime`, `get chimes`); what remains is the `sonora-mcp` bump.
 
 **Origin:** HUB-040 (API 0.1.34) lets a route start with a short sound. The hub's backlog item
 `route-chime.md` lists the clients as the next step.
 
-**Depends on:** hub 0.1.34 or later. `sonora-mcp` follows this item (it uses only the `hub` package).
+**Depends on:** a `sonora-cli` tag that contains the `hub` chime support.
 
 **Effort:** Small.
 
 ## Problem
 
-The CLI cannot ask for a chime, list the chimes a hub has, or show which output, group or input has one,
-so the feature can only be used by raw REST calls.
+`sonora-mcp` cannot ask for a chime or list the chimes a hub has, so an assistant cannot use the feature.
 
 ## Proposal
 
-- Re-fetch `api/openapi.json` (published as `api.Spec`) from a 0.1.34 hub and check the version it was
-  fetched at.
-- `hub` package: `chime` on the play and route calls; `chime` on outputs and groups and `defaultChime` on
-  inputs in the response types; `GET /api/v2/chimes` as a `Chimes` call. Absent means no setting, and
-  `none` means no chime.
-- Commands: `--chime <id|none>` on `sonora play` and `sonora route`; `sonora get chimes`; show the chime
-  columns in `get outputs`, `get groups` and `get inputs` only when set.
-- Release a tag, then bump `sonora-mcp` (`go get github.com/Sonora-Multiroom/sonora-cli@vX.Y.Z`) and add
-  a `chime` argument to its play tool.
+- In `sonora-mcp`, run `go get github.com/Sonora-Multiroom/sonora-cli@vX.Y.Z` and add a `chime` argument
+  to the play and route tools, and a tool that lists the chimes (`hub.ListChimes`). Absent means no
+  setting, and `none` means no chime.
+- Leave an unknown id to the hub's 400 (`Unknown chime: <id>`), as the CLI does.
 
 ## Open questions
 
-1. Should an unknown chime id be checked client-side against `GET /api/v2/chimes`, or left to the hub's
-   400 (`Unknown chime: <id>`)?
+1. Should the MCP tool descriptions list the loaded chime ids, or only point at the list tool?

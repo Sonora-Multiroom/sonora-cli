@@ -12,4 +12,4 @@ you add, ship or delete an item, update this list.
 
 | Priority | Item | Kind | Effort | Why this priority |
 |---|---|---|---|---|
-| P3 | [Adopt HUB-040: a chime before a route](adopt-route-chime.md) | API adoption | Small | The hub can start a route with a short sound, but no client can ask for one or list the chimes. `sonora-mcp` follows this item |
+| P3 | [Adopt HUB-040 in sonora-mcp: a chime before a route](adopt-route-chime.md) | API adoption | Small | The CLI can ask for a chime and list them; `sonora-mcp` still cannot. Needs a sonora-cli tag first |
