@@ -33,6 +33,12 @@ type PlaybackRequest struct {
 	// what else plays, in dB. The hub rejects it (400) for any other join
 	// mode. Nil uses the hub's configured level.
 	DuckingLevelDb *float64 `json:"duckingLevelDb,omitempty"`
+	// Chime is the sound that plays before the route's audio: a chime id from
+	// ListChimes, or ChimeNone for no chime. Nil leaves it to the hub: the
+	// input's default chime, then the target's. The hub answers 400 for an id
+	// it has not loaded. A chime is a request: the hub skips it when every
+	// target output is already playing.
+	Chime *string `json:"chime,omitempty"`
 }
 
 // PlaybackResponse mirrors #/components/schemas/PlaybackResponse in

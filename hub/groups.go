@@ -22,6 +22,11 @@ type Group struct {
 	// System is true for a group the hub maintains itself (the broadcast
 	// group); hubs before 0.1.33 omit it, which decodes to false.
 	System bool `json:"system"`
+	// Chime is the chime that plays before a route sent to this group, as
+	// configured: a chime id or ChimeNone; nil when none is set. Its members'
+	// own chimes are not used for such a route. An id the hub has not loaded
+	// is reported but ignored; compare with ListChimes.
+	Chime *string `json:"chime,omitempty"`
 }
 
 // ListGroups calls GET {baseURL}/api/v2/groups, optionally including
