@@ -324,7 +324,8 @@ T020, T026.
   imports `internal/`. Confirm that sonora-mcp's use of the diagnosis (`hub.DiagnosisHubAddress` and the
   other constants, `TTSUnavailableError.Diagnosis`) still compiles: in `D:\projects-sonora\sonora-mcp`,
   with a temporary, uncommitted `go.work` (or `replace`) pointing at this branch, run `go build ./...`
-  and `go test ./...`, then remove the temporary file. Record both results in `verification.md`.
+  and `go test ./...`, then remove the temporary file and confirm `git status --short` in sonora-mcp
+  is the same as before the check. Record both results in `verification.md`.
 
 **Checkpoint**: sonora-mcp can adopt the radio calls from the next minor tag.
 
@@ -336,10 +337,22 @@ T020, T026.
   (`search radio-stations "kiss fm" --country UA`, then `play radiobrowser://<uuid> outputs/office`),
   the search and tag flags, paging with `--limit`/`--offset` and `nextOffset`, the YAML and JSON output,
   the failure cases from `contracts/cli.md`, and that the commands need the hub's radio extension 0.2.0
-  or later; add exit code 15 ("radio is not available on this hub") to the "Exit codes" table.
-- [ ] T035 [P] Add a "Startup" line to `verification.md`: the `search` case and the radio name checks
-  add no work before argument parsing and no request before the radio request (Principle I, FR-013); no
-  benchmark is needed. Confirm by reading `run` and `dispatchGetList` in `cmd/sonora/main.go`.
+  or later. In the "Exit codes" table add row 15 ("radio is not available on this hub: the radio
+  extension isn't installed, active, or new enough to search"), and extend row 4 (radio commands, like
+  TTS ones, use it when the hub URL is not serving this API), row 5 (unknown radio station UUID), row 6
+  (a radio request the hub rejects), row 9 (the radio catalogue gave an unusable answer, 502) and row 10
+  (the radio catalogue is unavailable, 503, with the retry delay).
+- [ ] T035 [P] Add a "Self-review" section to `verification.md`, required by the constitution's
+  Development Workflow because this feature constructs HTTP clients (`hub.RadioTimeout`):
+  - Principle I: the `search` case and the radio name checks add no work before argument parsing and no
+    request before the radio request (FR-013); no benchmark is needed. Confirm by reading `run` and
+    `dispatchGetList` in `cmd/sonora/main.go`.
+  - Principle III: `go.mod` gained no dependency (`git diff main -- go.mod go.sum` is empty).
+  - Principle IV: every radio call and the diagnosis have an explicit timeout (10 s and 5 s); each
+    client is built once per command and reused; every failure path maps to a message and exit code
+    (cite the T015, T022, T028 cases); `--verbose` keeps the cause.
+  - Principle VI: every implementation task followed a test task seen failing (cite the order of
+    commits or the test runs).
 - [ ] T036 [P] Write the sonora-mcp backlog entry `D:\projects-sonora\sonora-mcp\docs\backlog\adopt-radio-search.md`
   following that repository's existing items (header block `Status`, `Origin`, `Depends on`, `Effort`;
   Problem, Proposal, Open questions) and add a row to its `docs/backlog/INDEX.md` (P3, "API adoption",

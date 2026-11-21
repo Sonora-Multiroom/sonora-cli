@@ -91,7 +91,7 @@ before playing it: name, homepage, tags, codec, bitrate, whether the catalogue's
 2. **Given** an unknown UUID, **When** the operator looks it up, **Then** the command fails as not found
    and names the UUID.
 3. **Given** a value that is not a UUID, **When** the operator looks it up, **Then** the command fails as
-   a usage error that shows the hub's message.
+   a validation error (exit 6) that shows the hub's message.
 
 ---
 
@@ -150,12 +150,12 @@ sent and the result decoded.
   that also answers 404 means the hub URL is wrong; an inventory that cannot be read leaves the plain
   "radio is not available" message.
 - The catalogue is unavailable (503 with a retry delay): the command fails, says the catalogue is
-  temporarily unavailable and when to retry. The catalogue answering badly (502) is reported as an
-  upstream failure.
-- A page size over 100 or a negative offset: rejected as a usage error. The hub refuses, never reduces,
-  an out-of-range value; the CLI does not quietly clamp it either.
-- An offset past the last result gives an empty page, not an error; an offset above the hub's limit is
-  the hub's 400, shown as a usage error.
+  temporarily unavailable and when to retry, or "retry later" when the hub gives no readable delay. The
+  catalogue answering badly (502) is reported as an upstream failure.
+- A page size outside 1–100 or an offset outside 0–10000 (the hub's limits): rejected by the CLI as a
+  usage error (exit 2) before any request. The hub refuses, never reduces, an out-of-range value; the
+  CLI does not quietly clamp it either.
+- An offset past the last result gives an empty page, not an error.
 - Station names, tags and addresses are community-edited text: they are printed as plain text and cannot
   move the cursor, change colours or clear the terminal.
 - Absent station fields (no codec, no country, no homepage) are shown as null, not as zero or empty
@@ -191,10 +191,11 @@ sent and the result decoded.
 - **FR-008**: The CLI MUST offer `sonora get radio-stations/<uuid>`, which shows one station.
 - **FR-009**: The CLI MUST offer `sonora get radio-countries`, `sonora get radio-languages` and
   `sonora get radio-tags`; the tag command MUST accept a name filter, page size and offset.
-- **FR-010**: Every radio command MUST validate page size (1–100) and offset (not negative) before any
-  request, and map hub answers to exit codes: 400 is a usage error with the hub's message, 404 is not
-  found (station) or "radio is not available" with its reason, 502 and 503 are API errors, 503 with its
-  retry delay.
+- **FR-010**: Every radio command that pages MUST validate page size (1–100) and offset (0–10000)
+  before any request, a failure being a usage error (exit 2). Hub answers MUST map to exit codes: 400 is
+  a validation error (exit 6) with the hub's message; 404 is not found (exit 5, station) or "radio is
+  not available" with its reason (exit 15); 502 is an upstream failure (exit 9); 503 is temporarily
+  unavailable (exit 10) with its retry delay.
 - **FR-011**: Every text value from the catalogue MUST be printed with control and escape characters
   neutralised.
 - **FR-012**: The radio commands MUST follow the existing conventions: verb-first command shape, strict
@@ -233,8 +234,8 @@ sent and the result decoded.
   an automated test with such text.
 - **SC-005**: No radio command produces sound or changes any speaker, output, group, input or route;
   verified by running them against the live hub with nothing new playing afterwards.
-- **SC-006**: Each failure listed in the acceptance scenarios and edge cases gives a distinct message and
-  a non-zero exit code, covered by an automated test.
+- **SC-006**: Each other failure listed in the acceptance scenarios and edge cases gives a distinct
+  message and a non-zero exit code, covered by an automated test.
 
 ## Assumptions
 

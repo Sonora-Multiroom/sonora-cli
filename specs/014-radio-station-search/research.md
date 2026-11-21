@@ -12,7 +12,8 @@ repository's code on 2026-11-21. No item was left open.
   `RadioStation`, `RadioStationPage`, `RadioCountry`, `RadioLanguage`, `RadioTag`, `RadioTagPage`,
   `RadioProblem`, matching the extension's 0.2.0 contract field for field. The 503's `Retry-After` is
   named in the response description only, not declared as a header; reading it is still described
-  behaviour (Principle II), and the extension contract declares it.
+  behaviour (Principle II), and the extension contract declares it. When the hub's own `/api-docs` next
+  declares it as a header, the refreshed copy needs no code change.
 - **Alternatives**: re-fetch from `multiroom.lan`: no change expected, and FR-014 asks only for a refresh
   when a shape is missing.
 
