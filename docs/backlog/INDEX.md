@@ -12,3 +12,4 @@ you add, ship or delete an item, update this list.
 
 | Priority | Item | Kind | Effort | Why this priority |
 |---|---|---|---|---|
+| P4 | [Remove the deprecated `TTSDiagnosis` alias](remove-tts-diagnosis-alias.md) | Cleanup | Small | Only after sonora-mcp has adopted the release with `ExtensionDiagnosis` |

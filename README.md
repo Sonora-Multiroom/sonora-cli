@@ -59,6 +59,9 @@ table, common flags, and examples from the terminal.
 | `clear tts-cache [--provider]` | clear TTS audio-cache entries (hub TTS extension) | — |
 | `list tts-voices --provider <name>` | a TTS provider's voices (hub TTS extension) | — |
 | `warm tts-cache <text\|->` | synthesize a phrase into the TTS cache, playing nothing (hub 0.1.33+, TTS extension) | — |
+| `search radio-stations [name]` | search the radio catalogue (hub radio extension 0.2.0+) | — |
+| `get radio-stations/<uuid>` | one radio station | — |
+| `list radio-countries`, `radio-languages`, `radio-tags` | browse the catalogue (`get` works too) | — |
 
 `get <resource>` (no id) and `list <resource>` return the collection; `get <resource>/<id>`
 returns a single item by id. `list` is an exact synonym of `get` for the collection form —
@@ -260,7 +263,39 @@ sonora get tts-cache
 sonora clear tts-cache --provider openai
 sonora warm tts-cache "Dinner is ready" --provider piper-local
 sonora list tts-voices --provider google --language uk-UA
+sonora search radio-stations "kiss fm" --country UA
+sonora get radio-stations/9617a958-0601-11e8-ae97-52543be04c81
+sonora list radio-tags --name jazz
 ```
+
+### Radio
+
+The hub's radio extension (0.2.0 or later) can search the radio-browser.info catalogue, so you can find a
+station without leaving the terminal. Every command makes one request, is read-only, and prints every
+field, as YAML by default or JSON with `--json`.
+
+```sh
+sonora search radio-stations "kiss fm" --country UA   # find it; the output has each station's uuid and uri
+sonora play radiobrowser://9617a958-0601-11e8-ae97-52543be04c81 outputs/office
+```
+
+- `search radio-stations [name]` takes the part of the name to match (any letter case) and the filters
+  `--tag`, `--country` (ISO 3166-1 alpha-2 code), `--language`, `--codec` and `--min-bitrate`. `tag` and
+  `language` match a whole value, so take them from `list radio-tags` and `list radio-languages`.
+  `--order name|votes|clickCount|bitrate` with `--asc` or `--desc` sorts. With no filters the hub returns its 20
+  most-voted stations. A filter you leave out is not sent, so the hub's default applies.
+- Results come in pages: `--limit` (1-100, default 20) and `--offset` (0-10000). The output ends with
+  `nextOffset`, the offset of the next page, or `null` on the last one; pass it as `--offset` for more.
+- `get radio-stations/<uuid>` shows one station, even one the catalogue marks broken (`lastCheckOk: false`).
+  A bare `get radio-stations` is a usage error: use `search`.
+- `list radio-countries` and `list radio-languages` list the whole catalogue, largest first. `list radio-tags`
+  takes `--name TEXT`, `--limit` and `--offset`, and ends with `nextOffset` like a search.
+- Station names, tags and addresses are community text. They are printed escaped, so they cannot change your
+  terminal.
+- Failures: the hub's message for a refused request (exit 6), `radio station not found` (exit 5), an unusable
+  catalogue answer (exit 9), the catalogue being unavailable with the delay to wait (exit 10), and, when the
+  hub does not serve radio, the reason (exit 15): the extension is not installed, is disabled, failed to load,
+  is inactive, or is older than 0.2.0.
 
 ### Chimes
 
@@ -293,16 +328,17 @@ it upper-cased; any other value is a usage error (exit 2) and sends nothing. Joi
 | 0 | success |
 | 2 | usage error (bad arguments, missing/invalid flags) |
 | 3 | hub returned an unexpected or malformed response |
-| 4 | network error — hub unreachable, timed out, or (for TTS commands) not serving this API |
-| 5 | resource not found (including TTS `PROVIDER_NOT_FOUND`) |
-| 6 | validation error (rejected request, including TTS `INVALID_REQUEST`) |
+| 4 | network error — hub unreachable, timed out, or (for TTS and radio commands) not serving this API |
+| 5 | resource not found (including TTS `PROVIDER_NOT_FOUND` and an unknown radio station UUID) |
+| 6 | validation error (rejected request, including TTS `INVALID_REQUEST` and a radio request the hub rejects) |
 | 8 | route operation failed (422) |
-| 9 | audio source unreachable (502) |
-| 10 | service temporarily unavailable (503, including TTS provider timeout/rate-limit/error) |
+| 9 | audio source unreachable (502); for radio, the catalogue gave an unusable answer |
+| 10 | service temporarily unavailable (503, including TTS provider timeout/rate-limit/error); for radio, the catalogue is unavailable, with the delay to wait |
 | 11 | input not found (route commands) |
 | 12 | target not found (route commands, including TTS `TARGET_NOT_FOUND`) |
 | 13 | TTS not available — the hub's TTS extension isn't installed, active, or hub-version-compatible |
 | 14 | the hub refused for its current state (409), e.g. a disabled input, output or group, a route limit, or an input already on the output — change that state and retry; a refusal because a route is still adding an output clears by itself, and `transfer` retries it for a moment |
+| 15 | radio is not available — the hub's radio extension isn't installed, active, or new enough to search |
 
 ## Configuration
 

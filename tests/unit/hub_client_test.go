@@ -636,3 +636,100 @@ func TestClassifyError_TTSError_CacheWriteFailed(t *testing.T) {
 		t.Errorf("got message %q, want %q", msg, want)
 	}
 }
+
+const radioProblemPrefix = "urn:multiroom:radio:error:"
+
+func TestClassifyError_Radio(t *testing.T) {
+	cases := []struct {
+		name      string
+		err       error
+		wantClass hub.ErrorClass
+		wantMsg   string
+	}{
+		{
+			name: "invalid-parameter",
+			err: &hub.APIError{StatusCode: 400, Type: radioProblemPrefix + "invalid-parameter",
+				Detail: "limit must be between 1 and 100", Parameter: "limit"},
+			wantClass: hub.ClassValidation,
+			wantMsg:   "limit must be between 1 and 100",
+		},
+		{
+			name: "catalogue-bad-answer",
+			err: &hub.APIError{StatusCode: 502, Type: radioProblemPrefix + "catalogue-bad-answer",
+				Detail: "the catalogue answered with a list of 3 where an object was expected"},
+			wantClass: hub.ClassSourceUnreachable,
+			wantMsg:   "the radio catalogue gave an unusable answer: the catalogue answered with a list of 3 where an object was expected",
+		},
+		{
+			name: "catalogue-unavailable with Retry-After",
+			err: &hub.APIError{StatusCode: 503, Type: radioProblemPrefix + "catalogue-unavailable",
+				Detail: "timed out", RetryAfter: 30 * time.Second},
+			wantClass: hub.ClassServiceUnavailable,
+			wantMsg:   "the radio catalogue is unavailable; retry in 30 s",
+		},
+		{
+			name: "catalogue-unavailable without Retry-After",
+			err: &hub.APIError{StatusCode: 503, Type: radioProblemPrefix + "catalogue-unavailable",
+				Detail: "timed out"},
+			wantClass: hub.ClassServiceUnavailable,
+			wantMsg:   "the radio catalogue is unavailable; retry later",
+		},
+		{
+			name:      "internal-error",
+			err:       &hub.APIError{StatusCode: 500, Type: radioProblemPrefix + "internal-error", Detail: "something broke"},
+			wantClass: hub.ClassHub,
+			wantMsg:   "something broke",
+		},
+		{
+			name:      "radio not offered",
+			err:       &hub.RadioNotOfferedError{},
+			wantClass: hub.ClassRadioUnavailable,
+			wantMsg:   "radio is not available on this hub",
+		},
+		{
+			name:      "radio unavailable, hub address",
+			err:       &hub.RadioUnavailableError{Diagnosis: hub.DiagnosisHubAddress, BaseURL: "http://x.invalid"},
+			wantClass: hub.ClassNetwork,
+			wantMsg:   "http://x.invalid is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded",
+		},
+		{
+			name:      "radio unavailable, disabled",
+			err:       &hub.RadioUnavailableError{Diagnosis: hub.DiagnosisDisabled},
+			wantClass: hub.ClassRadioUnavailable,
+			wantMsg:   "radio is not available on this hub: the radio extension is installed but disabled in the hub's configuration",
+		},
+		{
+			name:      "core 502 without a radio type keeps today's message",
+			err:       &hub.APIError{StatusCode: 502, Detail: "x"},
+			wantClass: hub.ClassSourceUnreachable,
+			wantMsg:   "the audio source could not be reached",
+		},
+		{
+			name:      "core 503 with a non-radio type keeps today's message",
+			err:       &hub.APIError{StatusCode: 503, Type: "urn:multiroom:other", Detail: "x"},
+			wantClass: hub.ClassServiceUnavailable,
+			wantMsg:   "the hub's playback service is temporarily unavailable",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			class, msg := hub.ClassifyError(c.err)
+			if class != c.wantClass || msg != c.wantMsg {
+				t.Errorf("ClassifyError = (%v, %q), want (%v, %q)", class, msg, c.wantClass, c.wantMsg)
+			}
+		})
+	}
+}
+
+func TestClassifyError_Radio_WrappedErrorsFound(t *testing.T) {
+	err := fmt.Errorf("wrapped: %w", &hub.RadioNotOfferedError{})
+	if class, _ := hub.ClassifyError(err); class != hub.ClassRadioUnavailable {
+		t.Errorf("class = %v, want ClassRadioUnavailable", class)
+	}
+}
+
+func TestClassRadioUnavailable_AfterClassConflict(t *testing.T) {
+	if hub.ClassRadioUnavailable <= hub.ClassConflict {
+		t.Errorf("ClassRadioUnavailable (%d) must come after ClassConflict (%d)", hub.ClassRadioUnavailable, hub.ClassConflict)
+	}
+}

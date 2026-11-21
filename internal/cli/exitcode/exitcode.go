@@ -36,6 +36,8 @@ func For(c hub.ErrorClass) int {
 		return 13
 	case hub.ClassConflict:
 		return 14
+	case hub.ClassRadioUnavailable:
+		return 15
 	default:
 		return 0
 	}

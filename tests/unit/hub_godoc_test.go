@@ -119,3 +119,27 @@ func TestHubGodoc(t *testing.T) {
 		t.Error(v)
 	}
 }
+
+// TestHubGodoc_TTSDiagnosisAliasIsDeprecated checks that the old diagnosis
+// name stays as an alias and carries a Deprecated paragraph naming its
+// replacement, so tools flag it for consumers still using it.
+func TestHubGodoc_TTSDiagnosisAliasIsDeprecated(t *testing.T) {
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, "../../hub", func(fi os.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	docPkg := doc.New(pkgs["hub"], "./", doc.AllDecls|doc.PreserveAST)
+	for _, tp := range docPkg.Types {
+		if tp.Name != "TTSDiagnosis" {
+			continue
+		}
+		if !strings.Contains(tp.Doc, "\nDeprecated: use ExtensionDiagnosis.") {
+			t.Errorf("TTSDiagnosis doc lacks a Deprecated: paragraph naming ExtensionDiagnosis:\n%s", tp.Doc)
+		}
+		return
+	}
+	t.Error("hub.TTSDiagnosis not found")
+}
