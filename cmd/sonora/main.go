@@ -15,6 +15,7 @@ import (
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/mastermute"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/outputs"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/play"
+	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/radio"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/respath"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/route"
 	"github.com/Sonora-Multiroom/sonora-cli/internal/cli/routes"
@@ -52,6 +53,11 @@ Commands:
   set outputs/<id> volume <0-100>     Set an output's volume level
   set groups/<id> volume <0-100>      Set a group's volume level
   set routes/<id> volume <0-100>      Set one route's own volume
+  search radio-stations [name]        Search the hub's radio catalogue
+  get radio-stations/<uuid>           Fetch one radio station
+  list radio-countries                List radio catalogue countries
+  list radio-languages                List radio catalogue languages
+  list radio-tags [--name TEXT]       List radio catalogue tags
   get tts-cache                       Fetch TTS audio-cache statistics
   clear tts-cache                     Clear the TTS audio cache
   warm tts-cache <text|->             Cache a phrase without playing it
@@ -103,6 +109,7 @@ Examples:
   sonora get master-mute
   sonora mute all
   sonora unmute all
+  sonora search radio-stations "kiss fm" --country UA
   sonora get tts-cache
   sonora clear tts-cache --provider openai
   sonora warm tts-cache "Dinner is ready" --provider piper-local
@@ -146,6 +153,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "get", "list":
 		return dispatchGetList(args[0], args[1:], stdout, stderr)
+	case "search":
+		return dispatchSearch(args[1:], stdout, stderr)
 	case "create":
 		return dispatchCreate(args[1:], stdout, stderr)
 	case "delete":
@@ -558,6 +567,22 @@ func dispatchSet(args []string, stdout, stderr io.Writer) int {
 	return outputs.RunSetVolume(callArgs, stdout, stderr)
 }
 
+// dispatchSearch resolves the argument following `search`: the only resource it
+// supports is the literal keyword `radio-stations`. Any other argument, or
+// none, is a usage error naming it as the only supported resource.
+func dispatchSearch(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "radio-stations" {
+		return radio.RunSearch(args[1:], stdout, stderr)
+	}
+	if clihelp.Requested(args) {
+		fmt.Fprintln(stdout, radio.SearchUsage)
+		return 0
+	}
+	fmt.Fprintln(stderr, radio.SearchUsage)
+	fmt.Fprintln(stderr, "error: search supports only radio-stations")
+	return 2
+}
+
 // dispatchClear resolves the argument following `clear` — the only resource
 // `clear` currently supports is the literal keyword `tts-cache` (FR-007),
 // not a respath-addressable resource, so this dispatcher checks for that
@@ -593,6 +618,64 @@ func dispatchWarm(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintln(stderr, usage)
 	fmt.Fprintln(stderr, "error: warm supports only tts-cache")
 	return 2
+}
+
+// dispatchRadio routes the radio nouns of `get`/`list`, which are kept out of
+// respath's resource kinds because none is ever a play or route target. It
+// reports handled=false for any other first argument.
+func dispatchRadio(verb string, args []string, usage string, stdout, stderr io.Writer) (code int, handled bool) {
+	if len(args) == 0 {
+		return 0, false
+	}
+	// radio-countries, radio-languages and radio-tags: a collection with no id.
+	if run := radioCollection(args[0]); run != nil {
+		if strings.Contains(args[0], "/") {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintf(stderr, "error: %s takes no id; use 'sonora %s %s' instead\n", args[0], verb, strings.SplitN(args[0], "/", 2)[0])
+			return 2, true
+		}
+		return run(verb, args[1:], stdout, stderr), true
+	}
+	switch {
+	case args[0] == "radio-stations":
+		// A station is found by searching, never by listing the whole catalogue.
+		if clihelp.Requested(args) {
+			fmt.Fprintln(stdout, radio.StationUsage)
+			return 0, true
+		}
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: use 'sonora search radio-stations' to find stations")
+		return 2, true
+	case strings.HasPrefix(args[0], "radio-stations/"):
+		if verb == "list" {
+			fmt.Fprintln(stderr, usage)
+			fmt.Fprintln(stderr, "error: list does not accept an id; use 'sonora get radio-stations/<uuid>' instead")
+			return 2, true
+		}
+		id := strings.TrimPrefix(args[0], "radio-stations/")
+		if id == "" || strings.Contains(id, "/") {
+			fmt.Fprintln(stderr, radio.StationUsage)
+			fmt.Fprintf(stderr, "error: expected radio-stations/<uuid> with one uuid, got %q\n", args[0])
+			return 2, true
+		}
+		return radio.RunGetStation(id, args[1:], stdout, stderr), true
+	}
+	return 0, false
+}
+
+// radioCollection returns the handler of a radio collection noun, with or
+// without an id segment (which the caller rejects), or nil for any other word.
+func radioCollection(arg string) func(verb string, args []string, stdout, stderr io.Writer) int {
+	noun, _, _ := strings.Cut(arg, "/")
+	switch noun {
+	case "radio-countries":
+		return radio.RunCountries
+	case "radio-languages":
+		return radio.RunLanguages
+	case "radio-tags":
+		return radio.RunTags
+	}
+	return nil
 }
 
 // dispatchGetList resolves the resource-path argument following `get`/`list`
@@ -643,6 +726,9 @@ func dispatchGetList(verb string, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return chimes.RunGet(id, args[1:], stdout, stderr)
+	}
+	if code, handled := dispatchRadio(verb, args, usage, stdout, stderr); handled {
+		return code
 	}
 	if len(args) > 0 && args[0] == "master-mute" {
 		if verb == "list" {
