@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -419,27 +418,17 @@ func (e *TTSNotOfferedError) Error() string {
 	return "the hub's TTS extension is not offering this operation"
 }
 
-// TTSDiagnosis explains why the TTS extension is unavailable, as determined
-// by inspecting the hub's extension inventory (ListExtensions) after a
-// *TTSNotOfferedError.
-type TTSDiagnosis int
-
-const (
-	DiagnosisUnknown TTSDiagnosis = iota
-	DiagnosisNotInstalled
-	DiagnosisDisabled
-	DiagnosisRejected
-	DiagnosisInert
-	DiagnosisVersionMismatch
-	DiagnosisHubAddress
-)
+// TTSDiagnosis is the former name of ExtensionDiagnosis.
+//
+// Deprecated: use ExtensionDiagnosis. This alias will be removed in a later release.
+type TTSDiagnosis = ExtensionDiagnosis
 
 // TTSUnavailableError is the user-facing "TTS not available" failure. It
 // carries the diagnosed reason (Diagnosis) and is built by
 // DiagnoseTTSUnavailable, not returned directly by a hub API call — the
 // success path never triggers that diagnosis.
 type TTSUnavailableError struct {
-	Diagnosis       TTSDiagnosis
+	Diagnosis       ExtensionDiagnosis
 	Reason          string
 	LoadingDisabled bool
 	BaseURL         string
@@ -450,7 +439,7 @@ type TTSUnavailableError struct {
 // the diagnosis.
 func (e *TTSUnavailableError) Error() string {
 	if e.Diagnosis == DiagnosisHubAddress {
-		return fmt.Sprintf("%s is not serving the Multiroom Audio Hub API: the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded", e.BaseURL)
+		return hubAddressMessage(e.BaseURL)
 	}
 
 	const head = "text-to-speech is not available on this hub"
@@ -486,37 +475,12 @@ func (e *TTSUnavailableError) Unwrap() error { return e.Cause }
 // DiagnosisHubAddress, and any other inventory failure gives DiagnosisUnknown
 // with that failure as Cause.
 func DiagnoseTTSUnavailable(ctx context.Context, client *http.Client, baseURL string) *TTSUnavailableError {
-	inv, err := ListExtensions(ctx, client, baseURL)
-	if err != nil {
-		var statusErr *StatusError
-		if errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusNotFound {
-			return &TTSUnavailableError{Diagnosis: DiagnosisHubAddress, BaseURL: baseURL}
-		}
-		return &TTSUnavailableError{Diagnosis: DiagnosisUnknown, Cause: err}
+	f := diagnoseExtension(ctx, client, baseURL, "tts")
+	e := &TTSUnavailableError{
+		Diagnosis: f.Diagnosis, Reason: f.Reason, LoadingDisabled: f.LoadingDisabled, Cause: f.Cause,
 	}
-
-	for _, ext := range inv.Extensions {
-		if ext.ID != "tts" {
-			continue
-		}
-		switch ext.Status {
-		case "DISABLED":
-			return &TTSUnavailableError{Diagnosis: DiagnosisDisabled}
-		case "REJECTED":
-			reason := ""
-			if ext.RejectionReason != nil {
-				reason = SingleLine(*ext.RejectionReason)
-			}
-			return &TTSUnavailableError{Diagnosis: DiagnosisRejected, Reason: reason}
-		case "INERT":
-			return &TTSUnavailableError{Diagnosis: DiagnosisInert}
-		case "ACTIVE":
-			return &TTSUnavailableError{Diagnosis: DiagnosisVersionMismatch}
-		default:
-			return &TTSUnavailableError{Diagnosis: DiagnosisUnknown}
-		}
+	if f.Diagnosis == DiagnosisHubAddress {
+		e.BaseURL = baseURL
 	}
-
-	loadingDisabled := inv.LoadingEnabled != nil && !*inv.LoadingEnabled
-	return &TTSUnavailableError{Diagnosis: DiagnosisNotInstalled, LoadingDisabled: loadingDisabled}
+	return e
 }

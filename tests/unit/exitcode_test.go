@@ -54,3 +54,17 @@ func TestExitcodeFor_Distinct(t *testing.T) {
 		}
 	}
 }
+
+func TestExitcodeFor_RadioUnavailable(t *testing.T) {
+	if got := exitcode.For(hub.ClassRadioUnavailable); got != 15 {
+		t.Errorf("exitcode.For(ClassRadioUnavailable) = %d, want 15", got)
+	}
+	if hub.ClassRadioUnavailable <= hub.ClassConflict {
+		t.Errorf("ClassRadioUnavailable must be numerically after ClassConflict")
+	}
+	for _, c := range []hub.ErrorClass{hub.ClassTTSUnavailable, hub.ClassConflict} {
+		if exitcode.For(c) == 15 {
+			t.Errorf("class %v reuses exit code 15", c)
+		}
+	}
+}

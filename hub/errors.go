@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 )
 
 // ErrorClass classifies a failure returned by a hub API call into a coarse
@@ -30,6 +31,10 @@ const (
 	// ClassConflict: the hub refused the request in its current state (409),
 	// for example a disabled target; change that state and retry.
 	ClassConflict
+	// ClassRadioUnavailable: the hub does not serve the radio catalogue API (the
+	// radio extension is missing, disabled, failed to load, inactive, or too old
+	// to search stations).
+	ClassRadioUnavailable
 )
 
 // StatusError indicates the hub responded with a non-2xx HTTP status.
@@ -91,6 +96,15 @@ type APIError struct {
 	// route refusal. Empty for INPUT_DISABLED, GROUP_DISABLED,
 	// ROUTE_CHANGING_OUTPUTS and every other error.
 	OutputID string
+	// Type is the problem's "type" member, for example
+	// "urn:multiroom:radio:error:invalid-parameter". Empty when the body has none.
+	Type string
+	// Parameter names the query or path parameter an invalid-parameter problem
+	// is about. Empty on every other error.
+	Parameter string
+	// RetryAfter is the delay the hub's Retry-After header asked for, in whole
+	// seconds. Zero when the header is absent or not an integer.
+	RetryAfter time.Duration
 }
 
 // ReasonRouteChangingOutputs is the APIError.Reason of a transfer refused while the
@@ -133,6 +147,19 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 		return ClassTTSUnavailable, unavailErr.Error()
 	}
 
+	var radioUnavail *RadioUnavailableError
+	if errors.As(err, &radioUnavail) {
+		if radioUnavail.Diagnosis == DiagnosisHubAddress {
+			return ClassNetwork, radioUnavail.Error()
+		}
+		return ClassRadioUnavailable, radioUnavail.Error()
+	}
+
+	var radioNotOffered *RadioNotOfferedError
+	if errors.As(err, &radioNotOffered) {
+		return ClassRadioUnavailable, "radio is not available on this hub"
+	}
+
 	var infoNotOffered *InfoNotOfferedError
 	if errors.As(err, &infoNotOffered) {
 		return ClassHub, "this hub does not offer hub info (needs hub 0.1.33 or later)"
@@ -172,6 +199,9 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	}
 
 	var apiErr *APIError
+	if errors.As(err, &apiErr) && strings.HasPrefix(apiErr.Type, radioProblemPrefix) {
+		return classifyRadioProblem(apiErr)
+	}
 	if errors.As(err, &apiErr) {
 		msg := apiErr.Detail
 		if msg == "" {
@@ -231,6 +261,41 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 	}
 
 	return ClassNetwork, "could not reach the hub"
+}
+
+// radioProblemPrefix starts the "type" of every problem the radio extension
+// answers with.
+const radioProblemPrefix = "urn:multiroom:radio:error:"
+
+// classifyRadioProblem maps a radio extension problem onto a class and message.
+func classifyRadioProblem(e *APIError) (ErrorClass, string) {
+	detail := e.Detail
+	if detail == "" {
+		detail = e.Title
+	}
+	switch strings.TrimPrefix(e.Type, radioProblemPrefix) {
+	case "invalid-parameter":
+		if detail == "" {
+			detail = "the request was rejected as invalid"
+		}
+		return ClassValidation, detail
+	case "catalogue-bad-answer":
+		msg := "the radio catalogue gave an unusable answer"
+		if detail != "" {
+			msg += ": " + detail
+		}
+		return ClassSourceUnreachable, msg
+	case "catalogue-unavailable":
+		if secs := int64(e.RetryAfter / time.Second); secs > 0 {
+			return ClassServiceUnavailable, fmt.Sprintf("the radio catalogue is unavailable; retry in %d s", secs)
+		}
+		return ClassServiceUnavailable, "the radio catalogue is unavailable; retry later"
+	default:
+		if detail == "" {
+			detail = fmt.Sprintf("hub reported an error (HTTP %d)", e.StatusCode)
+		}
+		return ClassHub, detail
+	}
 }
 
 // conflictMessage is ClassifyError's message for a 409 whose body gives no
