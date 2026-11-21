@@ -104,6 +104,22 @@ tests/
 README.md                        # modified: radio commands, needs radio 0.2.0, exit code 15
 ```
 
+### Follow-up records (must become tasks)
+
+`/speckit-tasks` MUST turn these into tasks in the final phase, after the README:
+
+1. **sonora-mcp backlog entry** `sonora-mcp/docs/backlog/adopt-radio-search.md` (and a row in its
+   `INDEX.md`): after this feature's tag, bump `sonora-cli`, add radio search and browse tools
+   (`SearchStations`, `Station`, `Countries`, `Languages`, `Tags`), map `ClassRadioUnavailable` and the
+   `*hub.RadioUnavailableError` reasons onto its error categories, and use `hub.ExtensionDiagnosis`
+   wherever a diagnosis type is named, never `hub.TTSDiagnosis`. Note that on 2026-11-21 sonora-mcp names
+   only the `Diagnosis*` constants and the `Diagnosis` field, not the type, so the switch is a check plus
+   any new code written against the new name.
+2. **sonora-cli backlog entry** `docs/backlog/remove-tts-diagnosis-alias.md` (and a row in `INDEX.md`):
+   remove the deprecated `TTSDiagnosis` alias once sonora-mcp has adopted the release that introduces
+   `ExtensionDiagnosis`. Depends on item 1; a breaking change in `hub/`, so it goes in the release notes
+   (Principle VII).
+
 **Structure Decision**: the existing layout. The radio commands share one failure path, so they live in
 one `internal/cli/radio` package, as the TTS commands do in `internal/cli/tts`.
 

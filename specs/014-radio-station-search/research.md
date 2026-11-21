@@ -114,8 +114,9 @@ mapping for the extension id `radio`.
 
 - **Decision**:
   - Rename the diagnosis type to `ExtensionDiagnosis` and keep `TTSDiagnosis` as a type alias
-    (`type TTSDiagnosis = ExtensionDiagnosis`), so the constants (`DiagnosisNotInstalled`, …) and every
-    existing caller compile unchanged.
+    (`type TTSDiagnosis = ExtensionDiagnosis`) marked `Deprecated:`, so the constants
+    (`DiagnosisNotInstalled`, …) and every existing caller compile unchanged and tools flag the old
+    name. The alias is removed once sonora-mcp has moved (plan, "Follow-up records").
   - Move the inventory walk into an unexported `diagnoseExtension(ctx, client, baseURL, id)`, used by
     `DiagnoseTTSUnavailable` and a new `DiagnoseRadioUnavailable`. Behaviour for TTS stays byte-for-byte
     the same (its tests are the guard).

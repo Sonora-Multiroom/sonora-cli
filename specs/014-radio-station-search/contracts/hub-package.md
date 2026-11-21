@@ -70,8 +70,12 @@ func DiagnoseRadioUnavailable(ctx context.Context, client *http.Client, baseURL 
 ## Changed, backward compatible
 
 ```go
-// ExtensionDiagnosis explains why an extension's API is not served. TTSDiagnosis is kept as an alias.
+// ExtensionDiagnosis explains why an extension's API is not served.
 type ExtensionDiagnosis int
+
+// TTSDiagnosis is the former name of ExtensionDiagnosis.
+//
+// Deprecated: use ExtensionDiagnosis. This alias will be removed in a later release.
 type TTSDiagnosis = ExtensionDiagnosis
 
 type APIError struct {
