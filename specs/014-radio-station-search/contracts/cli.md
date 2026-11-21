@@ -66,7 +66,7 @@ Output `tags:` list of `{name, stationCount}` and `nextOffset`, as for search.
 | hub 400 `invalid-parameter` | 6 | `error: <hub detail> (hub URL: …)` |
 | hub 404 `station-not-found` | 5 | `error: radio station not found: <uuid> (hub URL: …)` |
 | hub 502 `catalogue-bad-answer` | 9 | `error: the radio catalogue gave an unusable answer: <detail> (hub URL: …)` |
-| hub 503 `catalogue-unavailable` | 10 | `error: the radio catalogue is unavailable; retry in 30 s (hub URL: …)` |
+| hub 503 `catalogue-unavailable` | 10 | `error: the radio catalogue is unavailable; retry in 30 s (hub URL: …)` (`retry later` without a readable `Retry-After`) |
 | radio not served (any other 404) | 15 | `error: radio is not available on this hub: <reason> (hub URL: …)` |
 | … and the inventory also 404 | 4 | `error: <url> is not serving the Multiroom Audio Hub API: …; set the correct address with --hub-url, MULTIROOM_URL, or the config file` |
 | other radio problem (500, 405) | 3 | `error: <hub detail> (hub URL: …)` |
