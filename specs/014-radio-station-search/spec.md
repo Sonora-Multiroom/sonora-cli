@@ -158,7 +158,7 @@ sent and the result decoded.
   the hub's 400, shown as a usage error.
 - Station names, tags and addresses are community-edited text: they are printed as plain text and cannot
   move the cursor, change colours or clear the terminal.
-- Absent station fields (no codec, no country, no homepage) are shown as absent, not as zero or empty
+- Absent station fields (no codec, no country, no homepage) are shown as null, not as zero or empty
   text.
 - A 200 answer whose body is not the declared shape is a malformed-response error.
 - The hub is unreachable: the same unreachable-hub error and exit code as every other command.
