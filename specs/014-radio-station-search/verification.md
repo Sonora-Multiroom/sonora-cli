@@ -96,3 +96,16 @@ Binary built from this branch; hub radio extension answered. Each step was one r
 
 Not run: the "not available" reasons (step 6: needs the extension disabled and a hub restart) and
 SC-001 (playing a found station: makes sound; needs the user's permission under the production rules).
+
+## Re-verification (2026-11-21)
+
+- `gofmt -l .` no output; `go vet ./...` exit 0; `go test ./...` exit 0 (contract, integration, unit,
+  `cmd/sonora` all ok); no tracked file `w/crlf`; working tree clean before this note.
+- Live read-only steps 1 to 5 and 7 of the quickstart repeated on `multiroom.lan` with a fresh build: same
+  results as above (exit 5 for the zero UUID, exit 6 for `not-a-uuid`, exit 2 for `--limit 101`, `get routes`
+  identical before and after).
+- SC-001 (user allowed production): office was volume 30, unmuted, enabled, no routes.
+  `sonora play radiobrowser://bd9c1301-562d-451f-94bf-6a76e3bb898e outputs/office --route-volume 15 --chime none`
+  (Kiss FM 106.5, the uuid from a search) started route `route-4d11ff87ab6d`, ACTIVE. Stopped with
+  `delete routes/route-4d11ff87ab6d`; no routes left, the auto-remove input is gone, office still volume 30
+  and unmuted, ALSA playback states empty, `audio.output.routes{output:office}` 0.
