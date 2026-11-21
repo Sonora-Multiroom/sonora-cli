@@ -86,9 +86,9 @@ Every catalogue string in output and in error messages is escaped (research R7).
 `helpText` in `cmd/sonora/main.go` gains:
 
 ```text
-  search radio-stations [name]        Search the radio catalogue (hub radio extension)
+  search radio-stations [name]        Search the hub's radio catalogue
   get radio-stations/<uuid>           Fetch one radio station
-  list radio-countries|radio-languages
-                                      List radio catalogue countries or languages
+  list radio-countries                List radio catalogue countries
+  list radio-languages                List radio catalogue languages
   list radio-tags [--name TEXT]       List radio catalogue tags
 ```
