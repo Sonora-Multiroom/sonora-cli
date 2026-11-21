@@ -25,6 +25,21 @@ paths.
 The users are people running `sonora` interactively or from scripts, and developers of sonora-mcp, which
 uses this module's public `hub` package and will add search tools after this ships.
 
+## Clarifications
+
+### Session 2026-11-21
+
+- Q: How should the radio commands be named on the command line? → A: Verb first, with nouns that say
+  "radio": `sonora search radio-stations [name]`, `sonora get radio-stations/<uuid>`,
+  `sonora get radio-countries`, `sonora get radio-languages`, `sonora get radio-tags`.
+- Q: What does a command report when the radio extension is not loaded or not active? → A: As for TTS:
+  after a 404 that is not "station not found", one check of the hub's extension inventory names the
+  reason (not installed, disabled, failed to load, inactive, too old for search, or wrong hub URL).
+- Q: Should default (YAML) search output show every station field or a short summary? → A: Every
+  field, the same in YAML and JSON, as other `get` commands do.
+- Q: Is a fetch-all option (`--all`) needed? → A: No. Its use, listing everything to `grep` it, is what
+  the name filter (any part, any letter case) does in one request; it is dropped from search and tags.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Find a station and play it (Priority: P1)
@@ -41,7 +56,8 @@ address from the result on a test output.
 **Acceptance Scenarios**:
 
 1. **Given** a hub with the radio extension, **When** the operator searches with a name, **Then** the
-   matching stations are listed, each with name, codec, bitrate, country, UUID and playable address.
+   matching stations are listed with every field the hub returns, including name, codec, bitrate,
+   country, UUID and playable address.
 2. **Given** no search terms, **When** the operator searches, **Then** the hub's default page is shown
    (the 20 most voted stations).
 3. **Given** filters for tag, country, language, codec and minimum bitrate, **When** the operator
@@ -49,12 +65,11 @@ address from the result on a test output.
 4. **Given** a sort field and direction, **When** the operator searches, **Then** results come back in
    that order (name, votes, click count or bitrate; ascending or descending).
 5. **Given** a page size, **When** the operator searches, **Then** at most that many stations are shown;
-   when more exist the output says how to get the next page.
-6. **Given** a request to fetch all results, **When** the operator searches, **Then** the CLI follows
-   pages until the last one and prints each station once, even if the catalogue moves a station between
-   pages.
-7. **Given** `--json`, **When** the operator searches, **Then** the output is JSON holding every station
-   field the hub returns.
+   when more exist the output carries the offset to pass for the next page.
+6. **Given** part of a name in any letter case ("kiss"), **When** the operator searches, **Then** every
+   station whose name contains it is matched, as a `grep -i` over a full list would.
+7. **Given** `--json`, **When** the operator searches, **Then** the output is JSON with the same fields
+   as the default YAML.
 8. **Given** a search that matches nothing, **When** the operator searches, **Then** the command succeeds
    with an empty result.
 
@@ -95,7 +110,7 @@ name fragment.
 1. **Given** a hub with the radio extension, **When** the operator lists countries or languages,
    **Then** the whole list is shown with each entry's station count, most stations first.
 2. **Given** a name fragment, **When** the operator lists tags, **Then** a page of matching tags is
-   shown; a page size, an offset and a fetch-all request work as for station search.
+   shown; a page size and an offset work as for station search.
 3. **Given** `--json`, **When** the operator lists any of the three, **Then** the output is JSON.
 
 ---
@@ -123,19 +138,24 @@ sent and the result decoded.
    the offending parameter where one is named, and the retry delay where one is given, and
    `hub.ClassifyError` places it in the right class.
 4. **Given** a 404 without a radio problem body, **When** any radio function is called, **Then** the
-   error is a typed "radio is not available" error.
+   error is a typed "radio not offered" error, and the diagnosis turns it into a "radio is not
+   available" error with the reason from the extension inventory.
 
 ### Edge Cases
 
-- A hub without the radio extension: every radio command fails with "the hub has no radio extension",
-  not a generic not-found message.
+- The radio extension is not serving: every radio command fails with "radio is not available on this
+  hub" and the reason the extension inventory gives: not installed (noting when extension loading is
+  switched off), installed but disabled, failed to load (with the hub's reason), loaded but inactive, or
+  active yet answering 404 (an extension older than 0.2.0, which can play but not search). An inventory
+  that also answers 404 means the hub URL is wrong; an inventory that cannot be read leaves the plain
+  "radio is not available" message.
 - The catalogue is unavailable (503 with a retry delay): the command fails, says the catalogue is
   temporarily unavailable and when to retry. The catalogue answering badly (502) is reported as an
   upstream failure.
 - A page size over 100 or a negative offset: rejected as a usage error. The hub refuses, never reduces,
   an out-of-range value; the CLI does not quietly clamp it either.
-- Fetching all pages stops at the last page and never loops; it also stops at the hub's highest allowed
-  offset and says the results were cut off.
+- An offset past the last result gives an empty page, not an error; an offset above the hub's limit is
+  the hub's 400, shown as a usage error.
 - Station names, tags and addresses are community-edited text: they are printed as plain text and cannot
   move the cursor, change colours or clear the terminal.
 - Absent station fields (no codec, no country, no homepage) are shown as absent, not as zero or empty
@@ -157,27 +177,32 @@ sent and the result decoded.
   problem kind, message, offending parameter and retry delay, and MUST be classified by
   `hub.ClassifyError`.
 - **FR-004**: A 404 from a radio operation that is not a "station not found" problem MUST become a typed
-  "radio is not available" error, which the CLI reports as "the hub has no radio extension".
-- **FR-005**: The CLI MUST offer a station search command with an optional name argument and options for
-  tag, country, language, codec, minimum bitrate, sort field, sort direction, page size, offset and
-  fetch-all.
-- **FR-006**: Search output MUST show, per station, name, codec, bitrate, country, UUID and the playable
-  address that `sonora play` accepts; `--json` MUST give every field the hub returns.
-- **FR-007**: The fetch-all option MUST follow next-page offsets to the end, MUST print a station only the
-  first time its UUID appears, and MUST stop at the hub's offset limit with a notice.
-- **FR-008**: The CLI MUST offer a command that shows one station by UUID.
-- **FR-009**: The CLI MUST offer commands that list countries, languages and tags; the tag command MUST
-  accept a name filter, page size, offset and fetch-all.
+  "radio not offered" error. The `hub` package MUST offer a diagnosis that makes one extension-inventory
+  request, matches the extension by its id `radio`, and returns a "radio is not available" error naming
+  the reason listed under Edge Cases; the CLI MUST run it only after such a 404 and print its message.
+- **FR-005**: The CLI MUST offer `sonora search radio-stations [name]` with options for
+  tag, country, language, codec, minimum bitrate, sort field, sort direction, page size and offset.
+- **FR-006**: Search and station output MUST show every station field the hub returns, including the
+  UUID and the playable address that `sonora play` accepts, in YAML by default and in JSON with `--json`;
+  both formats carry the same fields, and an absent field is shown as null. A single page also carries
+  the next-page offset (null on the last page).
+- **FR-007**: Every search and list command MUST make exactly one radio request per run; the CLI MUST
+  NOT follow next-page offsets by itself.
+- **FR-008**: The CLI MUST offer `sonora get radio-stations/<uuid>`, which shows one station.
+- **FR-009**: The CLI MUST offer `sonora get radio-countries`, `sonora get radio-languages` and
+  `sonora get radio-tags`; the tag command MUST accept a name filter, page size and offset.
 - **FR-010**: Every radio command MUST validate page size (1–100) and offset (not negative) before any
   request, and map hub answers to exit codes: 400 is a usage error with the hub's message, 404 is not
-  found (station) or "no radio extension", 502 and 503 are API errors, 503 with its retry delay.
+  found (station) or "radio is not available" with its reason, 502 and 503 are API errors, 503 with its
+  retry delay.
 - **FR-011**: Every text value from the catalogue MUST be printed with control and escape characters
   neutralised.
 - **FR-012**: The radio commands MUST follow the existing conventions: verb-first command shape, strict
   GNU flag style, YAML by default and JSON with `--json`, errors on standard error, `--verbose`,
   `--hub-url`, an entry in `help`, and the existing exit codes.
-- **FR-013**: The radio commands MUST be always present; no request is made at start-up to find out
-  whether the hub has the extension.
+- **FR-013**: The radio commands MUST be always present; no request is made at start-up or before the
+  radio request to find out whether the hub has the extension. The inventory check happens only after a
+  failed radio request.
 - **FR-014**: Every request and response shape MUST be validated against `api/openapi.json`, refreshed if
   it lacks any radio shape this feature uses.
 - **FR-015**: The README MUST document the radio commands and state that they need the hub's radio
@@ -199,10 +224,11 @@ sent and the result decoded.
 
 - **SC-001**: An operator goes from a station name to hearing that station with two commands (search,
   play) and no web browser.
-- **SC-002**: A fetch-all search prints no UUID twice, verified against a test server that repeats
-  stations across pages.
-- **SC-003**: Against a hub without the radio extension, 100% of radio commands give the same "no radio
-  extension" message and exit code.
+- **SC-002**: Finding a station by part of its name takes one command and one request to the hub,
+  whatever the size of the catalogue.
+- **SC-003**: Against a hub where the radio extension is not serving, 100% of radio commands give the
+  same exit code and a message naming the reason; each reason listed under Edge Cases has its own
+  message, covered by an automated test.
 - **SC-004**: Catalogue text containing escape sequences cannot change the terminal's state, verified by
   an automated test with such text.
 - **SC-005**: No radio command produces sound or changes any speaker, output, group, input or route;
@@ -212,17 +238,20 @@ sent and the result decoded.
 
 ## Assumptions
 
-- **Command layout**: the constitution requires verb-first commands, so radio uses nouns under existing
-  verbs rather than a `radio` group: for example `sonora search stations [name] [flags]`,
-  `sonora get stations/<uuid>`, `sonora get countries|languages|tags`. The exact words are settled in
-  planning.
+- **Command layout**: the constitution requires verb-first commands, so radio uses `radio-` nouns under
+  verbs rather than a `radio` group (see Clarifications). Search gets its own `search` verb because a
+  bare `get radio-stations` that returns the 20 most voted would surprise; the prefix makes the
+  extension dependency plain in help, so no extra help note is needed.
 - **Play by UUID only**: the search output prints the playable address, which `sonora play` already
   accepts. Playing a search result by position or by name, and a `play --station` shorthand, are out of
   scope: they hide which of several same-named stations plays, and `play` takes the address as an
   argument, not a flag.
-- **Always present**: radio commands exist on every hub and fail with the "no radio extension" message
-  where the extension is missing, which costs no extra request (Principle I).
+- **Always present**: radio commands exist on every hub and explain a missing extension only after the
+  radio request fails, so a working hub costs one request (Principle I).
 - **Test fixtures** are hand-written from `api/openapi.json` and checked against it, not copied from the
   extension's test resources.
 - Countries and languages are short lists returned whole; they take no paging options.
+- **No fetch-all**: the backlog's `--all` (follow every page, drop repeated UUIDs) is out of scope. Its
+  use, listing everything to `grep` it, is what the name filter already does in one request; paging
+  stays available through `--offset`, and a Go caller pages with the `hub` package.
 - Releasing a tag and adding the tools to sonora-mcp follow this feature as separate work.
