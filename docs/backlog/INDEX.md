@@ -12,3 +12,4 @@ you add, ship or delete an item, update this list.
 
 | Priority | Item | Kind | Effort | Why this priority |
 |---|---|---|---|---|
+| P3 | [Radio: search and browse stations](radio-search.md) | Feature | Medium | The hub's `radio` extension now has search and browse (RADIO-002, `sonora-radio` 0.2.0, verified live on the Pi; PR #2 pending merge), but the CLI cannot find a station UUID to play. `sonora-mcp` and `sonora-mobile` follow this item |
