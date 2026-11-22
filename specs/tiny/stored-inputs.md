@@ -2,7 +2,7 @@
 
 **Branch**: feat/stored-inputs-hub-041
 **Date**: 2026-11-22
-**Status**: implemented, tag pending
+**Status**: implemented, release v0.4.2 pending
 **Complexity**: small
 
 ## What
