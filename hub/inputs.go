@@ -38,6 +38,18 @@ type Input struct {
 	// declares none. An id the hub has not loaded is reported but ignored;
 	// compare with ListChimes.
 	DefaultChime *string `json:"defaultChime,omitempty"`
+	// Origin (hub 0.1.35) is where the input lives: CONFIGURATION (the hub's
+	// configuration file), STORED (kept by the hub across restarts) or RUNTIME
+	// (lost at restart). Empty from a hub older than 0.1.35.
+	Origin string `json:"origin"`
+	// Playable (hub 0.1.35) is whether a handler or resolver supports the
+	// input's link now; a kept input whose extension is not running is false,
+	// and UnplayableReason says why. A hub older than 0.1.35 does not send it,
+	// and it reads false.
+	Playable bool `json:"playable"`
+	// UnplayableReason (hub 0.1.35) is why the input cannot play; nil when it
+	// can.
+	UnplayableReason *string `json:"unplayableReason"`
 }
 
 // CreateInputRequest mirrors #/components/schemas/CreateInputRequest in
