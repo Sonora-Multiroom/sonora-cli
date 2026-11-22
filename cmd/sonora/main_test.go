@@ -505,6 +505,7 @@ func TestRunVerbHelp(t *testing.T) {
 		"enable":  {"enable", "--help"},
 		"disable": {"disable", "--help"},
 		"set":     {"set", "--help"},
+		"keep":    {"keep", "--help"},
 	}
 
 	for name, args := range cases {

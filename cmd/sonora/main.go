@@ -34,6 +34,7 @@ Commands:
   transfer routes/<id> <target>       Move playback to a new target
   create inputs/<id> <uri>            Register a new ephemeral input
   rename inputs/<id> <name>|--reset   Rename an input, or restore its name
+  keep inputs/<id>                    Keep a runtime input across hub restarts
   delete routes/<id>                  Stop and remove a route
   delete inputs/<id>                  Remove an ephemeral input
   stop routes[/<id>]                  Stop all routes, or one by id
@@ -161,6 +162,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return dispatchDelete(args[1:], stdout, stderr)
 	case "rename":
 		return dispatchRename(args[1:], stdout, stderr)
+	case "keep":
+		return dispatchKeep(args[1:], stdout, stderr)
 	case "stop":
 		return dispatchStop(args[1:], stdout, stderr)
 	case "enable", "disable":
@@ -275,6 +278,41 @@ func dispatchRename(args []string, stdout, stderr io.Writer) int {
 
 	callArgs := append([]string{path.ID}, args[1:]...)
 	return inputs.RunRename(callArgs, stdout, stderr)
+}
+
+// dispatchKeep resolves the resource-path argument following `keep` via
+// respath and calls inputs.RunKeep — the hub keeps only inputs. Any other
+// resource is a usage error.
+func dispatchKeep(args []string, stdout, stderr io.Writer) int {
+	usage := "usage: sonora keep inputs/<input-id> [flags]"
+	if clihelp.Requested(args) && !startsWithResource(args) {
+		fmt.Fprintln(stdout, usage)
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing resource argument")
+		return 2
+	}
+
+	path, err := respath.Parse(args[0])
+	if err != nil {
+		fmt.Fprintf(stderr, "sonora: %v\n", err)
+		return 2
+	}
+	if path.Kind != respath.Inputs {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintf(stderr, "error: keep does not support %s; only inputs/<input-id> is supported\n", path.Kind)
+		return 2
+	}
+	if path.ID == "" {
+		fmt.Fprintln(stderr, usage)
+		fmt.Fprintln(stderr, "error: missing required argument: <input-id>")
+		return 2
+	}
+
+	callArgs := append([]string{path.ID}, args[1:]...)
+	return inputs.RunKeep(callArgs, stdout, stderr)
 }
 
 // dispatchDelete resolves the resource-path argument following `delete` via

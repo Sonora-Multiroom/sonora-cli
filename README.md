@@ -40,6 +40,7 @@ table, common flags, and examples from the terminal.
 | `list <resource>` | same four, collection form only | same |
 | `create inputs/<id> <uri>` | `inputs` only | `in` |
 | `rename inputs/<id> <name>\|--reset` | `inputs` only | `in` |
+| `keep inputs/<id>` | `inputs` only | `in` |
 | `delete <resource>/<id>` | `routes`, `inputs` | `rt`, `in` |
 | `stop routes[/<id>]` | bare = stop all; `/<id>` = alias of `delete routes/<id>` | `rt` |
 | `stop <resource>/<id>` | `outputs`, `groups` — stop every route in scope | `out`, `gr` |
@@ -69,16 +70,26 @@ returns a single item by id. `list` is an exact synonym of `get` for the collect
 interchangeable with full resource names everywhere a resource path appears, e.g.
 `sonora get out/office-speaker` is identical to `sonora get outputs/office-speaker`.
 
-`create inputs/<input-id> <uri> --display-name <name> [--auto-remove] [--disabled]` registers
+`create inputs/<input-id> <uri> --display-name <name> [--auto-remove] [--persistent] [--disabled]` registers
 a new ephemeral input and prints the created input record. `--display-name` is required;
 `--auto-remove` removes the input once its route stops, and `--disabled` creates it disabled
 (enabled by default). `--default-join-mode MODE` sets the [join mode](#join-modes) for routes from
 this input that name none; without it, the input declares none and its routes use `REPLACE`.
-Only `inputs` supports creation today.
+`--persistent` (hub 0.1.35 or later) makes the hub keep the input across restarts (origin `STORED`);
+it cannot be combined with `--auto-remove`. Only `inputs` supports creation today.
 
 ```
 sonora create inputs/doorbell <uri> --display-name Doorbell --default-join-mode duck_others
 ```
+
+`keep inputs/<input-id>` promotes a runtime input, such as one made by `play`, to a kept one: it
+stops auto-removing and survives a hub restart, and a route playing it is not touched. An input
+that is already kept is returned unchanged; one from the hub's configuration cannot be promoted
+(400). Requires hub 0.1.35 or later. Input records show `origin` (`CONFIGURATION`, `STORED` or
+`RUNTIME`), `playable` and, when it is false, `unplayableReason` (for example a kept input whose
+extension is not running); a route from an unplayable kept input is refused with 409. A full store
+(`INPUT_STORE_FULL`) and a taken id (`INPUT_ID_TAKEN`) are 409s too, and a store that cannot be
+written is a 500 whose message names the cause.
 
 `rename inputs/<input-id> <name>` changes an input's display name without interrupting its
 playback and prints the input record; `rename inputs/<input-id> --reset` restores the original

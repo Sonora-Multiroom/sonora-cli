@@ -17,7 +17,7 @@ import (
 const createUsage = "usage: sonora create inputs/<input-id> <uri> --display-name <name> [flags]"
 
 // RunCreate implements `sonora create inputs/<input-id> <uri> --display-name
-// <name> [--auto-remove] [--disabled] [--default-join-mode MODE]`: it
+// <name> [--auto-remove] [--persistent] [--disabled] [--default-join-mode MODE]`: it
 // defines and parses this command's flags, checks any default join mode,
 // resolves the hub URL, registers a new ephemeral input with the hub, and
 // renders the result to stdout. Any failure is reported on stderr, never
@@ -31,6 +31,7 @@ func RunCreate(args []string, stdout, stderr io.Writer) int {
 
 	displayName := fs.String("display-name", "", "human-readable display `name` (required)")
 	autoRemove := fs.Bool("auto-remove", false, "auto-remove the input when its route is stopped")
+	persistent := fs.Bool("persistent", false, "keep the input across hub restarts (hub 0.1.35 and later); not combinable with --auto-remove")
 	disabled := fs.Bool("disabled", false, "create the input in a disabled state")
 	defaultJoinMode := fs.String("default-join-mode", "", "join `MODE` for routes from this input that name none: REPLACE, MIX or DUCK_OTHERS (any case); without it, the input declares none and its routes use REPLACE")
 	jsonOut := fs.Bool("json", false, "emit strict JSON instead of the default YAML")
@@ -97,6 +98,12 @@ func RunCreate(args []string, stdout, stderr io.Writer) int {
 		return exitcode.Usage
 	}
 
+	if *persistent && *autoRemove {
+		fmt.Fprintln(stderr, createUsage)
+		fmt.Fprintln(stderr, "error: --persistent cannot be combined with --auto-remove: a kept input is never removed automatically")
+		return exitcode.Usage
+	}
+
 	baseURL, err := config.ResolveHubURL(*hubURLFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -111,6 +118,9 @@ func RunCreate(args []string, stdout, stderr io.Writer) int {
 		URI:         uri,
 		Enabled:     &enabled,
 		AutoRemove:  autoRemove,
+	}
+	if *persistent {
+		req.Persistent = persistent
 	}
 	if defaultJoinModeProvided {
 		req.DefaultJoinMode = &joinMode
