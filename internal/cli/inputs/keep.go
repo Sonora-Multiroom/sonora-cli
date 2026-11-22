@@ -15,7 +15,7 @@ import (
 
 const (
 	keepUsage       = "usage: sonora keep inputs/<input-id> [flags]"
-	keepDescription = "Keeps a runtime input across hub restarts (origin STORED). It stops auto-removing, and a route playing it is not touched. An input that is already kept is returned unchanged; one from the hub's configuration is already kept."
+	keepDescription = "Keeps a runtime input across hub restarts (origin STORED). It stops auto-removing, and a route playing it is not touched. An input that is already kept is returned unchanged; one from the hub's configuration cannot be kept, and the hub refuses it with 400."
 )
 
 // RunKeep implements `sonora keep inputs/<input-id>` (hub 0.1.35 and later):

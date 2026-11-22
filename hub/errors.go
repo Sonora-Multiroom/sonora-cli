@@ -253,8 +253,8 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 			return ClassServiceUnavailable, "the hub's playback service is temporarily unavailable"
 		default:
 			if apiErr.StatusCode == 500 && msg != "" {
-				// A kept input's store failure: the detail names the cause.
-				return ClassHub, "the hub could not save the input: " + msg
+				// A store failure on an input write: the detail names the cause.
+				return ClassHub, "the hub reported an error: " + msg
 			}
 			return ClassHub, fmt.Sprintf("hub reported an error (HTTP %d)", apiErr.StatusCode)
 		}
