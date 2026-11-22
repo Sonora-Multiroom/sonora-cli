@@ -215,3 +215,26 @@ func TestRenderInputDeletedJSON_RoundTrips(t *testing.T) {
 		t.Errorf("unexpected decoded content: %+v", decoded)
 	}
 }
+
+func TestRenderInputYAML_ShowsOriginAndPlayable(t *testing.T) {
+	reason := "no handler for scheme 'radiobrowser'"
+	in := hub.Input{InputID: "a", DisplayName: "A", URI: "u", Source: "STATIC", Origin: "STORED", Playable: false, UnplayableReason: &reason}
+	for name, got := range map[string]string{"single": render.RenderInputYAML(in), "list": render.RenderInputsYAML([]hub.Input{in})} {
+		for _, want := range []string{`origin: "STORED"`, "playable: false", `unplayableReason: "no handler for scheme 'radiobrowser'"`} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: missing %q in:\n%s", name, want, got)
+			}
+		}
+	}
+}
+
+func TestRenderInputYAML_OmitsOriginFromOlderHub(t *testing.T) {
+	in := hub.Input{InputID: "a", DisplayName: "A", URI: "u", Source: "STATIC"}
+	for name, got := range map[string]string{"single": render.RenderInputYAML(in), "list": render.RenderInputsYAML([]hub.Input{in})} {
+		for _, bad := range []string{"origin", "playable", "unplayableReason"} {
+			if strings.Contains(got, bad) {
+				t.Errorf("%s: unexpected %q in:\n%s", name, bad, got)
+			}
+		}
+	}
+}

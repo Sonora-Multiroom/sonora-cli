@@ -16,6 +16,20 @@ func writeCreatedAt(b *bytes.Buffer, indent string, createdAt *string) {
 	fmt.Fprintf(b, "%screatedAt: %q\n", indent, *createdAt)
 }
 
+// writeStored writes origin, playable and unplayableReason (hub 0.1.35). A hub
+// that sends no origin is older than that, and then none of the three means
+// anything, so none is written.
+func writeStored(b *bytes.Buffer, indent string, i hub.Input) {
+	if i.Origin == "" {
+		return
+	}
+	fmt.Fprintf(b, "%sorigin: %q\n", indent, i.Origin)
+	fmt.Fprintf(b, "%splayable: %t\n", indent, i.Playable)
+	if i.UnplayableReason != nil {
+		fmt.Fprintf(b, "%sunplayableReason: %q\n", indent, *i.UnplayableReason)
+	}
+}
+
 func writeDefaultJoinMode(b *bytes.Buffer, mode *string) {
 	if mode == nil {
 		b.WriteString("defaultJoinMode: null\n")
@@ -46,6 +60,7 @@ func RenderInputsYAML(inputs []hub.Input) string {
 		fmt.Fprintf(&b, "    displayName: %q\n", i.DisplayName)
 		fmt.Fprintf(&b, "    uri: %q\n", i.URI)
 		fmt.Fprintf(&b, "    source: %q\n", i.Source)
+		writeStored(&b, "    ", i)
 		fmt.Fprintf(&b, "    enabled: %t\n", i.Enabled)
 		fmt.Fprintf(&b, "    autoRemove: %t\n", i.AutoRemove)
 		fmt.Fprintf(&b, "    pauseable: %t\n", i.Pauseable)
@@ -68,6 +83,7 @@ func RenderInputYAML(i hub.Input) string {
 	fmt.Fprintf(&b, "displayName: %q\n", i.DisplayName)
 	fmt.Fprintf(&b, "uri: %q\n", i.URI)
 	fmt.Fprintf(&b, "source: %q\n", i.Source)
+	writeStored(&b, "", i)
 	fmt.Fprintf(&b, "enabled: %t\n", i.Enabled)
 	fmt.Fprintf(&b, "autoRemove: %t\n", i.AutoRemove)
 	fmt.Fprintf(&b, "pauseable: %t\n", i.Pauseable)

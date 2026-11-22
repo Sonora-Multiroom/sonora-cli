@@ -154,3 +154,24 @@ func TestInputsRunCreate_InvalidDefaultJoinMode_UsageErrorNoRequest(t *testing.T
 		})
 	}
 }
+
+func TestRunCreate_PersistentWithAutoRemoveIsUsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := inputs.RunCreate([]string{"kiss", "http://x/s", "--display-name", "Kiss", "--persistent", "--auto-remove", "--hub-url", "http://127.0.0.1:1"}, &stdout, &stderr)
+	if code != 2 {
+		t.Errorf("exit code = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "--persistent cannot be combined with --auto-remove") {
+		t.Errorf("stderr = %q", stderr.String())
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("stdout = %q, want empty", stdout.String())
+	}
+}
+
+func TestRunKeep_MissingIDIsUsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := inputs.RunKeep(nil, &stdout, &stderr); code != 2 {
+		t.Errorf("exit code = %d, want 2", code)
+	}
+}

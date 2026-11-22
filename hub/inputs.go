@@ -80,6 +80,10 @@ type CreateInputRequest struct {
 	// whatever the target's setting. Nil declares none, and the target's
 	// chime decides. The hub answers 400 for an id it has not loaded.
 	DefaultChime *string `json:"defaultChime,omitempty"`
+	// Persistent (hub 0.1.35) true asks the hub to keep the input across
+	// restarts (origin STORED). The hub refuses it together with AutoRemove
+	// (400). Nil omits it, and the input is runtime.
+	Persistent *bool `json:"persistent,omitempty"`
 }
 
 func validateInput(i Input) error {
@@ -205,7 +209,7 @@ func SetInputEnabled(ctx context.Context, client *http.Client, baseURL, inputID 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, &NotFoundError{Resource: "input", ID: inputID}
 	}
-	if resp.StatusCode == http.StatusBadRequest {
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusInternalServerError {
 		var errBody errorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
 			return nil, &StatusError{StatusCode: resp.StatusCode}
@@ -265,7 +269,7 @@ func SetInputDisplayName(ctx context.Context, client *http.Client, baseURL, inpu
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, &NotFoundError{Resource: "input", ID: inputID}
 	}
-	if resp.StatusCode == http.StatusBadRequest {
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusInternalServerError {
 		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -309,7 +313,7 @@ func CreateInput(ctx context.Context, client *http.Client, baseURL string, req C
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
-	case http.StatusBadRequest, http.StatusConflict:
+	case http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError:
 		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -324,6 +328,48 @@ func CreateInput(ctx context.Context, client *http.Client, baseURL string, req C
 		return nil, &DecodeError{Err: err}
 	}
 	return &created, nil
+}
+
+// PersistInput calls PUT {baseURL}/api/v2/inputs/{inputId}/persistent
+// (operationId "persistInput", hub 0.1.35 and later), promoting a runtime
+// input to a kept (STORED) one. Already kept is a success with no change. A
+// 404 is a *NotFoundError naming the input; a 400 (a configured input, a link
+// nothing plays, a row that cannot be stored), a 409 (Reason
+// ReasonInputStoreFull) and a 500 (the store is read-only, timed out or
+// failed; the input is unchanged) are an *APIError carrying the hub's detail,
+// falling back to a *StatusError if the body cannot be decoded. On success the
+// input as it now reads is returned.
+func PersistInput(ctx context.Context, client *http.Client, baseURL, inputID string) (*Input, error) {
+	reqURL := strings.TrimRight(baseURL, "/") + "/api/v2/inputs/" + url.PathEscape(inputID) + "/persistent"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return nil, &NotFoundError{Resource: "input", ID: inputID}
+	case http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError:
+		return nil, apiErrorFromBody(resp.StatusCode, resp.Body)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &StatusError{StatusCode: resp.StatusCode}
+	}
+
+	var input Input
+	if err := json.NewDecoder(resp.Body).Decode(&input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	if err := validateInput(input); err != nil {
+		return nil, &DecodeError{Err: err}
+	}
+	return &input, nil
 }
 
 // DeleteInput calls DELETE {baseURL}/api/v2/inputs/{inputId} (operationId
@@ -350,7 +396,7 @@ func DeleteInput(ctx context.Context, client *http.Client, baseURL, inputID stri
 	if resp.StatusCode == http.StatusNotFound {
 		return &NotFoundError{Resource: "input", ID: inputID}
 	}
-	if resp.StatusCode == http.StatusBadRequest {
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusInternalServerError {
 		var errBody errorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
 			return &StatusError{StatusCode: resp.StatusCode}

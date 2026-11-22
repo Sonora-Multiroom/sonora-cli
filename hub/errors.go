@@ -112,6 +112,19 @@ type APIError struct {
 // moments, so retrying the same request shortly is the right response.
 const ReasonRouteChangingOutputs = "ROUTE_CHANGING_OUTPUTS"
 
+// The 409 reasons HUB-041 (hub 0.1.35) added for kept inputs. Only
+// ReasonInputUnplayable clears without a change by the caller, once the
+// input's extension is running.
+const (
+	// ReasonInputUnplayable: a kept input's link has no handler or resolver, for
+	// example because its extension is not running.
+	ReasonInputUnplayable = "INPUT_UNPLAYABLE"
+	// ReasonInputIDTaken: another input already has the id.
+	ReasonInputIDTaken = "INPUT_ID_TAKEN"
+	// ReasonInputStoreFull: the store already keeps the most inputs it may.
+	ReasonInputStoreFull = "INPUT_STORE_FULL"
+)
+
 // IsTransientConflict reports whether err is a 409 route refusal that clears without
 // any change of state (today only ReasonRouteChangingOutputs). It is false for every
 // other error, including other 409 refusals.
@@ -217,6 +230,14 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 			if apiErr.Reason == ReasonRouteChangingOutputs {
 				return ClassConflict, "the route is still adding an output; retry in a moment"
 			}
+			switch apiErr.Reason {
+			case ReasonInputUnplayable:
+				return ClassConflict, "the input's link is not playable now, perhaps because its extension is not running; retry once it is"
+			case ReasonInputIDTaken:
+				return ClassConflict, "an input with that id already exists"
+			case ReasonInputStoreFull:
+				return ClassConflict, "the hub's store of kept inputs is full; delete a kept input first"
+			}
 			if msg == "" {
 				msg = conflictMessage
 			}
@@ -231,6 +252,10 @@ func ClassifyError(err error) (class ErrorClass, friendlyMsg string) {
 		case 503:
 			return ClassServiceUnavailable, "the hub's playback service is temporarily unavailable"
 		default:
+			if apiErr.StatusCode == 500 && msg != "" {
+				// A kept input's store failure: the detail names the cause.
+				return ClassHub, "the hub could not save the input: " + msg
+			}
 			return ClassHub, fmt.Sprintf("hub reported an error (HTTP %d)", apiErr.StatusCode)
 		}
 	}
