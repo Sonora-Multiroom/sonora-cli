@@ -2,6 +2,23 @@
 
 ## Merged Features Log
 
+### List and Get Audio Inputs — archived 2026-11-23
+**Branch:** 003-inputs-list-get
+**Spec:** [.specify/archive/003-inputs-list-get/spec.md](../archive/003-inputs-list-get/spec.md)
+
+**What was added:**
+- User Stories 7–11 (P1–P3): `sonora inputs list` shows enabled inputs, `--include-disabled` shows disabled ones, `--json` for scripts
+- `sonora inputs get <input-id>` shows one input, enabled or disabled, with a clear "input not found" exit `5`
+- FR-018–FR-027, SC-008–SC-011, AS-007 and the Input entity; shared outputs/inputs requirements widened (FR-006–FR-011, FR-013, SC-002–SC-004)
+
+**New Components:**
+- `internal/cli/inputs/` (`RunList`, `RunGet`); `internal/hub/inputs.go` (`ListInputs`, `GetInput`); `internal/render/inputs.go`
+- `hub.NotFoundError` generalized to `Resource`/`ID` (output message text unchanged)
+- `tests/{unit,contract,integration}` inputs tests
+
+**Tasks Completed:** 36/36 tasks
+
+
 ### Get Single Audio Output — archived 2026-11-23
 **Branch:** 002-outputs-get
 **Spec:** [.specify/archive/002-outputs-get/spec.md](../archive/002-outputs-get/spec.md)

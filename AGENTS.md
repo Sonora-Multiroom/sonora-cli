@@ -41,19 +41,60 @@
 - Feature work follows the Spec Kit workflow (`specs/<NNN-feature>/spec.md` →
   `plan.md` → `tasks.md`), driven by the `/speckit-*` skills.
 
+## Specification Sources (Speckit)
+
+### `specs/` — Active Feature Specs
+Contains specs for features currently in development that have not yet been archived.
+**When to use:**
+- When working on a feature that is actively being built or changed.
+- When no entry exists yet in `.specify/memory/`.
+**When NOT to use:**
+- Do not treat these as final — they may be drafts or works in progress.
+**Not yet archived:** `004-routes-list-get` through `014-radio-station-search`; small changes in `specs/tiny/`.
+
+### `.specify/memory/` — Consolidated Specs (primary reference)
+Distilled, up-to-date specs summarising the current understanding of each feature or domain.
+**When to use:**
+- Before starting any task — check here first.
+- As the authoritative source of truth for current requirements.
+- When writing, reviewing, or refactoring code to verify alignment with defined behaviour.
+- When resolving ambiguity about how something is supposed to work.
+**Files:**
+- `.specify/memory/spec.md` — main specification; `plan.md` — main implementation plan
+- `.specify/memory/constitution.md` — principles and mandates
+- `.specify/memory/changelog.md` — log of merged features
+
+### `.specify/archive/` — Archived Feature Specs (historical reference)
+Retired or superseded specs kept for historical context and decision archaeology.
+**When to use:**
+- When a consolidated spec in `.specify/memory/` lacks rationale or context.
+- When investigating why a past decision was made.
+- When a feature was deprecated and you need its original intent.
+- As a fallback if no spec exists in `specs/` or `.specify/memory/`.
+**Rules:**
+- Treat as read-only historical context, not current requirements.
+- If an archived spec contradicts `.specify/memory/`, the memory spec wins.
+- If an archived spec should be promoted back to active, flag it to the team — do not act on it directly.
+**Index** (one line per archived feature; open `.specify/archive/<folder>/spec.md` for the behaviour and the reasoning):
+
+- `001-list-outputs` — `sonora outputs list`: enabled outputs, `--include-disabled`, `--json`, exit codes, 5s timeout
+- `002-outputs-get` — `sonora outputs get <output-id>`: one output, `--json`, not-found exit code 5
+- `003-inputs-list-get` — `sonora inputs list` and `sonora inputs get <input-id>`: inputs, `--include-disabled`, `--json`, not-found exit code 5
+
 ## Active Technologies
 
-- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`, `net/url`) (specs/001-list-outputs, specs/002-outputs-get)
+- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`, `net/url`) (.specify/archive/001-list-outputs, .specify/archive/002-outputs-get)
 
 ## Project Structure
 
-- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `tests/{unit,contract,integration}` (specs/001-list-outputs)
+- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs)
 
 ## Commands
 
-- `gofmt -l .` and `go vet ./...` baseline checks; `go test ./...` (specs/001-list-outputs)
+- `gofmt -l .` and `go vet ./...` baseline checks; `go test ./...` (.specify/archive/001-list-outputs)
 
 ## Recent Changes
 
-- specs/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
-- specs/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout
+- .specify/archive/003-inputs-list-get: `sonora inputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora inputs get <input-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`
+- .specify/archive/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
+- .specify/archive/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout

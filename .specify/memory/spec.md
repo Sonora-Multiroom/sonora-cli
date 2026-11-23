@@ -2,6 +2,7 @@
 
 > **Revision**: 2026-11-23 — Seeded from specs/001-list-outputs (first archival): user stories 1–3, edge cases, FR-001–FR-013, Output entity, SC-001–SC-005, AS-001–AS-005.
 > **Revision**: 2026-11-23 — Archived specs/002-outputs-get: added User Stories 4–6, an edge case, FR-014–FR-017, SC-006–SC-007 and AS-006; folded its equivalent requirements, edge cases, outcomes, assumptions and the Output entity into existing entries (FR-004–FR-013, SC-002–SC-005, AS-001–AS-004), widening FR-004, FR-010, FR-011 and SC-005 to cover the get command and the not-found case.
+> **Revision**: 2026-11-23 — Archived .specify/archive/003-inputs-list-get: added User Stories 7–11, FR-018–FR-027, SC-008–SC-011, AS-007 and the Input entity. Its requirements (003 FR-009, FR-010, FR-012–FR-015 and FR-017) were folded into FR-006–FR-011 and FR-013; its outcomes (003 SC-004–SC-006) into SC-002–SC-004; its edge cases into the existing edge cases; and its assumptions into AS-001–AS-006, widening those entries to cover the inputs commands as well as the outputs ones. No existing ID was renumbered. The feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-017 and SC-007.
 
 ## User Scenarios & Testing
 
@@ -156,27 +157,156 @@ human-readable view.
 
 ---
 
+### User Story 7 - View currently active inputs (Priority: P1)
+
+A person operating the audio system wants to see which audio inputs (e.g. streaming
+sources, ephemeral playback sessions) are currently registered and usable, so they know
+what they can route to an output next.
+
+**Why this priority**: This is the baseline read operation for inputs — without it, a
+user has no way to discover input identifiers before issuing any other command involving
+an input (e.g. creating a route).
+
+**Independent Test**: Can be fully tested by running the list command against a hub with
+one or more enabled inputs and verifying each enabled input's identifier, display name,
+source URI, enabled state, and source type are shown, and disabled inputs are omitted.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has two enabled inputs and one disabled input, **When** the user runs
+   the list command with no flags, **Then** only the two enabled inputs are displayed,
+   each showing its identifier, display name, source URI, source type, and enabled state.
+2. **Given** the hub has zero enabled inputs, **When** the user runs the list command,
+   **Then** the user sees a clear indication that no inputs are available rather than an
+   empty or ambiguous response.
+
+[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 1]
+
+---
+
+### User Story 8 - Look up a specific input by identifier (Priority: P1)
+
+A person who already knows an input's identifier (e.g. from `inputs list`) wants to see
+its full current state without scanning the full list.
+
+**Why this priority**: This is the sole purpose of the get command and the direct
+single-item counterpart to `inputs list`; both are equally core to enabling later
+route-management commands.
+
+**Independent Test**: Can be fully tested by running the get command with the identifier
+of an input known to exist on the hub and verifying the identifier, display name, source
+URI, enabled state, source type, and other attributes are all shown correctly.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has an enabled input with a known identifier, **When** the user runs
+   the get command with that identifier, **Then** the command displays that input's
+   identifier, display name, source URI, enabled state, source type, and remaining
+   attributes.
+2. **Given** the hub has a disabled input with a known identifier, **When** the user runs
+   the get command with that identifier, **Then** the command still displays the input
+   (unlike the list command's default filtering) with its disabled state clearly shown.
+
+[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 2]
+
+---
+
+### User Story 9 - Include disabled inputs in the list (Priority: P2)
+
+A person managing the audio system wants to see inputs that exist but are currently
+disabled, so they can distinguish "not currently usable" from "doesn't exist."
+
+**Why this priority**: Secondary to the default view, but necessary for troubleshooting
+and administration; it reuses the same read path with one additional option.
+
+**Independent Test**: Can be fully tested by running the list command with the
+include-disabled option against a hub with at least one disabled input and verifying it
+appears in the results, distinguishable from enabled inputs.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has one enabled and one disabled input, **When** the user runs the
+   list command with the option to include disabled inputs, **Then** both inputs are
+   displayed and each input's enabled/disabled state is visible in the result.
+
+[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 3]
+
+---
+
+### User Story 10 - Handle a nonexistent input identifier (Priority: P2)
+
+A person mistypes an input identifier, or refers to an ephemeral input that has since
+been removed, and needs to know clearly that it doesn't exist rather than receiving a
+confusing error or empty output.
+
+**Why this priority**: Essential for usability once the primary lookup path works, but
+secondary to the happy path.
+
+**Independent Test**: Can be fully tested by running the get command with an identifier
+that does not exist on the hub and verifying the user sees a clear "not found" message
+and a distinct exit status.
+
+**Acceptance Scenarios**:
+
+1. **Given** no input with the given identifier exists on the hub, **When** the user runs
+   the get command with that identifier, **Then** the user sees a clear "input not found"
+   message rather than an empty or ambiguous result.
+
+[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 4]
+
+---
+
+### User Story 11 - Consume input data from a script (Priority: P3)
+
+An automation or script wants to retrieve the current inputs, or a single input's state,
+in a strict, parseable format so it can act on the data programmatically.
+
+**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
+but is not required for a human operator to get value from either command; it is an
+alternate presentation of the same data as User Stories 7 and 8.
+
+**Independent Test**: Can be fully tested by running each command with the
+machine-readable output option and verifying the result is strictly parseable and
+contains the same fields available in the human-readable view.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has at least one enabled input, **When** the user runs the list
+   command requesting machine-readable output, **Then** the result is valid, strictly
+   parseable structured data containing every input's identifier, display name, source
+   URI, enabled state, source type, and remaining attributes.
+2. **Given** the hub has an input with a known identifier, **When** the user runs the get
+   command with that identifier requesting machine-readable output, **Then** the result is
+   valid, strictly parseable structured data containing that input's full attribute set.
+
+[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 5]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
   The user must see a clear, actionable error rather than the command hanging indefinitely
-  or crashing. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"]
+  or crashing. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub is unreachable"]
 - What happens when the hub takes too long to respond? The command must fail with a clear
-  timeout error rather than waiting indefinitely. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub takes too long to respond?"]
+  timeout error rather than waiting indefinitely. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub takes too long to respond?"]
 - What happens when the hub returns an error response (e.g. 5xx)? The user must see a
   clear message distinguishing "the hub reported a problem" from a plain network problem
   (and, for the get command, from a "not found" result).
-  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns an error response"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns an error response other than"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns an error response"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns an error response other than"]
 - What happens when the hub returns data that doesn't match the expected shape (e.g. a
   malformed or unexpected response)? The command must fail clearly rather than displaying
   garbled or silently incomplete output.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"]
 - What happens when an output has a physically disconnected/unavailable device but is
   still enabled? Its availability state must be visibly distinguishable from an available
   output. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when an output has a physically disconnected/unavailable device"; .specify/archive/002-outputs-get/spec.md -> "What happens when the requested output exists but is enabled with unavailable hardware?"]
-- What happens when no identifier is provided to the get command? The user must see a
+- What happens when no identifier is provided to the outputs or inputs get command? The user must see a
   clear usage error explaining that an identifier is required, not a confusing failure.
-  [Source: .specify/archive/002-outputs-get/spec.md -> "What happens when no identifier is provided?"]
+  [Source: .specify/archive/002-outputs-get/spec.md -> "What happens when no identifier is provided?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when no input identifier is provided to the get command?"]
+- What happens when a static (YAML-configured) input is returned? It has no creation
+  timestamp; this must be displayed clearly (e.g. "n/a") rather than as an error or blank
+  field. [Source: .specify/archive/003-inputs-list-get/spec.md -> "What happens when a static (YAML-configured) input is returned?"]
 
 ## Requirements
 
@@ -195,30 +325,30 @@ human-readable view.
 - **FR-005**: An output that is enabled but whose hardware is currently unavailable MUST
   be visibly distinguishable from an available output in the default human-readable view.
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-005; .specify/archive/002-outputs-get/spec.md -> FR-005]
-- **FR-006**: The command's default output MUST be human-readable and legible without any
-  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006]
-- **FR-007**: The command MUST provide an explicit option to switch to strict,
+- **FR-006**: Each outputs and inputs command's default output MUST be human-readable and legible without any
+  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006; .specify/archive/003-inputs-list-get/spec.md -> FR-009]
+- **FR-007**: Each outputs and inputs command MUST provide an explicit option to switch to strict,
   script-parseable output instead of the human-readable default.
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007]
-- **FR-008**: The command MUST fail with a clear, actionable error message — not a raw
-  technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009]
-- **FR-009**: The command MUST fail with a clear, actionable error message when the hub
-  does not respond within a bounded amount of time; it MUST NOT wait indefinitely. The
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010]
+- **FR-008**: Each outputs and inputs command MUST fail with a clear, actionable error message — not a raw
+  technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009; .specify/archive/003-inputs-list-get/spec.md -> FR-012]
+- **FR-009**: Each outputs and inputs command MUST fail with a clear, actionable error message when the hub
+  does not respond within a bounded amount of time; it MUST NOT wait indefinitely. Each
   command MUST make a single attempt and MUST NOT automatically retry on network or
-  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010]
-- **FR-010**: The command MUST fail with a clear, actionable error message when the hub
+  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013]
+- **FR-010**: Each outputs and inputs command MUST fail with a clear, actionable error message when the hub
   returns an error response, distinguishing that case from a connectivity failure and,
-  for the get command, from a "not found" result.
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011]
-- **FR-011**: The command MUST exit with a status that is programmatically distinguishable
+  for the get commands, from a "not found" result.
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011; .specify/archive/003-inputs-list-get/spec.md -> FR-014]
+- **FR-011**: Each outputs and inputs command MUST exit with a status that is programmatically distinguishable
   between success, a usage error, a hub-reported error, and a connectivity/network error
-  and, for the get command, "not found".
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012]
+  and, for the get commands, "not found".
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015]
 - **FR-012**: The command MUST clearly communicate when there are zero outputs to show,
   distinct from a failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-012]
-- **FR-013**: The command MUST reject any output data from the hub that does not match the
+- **FR-013**: Each outputs and inputs command MUST reject any output or input data from the hub that does not match the
   expected structure with a clear error, rather than displaying partial or malformed
-  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013]
+  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017]
 - **FR-014**: The CLI MUST provide a command that retrieves a single audio output from
   the hub by its identifier. [Source: .specify/archive/002-outputs-get/spec.md -> FR-001]
 - **FR-015**: The get command MUST require exactly one output identifier as input and MUST
@@ -229,6 +359,16 @@ human-readable view.
 - **FR-017**: The get command MUST fail with a clear, actionable "output not found"
   message, distinguishable from other failure types, when no output with the given
   identifier exists on the hub. [Source: .specify/archive/002-outputs-get/spec.md -> FR-008]
+- **FR-018**: The CLI MUST provide a command that lists the hub's audio inputs. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-001]
+- **FR-019**: By default, the inputs list command MUST show only enabled inputs. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-002]
+- **FR-020**: The inputs list command MUST provide an option for the user to additionally include disabled inputs in the results. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-003]
+- **FR-021**: For each input returned by the inputs list command, the CLI MUST display: its identifier, its human-readable display name, its source URI, whether it is enabled, its source type (static or ephemeral), whether it auto-removes when its route stops, whether it supports pause/resume, and its creation timestamp (or an explicit indication that none exists) — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-004]
+- **FR-022**: The CLI MUST provide a command that retrieves a single audio input from the hub by its identifier. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-005]
+- **FR-023**: The inputs get command MUST require exactly one input identifier as input and MUST fail with a clear usage error if it is omitted. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-006]
+- **FR-024**: The inputs get command MUST return the requested input regardless of its enabled/disabled state (unlike the inputs list command's default filtering). [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-007]
+- **FR-025**: For the input returned by the inputs get command, the CLI MUST display the same set of attributes specified in FR-021, in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-008]
+- **FR-026**: The inputs get command MUST fail with a clear, actionable "input not found" message, distinguishable from other failure types, when no input with the given identifier exists on the hub. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-011]
+- **FR-027**: The inputs list command MUST clearly communicate when there are zero inputs to show, distinct from a failure. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-016]
 
 ### Key Entities
 
@@ -251,6 +391,21 @@ human-readable view.
 
   [Source: .specify/archive/001-list-outputs/data-model.md -> Output; .specify/archive/002-outputs-get/data-model.md -> Output]
 
+- **Input**: An audio source registered with the hub, either statically configured or created ephemerally via the API. Attributes relevant to this feature: unique identifier, human-readable display name, source URI, whether it is enabled, source type (STATIC or EPHEMERAL), whether it auto-removes when its route stops, whether it supports pause/resume, and its creation timestamp (absent for static inputs). The inputs get command returns one decoded object, regardless of enabled state. Field mapping to `InputResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `inputId` or `displayName`, or a `source` other than STATIC or EPHEMERAL is malformed per FR-013; `uri` is passed through unvalidated):
+
+  | Field | Type | openapi.json field |
+  |-------|------|--------------------|
+  | `InputID` | string | `inputId` |
+  | `DisplayName` | string | `displayName` |
+  | `URI` | string | `uri` |
+  | `Enabled` | bool | `enabled` |
+  | `AutoRemove` | bool | `autoRemove` |
+  | `Source` | string (STATIC \| EPHEMERAL) | `source` |
+  | `CreatedAt` | string, nullable (RFC 3339; `nil` for static inputs) | `createdAt` |
+  | `Pauseable` | bool | `pauseable` |
+
+  [Source: .specify/archive/003-inputs-list-get/spec.md -> "Input"; .specify/archive/003-inputs-list-get/data-model.md -> "Input"]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -258,12 +413,12 @@ human-readable view.
 - **SC-001**: A user can view the full list of currently available outputs in under 1
   second under normal network conditions. [Source: .specify/archive/001-list-outputs/spec.md -> SC-001]
 - **SC-002**: When the hub is unreachable or unresponsive, the user receives a clear
-  failure message within 5 seconds (not an indefinite hang) in 100% of such cases.
-  [Source: .specify/archive/001-list-outputs/spec.md -> SC-002; .specify/archive/002-outputs-get/spec.md -> SC-003]
-- **SC-003**: 100% of machine-readable output produced by the command can be parsed by a
-  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004]
-- **SC-004**: A user can always tell, without ambiguity, whether "no outputs were found"
-  or "the command failed" occurred. [Source: .specify/archive/001-list-outputs/spec.md -> SC-004]
+  failure message within 5 seconds (not an indefinite hang) in 100% of such cases, for both the outputs and the inputs commands.
+  [Source: .specify/archive/001-list-outputs/spec.md -> SC-002; .specify/archive/002-outputs-get/spec.md -> SC-003; .specify/archive/003-inputs-list-get/spec.md -> SC-004]
+- **SC-003**: 100% of machine-readable output produced by the outputs or inputs commands can be parsed by a
+  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-005]
+- **SC-004**: A user can always tell, without ambiguity, whether "no outputs or inputs were found"
+  or "the command failed" occurred. [Source: .specify/archive/001-list-outputs/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-006]
 - **SC-005**: A user can identify a specific output's current volume, mute state, and
   availability from the command's output alone (a single invocation), without needing to
   run any other command or cross-reference a list.
@@ -273,22 +428,28 @@ human-readable view.
 - **SC-007**: When the requested output does not exist, the user receives a clear "not
   found" message — never mistaken for an empty result or a crash — in 100% of such
   cases. [Source: .specify/archive/002-outputs-get/spec.md -> SC-002]
+- **SC-008**: A user can view the full list of currently available inputs in under 1 second under normal network conditions. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-001]
+- **SC-009**: A user can retrieve a specific input's full state in under 1 second under normal network conditions. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-002]
+- **SC-010**: When the requested input does not exist, the user receives a clear "input not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-003]
+- **SC-011**: A user can identify a specific input's source URI, enabled state, and source type from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-007]
 
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
   established once (e.g. a default matching the API's documented default server, overridable
   by the user); this feature consumes that mechanism but does not define it.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"]
 - **AS-002**: The hub API requires no authentication for this read-only endpoint, consistent with the
-  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"]
+  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"]
 - **AS-003**: "Human-readable" default output presents the same set of fields as the machine-readable
   output, formatted for readability rather than strict parsing.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
-- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"]
-- **AS-005**: Outputs are unordered by the hub API; the command may present them in the order received
+  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
+- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/003-inputs-list-get/spec.md -> "The default request timeout is 5 seconds"]
+- **AS-005**: Outputs and inputs are unordered by the hub API; the commands may present them in the order received
   without imposing additional sorting guarantees.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "Outputs are unordered by the hub API"]
-- **AS-006**: The output identifier is an opaque, case-sensitive string as returned by the hub; the
-  get command performs no client-side normalization or fuzzy matching.
-  [Source: .specify/archive/002-outputs-get/spec.md -> "The output identifier is an opaque, case-sensitive string"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "Outputs are unordered by the hub API"; .specify/archive/003-inputs-list-get/spec.md -> "Inputs are unordered by the hub API"]
+- **AS-006**: The output and input identifier is an opaque, case-sensitive string as returned by the hub; the
+  get commands perform no client-side normalization or fuzzy matching.
+  [Source: .specify/archive/002-outputs-get/spec.md -> "The output identifier is an opaque, case-sensitive string"; .specify/archive/003-inputs-list-get/spec.md -> "The input identifier is an opaque, case-sensitive string"]
+- **AS-007**: Inputs have no volume, mute, or hardware-availability concept in the hub API; the inputs commands display the attributes the API defines for inputs (source URI, source type, auto-remove, pauseable, creation timestamp) rather than an outputs-shaped display.
+  [Source: .specify/archive/003-inputs-list-get/spec.md -> "Unlike outputs, inputs have no volume, mute, or hardware-availability concept"]
