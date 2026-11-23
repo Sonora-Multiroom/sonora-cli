@@ -64,7 +64,7 @@ resource-dependent, silently breaking scripts written against those four already
 commands — well outside this feature's scope. Keeping the split local to `route.Run` gets the
 new requirement without touching any other command's contract, the same way `play` added its
 five new classes without renumbering or reinterpreting the four it inherited
-(`006-play-command/research.md` §3).
+(`.specify/archive/006-play-command/research.md` §3).
 
 **Alternatives considered**:
 - *Extend `hub.ClassifyError`'s `NotFoundError` branch to switch on `.Resource` globally*:
@@ -72,7 +72,7 @@ five new classes without renumbering or reinterpreting the four it inherited
 - *Reuse the existing `ClassNotFound` (5) for both and rely on the message text alone*: rejected
   — fails FR-010's explicit "exit with a status that is programmatically distinguishable"
   wording, which play's own FR-011 precedent already establishes as meaning the exit code, not
-  just the message (`006-play-command/research.md` §3).
+  just the message (`.specify/archive/006-play-command/research.md` §3).
 
 ## 4. The confirmation message is CLI-constructed, not decoded from the hub
 
@@ -124,7 +124,7 @@ path end-to-end for every user story and every exit-code class — the existing 
 contract tests already cover `GetInput`/`GetOutput`/`GetGroup` in isolation, so they are reused,
 not duplicated, at the contract layer.
 
-**Rationale**: Same layering `play` established (`006-play-command/research.md` §5), extended to
+**Rationale**: Same layering `play` established (`.specify/archive/006-play-command/research.md` §5), extended to
 this feature's three-endpoint interaction (one more than `play`'s two, since `route` also
 pre-checks the input). `route` is named by the constitution as a core flow (routing) requiring
 contract/integration coverage before merge (Principle VI).

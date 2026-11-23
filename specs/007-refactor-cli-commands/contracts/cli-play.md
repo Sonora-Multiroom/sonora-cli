@@ -1,7 +1,7 @@
 # Contract: `sonora play` (updated target/flag shape)
 
 This documents only what changes from the existing
-[006-play-command/contracts/cli-play.md](../../006-play-command/contracts/cli-play.md)
+[006-play-command/contracts/cli-play.md](../../../.specify/archive/006-play-command/contracts/cli-play.md)
 contract. Everything not mentioned here (`<uri>`, `--volume`, `--json`, `--verbose`,
 `--hub-url`, success output fields, hub-error exit codes `3`/`4`/`6`/`8`/`9`/`10`) is
 unchanged.
@@ -41,4 +41,4 @@ caller wrote, not by inspecting both and detecting a collision (spec Clarificati
 ## Out of scope
 
 Unchanged from the original contract — no polling for a terminal route state; see
-[006-play-command/contracts/cli-play.md § Out of scope](../../006-play-command/contracts/cli-play.md#out-of-scope).
+[006-play-command/contracts/cli-play.md § Out of scope](../../../.specify/archive/006-play-command/contracts/cli-play.md#out-of-scope).

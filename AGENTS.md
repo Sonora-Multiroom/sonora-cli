@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `006-play-command` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `007-refactor-cli-commands` through `014-radio-station-search`; small changes in `specs/tiny/`.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
 Distilled, up-to-date specs summarising the current understanding of each feature or domain.
@@ -82,6 +82,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `003-inputs-list-get` — `sonora inputs list` and `sonora inputs get <input-id>`: inputs, `--include-disabled`, `--json`, not-found exit code 5
 - `004-routes-list-get` — `sonora routes list` and `sonora routes get <route-id>`: routes, `--status`/`--input-id`/`--target-id`, `--json`, not-found exit code 5
 - `005-groups-list-get` — `sonora groups list` and `sonora groups get <group-id>`: output groups, `--include-disabled`, `--json`, not-found exit code 5
+- `006-play-command` — `sonora play <uri> <target-id>`: one playback request, `--group`/`--output`, `--volume`, `--name`, `--json`; exit codes 6–10 for the play failure classes
 
 ## Active Technologies
 
@@ -97,8 +98,16 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/006-play-command: `sonora play <uri> <target-id>` (`--group`, `--output`, `--volume`, `--name`, `--json`, `--verbose`, `--hub-url`); one `POST /api/v2/play` call, returns on hub acceptance without polling; exit codes 6–10 for validation, ambiguous target, route creation failed, source unreachable and service unavailable; target resolved via `GET /api/v2/outputs/{id}` and `GET /api/v2/groups/{id}`
 - .specify/archive/005-groups-list-get: `sonora groups list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora groups get <group-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`, `inputs get` and `routes get`
 - .specify/archive/004-routes-list-get: `sonora routes list` (`--status`, `--input-id`, `--target-id`, `--json`, `--verbose`, `--hub-url`) and `sonora routes get <route-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get` and `inputs get`
 - .specify/archive/003-inputs-list-get: `sonora inputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora inputs get <input-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`
 - .specify/archive/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
 - .specify/archive/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout
+
+## Known Issues & Gotchas
+
+### ⚠️ Verb-less noun swallows its first argument
+**Issue:** `sonora play <uri> <target-id>` has no verb token, so the generic `noun, verb, rest := args[0], args[1], args[2:]` split in `run()` binds `<uri>` to `verb` and drops it before dispatch.
+**Root Cause:** The `len(args) < 2` gate and the noun/verb split assume every command has a verb; the one-operation `play` noun does not.
+**Prevention Rule:** Route a verb-less noun with an early special case in `cmd/sonora/main.go`, before the `len(args) < 2` gate and the noun/verb split, and let its own `Run` validate the positional count.

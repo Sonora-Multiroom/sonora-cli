@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-26
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "`play` should be next. The pattern so far has been list/get for main resources (outputs, inputs, routes). Looking at the OpenAPI spec, /api/v2/play is a dedicated \"Playback\" feature that creates an ephemeral input and route in one call — it's core functionality mentioned in the API description."
 

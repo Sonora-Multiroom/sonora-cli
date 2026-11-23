@@ -62,7 +62,7 @@ See [contracts/cli-get-list.md](contracts/cli-get-list.md) for the full contract
 
 Full contract: [contracts/cli-play.md](contracts/cli-play.md). Unchanged fields (`<uri>`,
 `--volume`, `--json`, `--verbose`, `--hub-url`) are not repeated here — see
-[006-play-command/data-model.md](../006-play-command/data-model.md).
+[006-play-command/data-model.md](../../.specify/archive/006-play-command/data-model.md).
 
 | Argument/Flag | Type | Default | Effect |
 |---|---|---|---|

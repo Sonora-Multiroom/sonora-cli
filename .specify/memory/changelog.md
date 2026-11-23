@@ -2,6 +2,26 @@
 
 ## Merged Features Log
 
+### Instant Playback (`play`) — archived 2026-11-23
+**Branch:** 006-play-command
+**Spec:** [.specify/archive/006-play-command/spec.md](../../.specify/archive/006-play-command/spec.md)
+
+**What was added:**
+- User Stories 22–25 (P1–P3): `sonora play <uri> <target-id>` starts playback of a URI to one output or a group in one command and reports the created input identifier, route identifier and status as the hub returned them; `--volume` sets a starting volume (0–100), `--name` names the ephemeral input
+- `--group`/`--output` force the target type when an output and a group share an identifier; both together is a usage error
+- FR-047–FR-056, SC-022–SC-025, AS-010–AS-013 and the Playback Request and Playback Result entities; shared requirements, outcomes and assumptions now cover the play command as well (FR-006–FR-009, FR-011, FR-013, SC-003, SC-004, AS-001–AS-004)
+- Five new exit codes (6–10) for validation, ambiguous target, route creation failed, source unreachable and upstream service unavailable; "target not found" reuses exit `5`
+
+**New Components:**
+- `internal/cli/play/` (`Run`); `internal/hub/play.go` (`PlaybackRequest`, `PlaybackResponse`, `ResolveTarget`, `Playback`); `internal/render/play.go`
+- `internal/hub/errors.go`: five new classes, `APIError`, `AmbiguousTargetError`; `cmd/sonora/main.go`: early `play` special case
+- `tests/{unit,contract,integration}` play tests
+
+**Tasks Completed:** 24/24 tasks
+
+
+## Merged Features Log
+
 ### List and Get Output Groups — archived 2026-11-23
 **Branch:** 005-groups-list-get
 **Spec:** [.specify/archive/005-groups-list-get/spec.md](../archive/005-groups-list-get/spec.md)
