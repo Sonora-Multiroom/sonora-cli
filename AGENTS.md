@@ -40,3 +40,19 @@
   `api/openapi.json`, the single source of truth for the hub API.
 - Feature work follows the Spec Kit workflow (`specs/<NNN-feature>/spec.md` →
   `plan.md` → `tasks.md`), driven by the `/speckit-*` skills.
+
+## Active Technologies
+
+- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`) (specs/001-list-outputs)
+
+## Project Structure
+
+- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `tests/{unit,contract,integration}` (specs/001-list-outputs)
+
+## Commands
+
+- `gofmt -l .` and `go vet ./...` baseline checks; `go test ./...` (specs/001-list-outputs)
+
+## Recent Changes
+
+- specs/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout
