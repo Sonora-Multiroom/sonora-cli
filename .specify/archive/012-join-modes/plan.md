@@ -2,7 +2,7 @@
 
 **Branch**: `012-join-modes` | **Date**: 2026-10-23 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/012-join-modes/spec.md`
+**Input**: Feature specification from `.specify/archive/012-join-modes/spec.md`
 
 ## Summary
 
@@ -83,7 +83,7 @@ Post-design re-check: unchanged, all pass. No Complexity Tracking entries.
 ### Documentation (this feature)
 
 ```text
-specs/012-join-modes/
+.specify/archive/012-join-modes/
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions and two spec corrections
 ├── data-model.md        # Phase 1: hub types, flag values, rendered records

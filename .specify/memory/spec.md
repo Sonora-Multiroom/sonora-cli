@@ -29,6 +29,7 @@
 > **Revision**: 2026-11-23 — Archived .specify/archive/011-hub-0128-alignment (moved from specs/ in the same run): added User Stories 55–57, FR-139–FR-154, SC-050–SC-054, AS-038–AS-044, the Route Refusal entity and eight edge cases. The feature documents what enable/disable do to running playback (hub 0.1.25), shows the play response's `displayName` (hub 0.1.28), and makes `sonora transfer` retry the transient `ROUTE_CHANGING_OUTPUTS` refusal. On the user's confirmation, the Playback Result entity was redefined in place: "renders exactly four" became four fields plus `displayName` second when non-empty (no ID to retire; see changelog.md). No other entry was folded or retired. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-138, SC-049 and AS-037, and its user stories above User Story 54.
 > **Revision**: 2026-11-23 — Resolved the partial contradictions left by the 011 archival, on the user's request: User Stories 32, 35 and 39 now say what disabling (and enabling an output) does to running playback since hub 0.1.25; FR-137 names `ROUTE_CHANGING_OUTPUTS` as the exception to "the hub's `detail` alone"; AS-022 names `transfer`'s retry as the exception to "one request". Each gained a ref to .specify/archive/011-hub-0128-alignment; no ID changed.
 > **Revision**: 2026-11-23 — tinyspec rename-inputs-command (.specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md): added User Story 58, FR-155–FR-160, SC-055 and AS-045. Adds `sonora rename inputs/<id> <name>` and `sonora rename inputs/<id> --reset` (`PUT /api/v2/inputs/{id}/display-name`, hub 0.1.27), and the hub client call that sonora-mcp will use. No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-24 — Archived .specify/archive/012-join-modes (moved from specs/ in the same run): added User Stories 59–61, FR-161–FR-178, SC-056–SC-060, AS-046–AS-051, eleven edge cases and the Join Mode, Route on Output and Output Main Route entities for CLI-012 (`--join-mode` on `play` and `route`, `--default-join-mode` on `create inputs`, `get outputs/<id> --include-routes`; hub 0.1.21 join modes). The Input and Route entities gained the default join mode and the route's join mode and outputs, and the Route entity's "all ten" became "all twelve". Folded: FR-018 into FR-154 (the no-dependency, no-startup-path rule now covers join modes), and AS-038 and AS-044 each gained the join-mode clause and a second source ref. No existing ID was renumbered or retired. SC-054 is partly contradicted by SC-059 (route and input records change their YAML); it is left as written and reported in the archival report.
 
 ## User Scenarios & Testing
 
@@ -1306,6 +1307,132 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 
 ---
 
+### User Story 59 - Announce over music, or play alongside it (Priority: P1)
+
+Music plays in the kitchen. The user plays a doorbell chime there with
+`sonora play <uri> outputs/kitchen --join-mode duck_others`. The music gets quieter while the chime
+plays and comes back afterwards. With `--join-mode mix` the chime plays over the music at full level.
+Without the flag, nothing changes from today.
+
+`sonora route inputs/<id> outputs/<id> --join-mode <mode>` does the same for a configured input. A user
+who creates an input meant for announcements can give it a default join mode with
+`sonora create inputs/<id> ... --default-join-mode duck_others`, so every route from it ducks unless the
+request says otherwise.
+
+A sonora-mcp developer sets the same join mode through the hub client's route, play and create-input
+requests.
+
+**Why this priority**: It unlocks something the CLI cannot do at all today, and it is the reason the hub
+added join modes. Each request change is one optional field.
+
+**Independent Test**: Run each command against a fake hub, with and without the flag, and check the
+request body the hub receives and the command's output and exit code. Run each command with an
+invalid mode and check that no request is sent.
+
+**Acceptance Scenarios**:
+
+1. **Given** `sonora play <uri> outputs/<id> --join-mode duck_others`, **When** it runs, **Then** the
+   hub receives a play request whose join mode is `DUCK_OTHERS`, and the command's output and exit code
+   are the same as for a play without the flag.
+2. **Given** `sonora route inputs/<id> groups/<id> --join-mode MIX`, **When** it runs, **Then** the hub
+   receives a route request whose join mode is `MIX`.
+3. **Given** `sonora create inputs/<id> --display-name ... <uri> --default-join-mode Duck_Others`, **When**
+   it runs, **Then** the hub receives a create-input request whose default join mode is `DUCK_OTHERS`.
+4. **Given** any of the three commands without its join-mode flag, **When** it runs, **Then** the request
+   has no join-mode field at all, so the hub applies its own default, and the request body is the same
+   as before this feature.
+5. **Given** `--join-mode fade` (or `--default-join-mode fade`), **When** the command runs, **Then** it
+   sends no request, prints the usage and an error that lists the valid modes, and exits with the usage
+   exit code (2).
+6. **Given** `--help` on any of the three commands, **When** a user reads it, **Then** the flag is
+   listed with the three valid modes and what the hub does when the flag is left out.
+7. **Given** a developer using the hub client, **When** they leave the join mode unset on a route, play
+   or create-input request, **Then** the request carries no join-mode field; **When** they set it,
+   **Then** the request carries it as given.
+
+[Source: .specify/archive/012-join-modes/spec.md -> User Story 1]
+
+---
+
+### User Story 60 - See what an output is playing (Priority: P2)
+
+The user hears two things in the kitchen and wants to know why. `sonora get outputs/kitchen
+--include-routes` shows the kitchen's usual record and below it the list of routes playing on it. The list
+is in the order the routes joined and includes group routes. For each route it shows the join mode,
+whether the route is lowered, and which one is the output's main route. The user can then stop or move
+the right route.
+
+A sonora-mcp developer gets the same list from the hub client.
+
+**Why this priority**: It is the only way to see the effect of User Story 59 and to find group routes
+on an output. It needs a new hub client operation and new output, and it depends on the hub's version,
+so it is more work than the request flags.
+
+**Independent Test**: Run `sonora get outputs/<id> --include-routes` against a fake hub that returns a
+list of routes, an empty list, an unknown duck state, a 404 for the output, and a 404 or 405 for the
+routes only (an older hub). Check the YAML, JSON and exit code in each case. Run it without the flag and check
+that only one request is sent.
+
+**Acceptance Scenarios**:
+
+1. **Given** an output with a direct route and a group route playing, **When** the user runs
+   `sonora get outputs/<id> --include-routes`, **Then** the output shows the output's record followed by
+   a `routes` list with both routes in the hub's order. In YAML each entry has its route ID, input,
+   target, target type, status, join mode, duck state, whether it is the main route, and whether it is
+   paused. In JSON each entry has every field the hub returns for it.
+2. **Given** an output with nothing playing, **When** the user runs the same command, **Then** the
+   output's record is followed by an empty routes list, in YAML and in JSON.
+3. **Given** `sonora get outputs/<id>` without the flag, **When** it runs, **Then** it sends one request,
+   and its output is byte-for-byte the same as before this feature.
+4. **Given** an unknown output, **When** the user runs the command with the flag, **Then** it reports the
+   output as not found, exactly as `get outputs/<id>` does today.
+5. **Given** a hub older than 0.1.21, which knows the output but answers 404 or 405 for the output's routes,
+   **When** the user runs the command with the flag, **Then** it does not say the output was not
+   found. It says that this hub cannot list an output's routes and needs 0.1.21 or later, and exits with
+   the exit code for an unexpected hub response (3), not the not-found code (5).
+6. **Given** a route whose duck state is a value the CLI does not know, **When** it is shown, **Then** the
+   CLI shows the hub's value unchanged and does not fail.
+7. **Given** a developer calling the hub client's new operation for an unknown output, **When** the hub
+   answers 404, **Then** the client returns the same not-found error it returns for other output
+   operations, naming the output.
+8. **Given** a developer reading a route entry's duck state, **When** the value is one the client does
+   not know, **Then** the client can tell them the route is not lowered, as the contract asks.
+
+[Source: .specify/archive/012-join-modes/spec.md -> User Story 2]
+
+---
+
+### User Story 61 - See a route's join mode and outputs, and an input's default (Priority: P3)
+
+The user runs `sonora get routes/<id>` and sees, in the default YAML, how the route joined its target
+and which outputs it plays on right now. A group route may play on fewer members than its group has.
+`sonora get inputs/<id>` shows the input's default join mode, or that it has none.
+
+**Why this priority**: The data is already in the hub client and in the JSON output; only the YAML
+output lacks it. It is useful, but not needed to use the other two stories.
+
+**Independent Test**: Run `get routes/<id>` and `get inputs/<id>` against a fake hub that returns the
+fields and one that omits them, and compare the YAML and JSON output.
+
+**Acceptance Scenarios**:
+
+1. **Given** a route with join mode `MIX` playing on two outputs, **When** the user runs
+   `sonora get routes/<id>`, **Then** the YAML shows the join mode and the two outputs in the hub's order,
+   after the fields it shows today.
+2. **Given** a group route currently playing on none of its members, **When** shown, **Then** the
+   outputs field is an empty list.
+3. **Given** an input with default join mode `DUCK_OTHERS`, **When** the user runs
+   `sonora get inputs/<id>`, **Then** the YAML shows it; **Given** an input without one, **Then** the YAML
+   shows the field as null, the way it shows a missing creation time.
+4. **Given** `--json` on either command, **When** it runs, **Then** the JSON includes the same fields as
+   the YAML and keeps its current shape.
+5. **Given** `sonora list routes` and `sonora list inputs`, **When** they run, **Then** their output is
+   unchanged.
+
+[Source: .specify/archive/012-join-modes/spec.md -> User Story 3]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1388,6 +1515,17 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 - **Network failure or timeout during a transfer retry**: reported as a network failure, as before; the CLI does not retry network failures. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Network failure or timeout during a retry"]
 - **`ROUTE_CHANGING_OUTPUTS` on a command other than transfer**: the contract documents it only for a transfer. If another command receives it, the CLI does not retry, but the error message still says the refusal is transient. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "`ROUTE_CHANGING_OUTPUTS` on a command other than transfer"]
 - **Unknown future refusal reasons**: still reported as a generic conflict, exit 14, with no retry. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Unknown future reasons"]
+- **Mixed case**: `--join-mode duck_others`, `Duck_Others` and `DUCK_OTHERS` all mean the same mode and are sent upper-cased, as `--status` on `list routes` does today. The hyphenated spelling that sonora-tts uses (`duck-others`) is not an alias: it is a usage error that lists the valid modes. [Source: .specify/archive/012-join-modes/spec.md -> "Mixed case"]
+- **Empty value** (`--join-mode ""`): a usage error, not "use the default". Leaving the flag out is the way to use the default. [Source: .specify/archive/012-join-modes/spec.md -> "Empty value"]
+- **A join mode the hub refuses**: a hub older than 0.1.21 ignores or rejects the field. Whatever it answers is reported as any other hub answer is today. The CLI does not check the hub's version first. [Source: .specify/archive/012-join-modes/spec.md -> "A join mode the hub refuses"]
+- **Join mode on a group target**: allowed; the hub applies it on every member output. [Source: .specify/archive/012-join-modes/spec.md -> "Join mode on a group target"]
+- **`--join-mode` with `--volume` and `--display-name` on `play`**: all three are sent together. [Source: .specify/archive/012-join-modes/spec.md -> "`--join-mode` with `--volume` and `--display-name` on `play`"]
+- **The output disappears between the two requests of `--include-routes`**: the routes request answers 404, and the CLI reports it as an older hub. This window is narrow, and the message tells the user what to check. It is accepted, not handled. [Source: .specify/archive/012-join-modes/spec.md -> "The output disappears between the two requests of `--include-routes`"]
+- **The routes request fails for another reason** (network failure, 5xx, malformed body): reported as that failure, with its usual exit code. Nothing is printed on stdout, not even the output's record. [Source: .specify/archive/012-join-modes/spec.md -> "The routes request fails for another reason"]
+- **A hub older than 0.1.21 for `get routes/<id>`**: the route has no join mode and no outputs. The YAML leaves those two fields out instead of showing empty values. The JSON keeps printing what it prints today. [Source: .specify/archive/012-join-modes/spec.md -> "A hub older than 0.1.21 for `get routes/<id>`"]
+- **`--include-routes` on another resource or on a list** (`get outputs`, `get groups/<id>`, `get inputs/<id>`): a usage error before any request is sent. [Source: .specify/archive/012-join-modes/spec.md -> "`--include-routes` on another resource or on a list"]
+- **Many routes on one output**: shown in full, in the hub's order. There is no paging. [Source: .specify/archive/012-join-modes/spec.md -> "Many routes on one output"]
+- **Unknown future join mode in a response**: shown as the hub sent it. The flags still accept only the three documented modes, until the contract adds more. [Source: .specify/archive/012-join-modes/spec.md -> "Unknown future join mode in a response"]
 
 ## Requirements
 
@@ -1594,7 +1732,7 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 **Hub 0.1.25–0.1.28 alignment: general**
 
 - **FR-153**: Every behaviour changed by the hub 0.1.25–0.1.28 alignment MUST be covered by tests written before the change, against a fake hub whose responses follow `api/openapi.json` at 0.1.28. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-015]
-- **FR-154**: The hub 0.1.25–0.1.28 alignment MUST NOT add a third-party dependency, command or flag, nor anything on the CLI's startup path. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-016]
+- **FR-154**: The hub 0.1.25–0.1.28 alignment MUST NOT add a third-party dependency, command or flag, nor anything on the CLI's startup path. Join modes (CLI-012) MUST NOT add a third-party dependency or anything on the CLI's startup path, and `--include-routes` MUST send a second request only when the flag is given. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-016] [Source: .specify/archive/012-join-modes/spec.md -> FR-018]
 
 - **FR-155**: The CLI MUST provide `sonora rename inputs/<input-id> <name>` and `sonora rename inputs/<input-id> --reset`, each making one request, `PUT /api/v2/inputs/{inputId}/display-name` (operationId `setInputDisplayName`), with `{"displayName": "<name>"}` or `{"displayName": null}` for `--reset`. A multi-word name is one quoted argument. On success (200) the command prints the returned input record as `get inputs/<input-id>` does (YAML, or JSON with `--json`) and exits `0`. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **FR-156**: A 404 from a rename request MUST be reported as "input not found: <id>" on standard error with exit `5`. A 400 MUST be reported with the hub's detail (or the generic invalid-request message when the hub gives none) with exit `6`. Any other non-2xx, network or malformed-body failure keeps the generic classification (FR-009). Nothing is written to standard output on any failure. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
@@ -1602,6 +1740,53 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 - **FR-158**: `rename --help` MUST print the usage and state that a rename of a configured input lasts until a restart, and a rename of a runtime input lasts until the input is removed. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **FR-159**: The public `hub` package MUST provide `SetInputDisplayName` for the call in FR-155, returning the decoded, validated input. It MUST map a 404 to `NotFoundError` for `input`, a 400 to `APIError` carrying the hub's detail (falling back to `StatusError`), a malformed body to `DecodeError` and other non-2xx responses to `StatusError`, so that other Sonora consumers such as sonora-mcp can offer the same rename. Its godoc MUST state that a null or blank name restores the original name. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **FR-160**: `DisplayNameRequest` MUST encode a nil name as `{"displayName": null}` (no omit-empty), so that a reset is sent explicitly. Name length and characters are not validated by the CLI; the hub decides and its 400 detail is printed. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
+
+**Choosing the join mode (CLI-012, API 0.1.21)**
+
+- **FR-161**: The hub client's route request, play request and create-input request MUST each have an optional join-mode field (a default join mode for the create-input request). The field is left out of the request body when it is unset, and sent as given when it is set. [Source: .specify/archive/012-join-modes/spec.md -> FR-001]
+
+- **FR-162**: `sonora play` and `sonora route` MUST accept `--join-mode <mode>`, and `sonora create inputs/<id>` MUST accept `--default-join-mode <mode>`. The mode is `REPLACE`, `MIX` or `DUCK_OTHERS`, matched without regard to case and sent upper-cased. [Source: .specify/archive/012-join-modes/spec.md -> FR-002]
+
+- **FR-163**: An unknown or empty mode MUST be a usage error (exit 2). The command MUST send no request, and MUST print an error that lists the valid modes. [Source: .specify/archive/012-join-modes/spec.md -> FR-003]
+
+- **FR-164**: Without the flag, each command MUST send the same request it sends today, with no join-mode field, so that the hub's defaults apply. [Source: .specify/archive/012-join-modes/spec.md -> FR-004]
+
+- **FR-165**: The `--help` of each of the three commands MUST list the flag and its modes, and say what happens without it: a route uses the input's default join mode, falling back to `REPLACE`; a play uses `REPLACE`; an input without a default leaves its routes on `REPLACE`. [Source: .specify/archive/012-join-modes/spec.md -> FR-005]
+
+
+**Showing an output's routes (CLI-012, API 0.1.21)**
+
+- **FR-166**: The hub client MUST offer an operation that returns the routes playing on one output, in the hub's order, with every field of the contract's route-on-output record. A 404 from it MUST be the client's usual not-found error, naming the output. [Source: .specify/archive/012-join-modes/spec.md -> FR-006]
+
+- **FR-167**: The hub client MUST let a consumer tell whether a route on an output is lowered. Any duck state other than `LOWERED` counts as not lowered. [Source: .specify/archive/012-join-modes/spec.md -> FR-007]
+
+- **FR-168**: `sonora get outputs/<id>` MUST accept `--include-routes`, with the help text "also list the routes playing on this output, in join order". With it, the output MUST be the output's record followed by a `routes` list in the hub's order. In YAML each entry MUST hold `routeId`, `inputId`, `targetId`, `targetType`, `status`, `joinMode`, `duckState`, `main` and `paused`, in that order; in JSON each entry MUST hold every field of the contract's route-on-output record. An output with no routes MUST show an empty list. [Source: .specify/archive/012-join-modes/spec.md -> FR-008]
+
+- **FR-169**: `--include-routes` on any other `get` form (a list such as `get outputs`, or a resource other than `outputs/<id>`) MUST be a usage error (exit 2). The command MUST send no request, and the error MUST say the flag applies only to `get outputs/<id>`. [Source: .specify/archive/012-join-modes/spec.md -> FR-008a]
+
+- **FR-170**: Without `--include-routes`, `sonora get outputs/<id>` MUST send exactly one request, and its output MUST be unchanged. [Source: .specify/archive/012-join-modes/spec.md -> FR-009]
+
+- **FR-171**: When the output request succeeds and the routes request answers 404 or 405 (a hub with the stop-routes operation on the same path but not the list answers 405), the CLI MUST report that the hub does not support listing an output's routes and needs 0.1.21 or later. It MUST exit with the unexpected-response exit code (3), and MUST NOT report the output as not found. [Source: .specify/archive/012-join-modes/spec.md -> FR-010]
+
+- **FR-172**: With `--include-routes`, any failure MUST leave stdout empty. The CLI never prints the output's record without its routes. [Source: .specify/archive/012-join-modes/spec.md -> FR-011]
+
+
+**Showing join modes on routes and inputs (CLI-012, API 0.1.21)**
+
+- **FR-173**: The YAML of `sonora get routes/<id>` MUST show the route's join mode and the list of outputs it plays on, after its current fields. When the hub returns neither field (a hub older than 0.1.21), both MUST be left out. [Source: .specify/archive/012-join-modes/spec.md -> FR-012]
+
+- **FR-174**: The YAML of every command that prints one input record (`get`, `create`, `rename`, `enable` and `disable inputs/<id>`) MUST show the input's default join mode, as null when the input has none. Their JSON already shows it. [Source: .specify/archive/012-join-modes/spec.md -> FR-013]
+
+- **FR-175**: The JSON of `get routes/<id>` and `get inputs/<id>` MUST keep its current shape and contain the same join-mode fields as the YAML. [Source: .specify/archive/012-join-modes/spec.md -> FR-014]
+
+- **FR-176**: `sonora list routes` and `sonora list inputs` output MUST NOT change. [Source: .specify/archive/012-join-modes/spec.md -> FR-015]
+
+
+**General (CLI-012)**
+
+- **FR-177**: The README MUST describe the three join modes in a short paragraph and document `--join-mode`, `--default-join-mode` and `--include-routes`. [Source: .specify/archive/012-join-modes/spec.md -> FR-016]
+
+- **FR-178**: Every new behaviour MUST be covered by tests written before the code, against a fake hub whose answers follow `api/openapi.json` at 0.1.28. That includes contract tests for the new hub client operation: a list, an empty list, a 404, and an unknown duck state. It also includes contract tests showing that each new request field is sent only when it is set. [Source: .specify/archive/012-join-modes/spec.md -> FR-017]
 
 ### Key Entities
 
@@ -1624,7 +1809,7 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 
   [Source: .specify/archive/001-list-outputs/data-model.md -> Output; .specify/archive/002-outputs-get/data-model.md -> Output]
 
-- **Input**: An audio source registered with the hub, either statically configured or created ephemerally via the API. Attributes relevant to this feature: unique identifier, human-readable display name, source URI, whether it is enabled, source type (STATIC or EPHEMERAL), whether it auto-removes when its route stops, whether it supports pause/resume, and its creation timestamp (absent for static inputs). The inputs get command returns one decoded object, regardless of enabled state. Field mapping to `InputResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `inputId` or `displayName`, or a `source` other than STATIC or EPHEMERAL is malformed per FR-013; `uri` is passed through unvalidated):
+- **Input**: An audio source registered with the hub, either statically configured or created ephemerally via the API. Attributes relevant to this feature: unique identifier, human-readable display name, source URI, whether it is enabled, source type (STATIC or EPHEMERAL), whether it auto-removes when its route stops, whether it supports pause/resume, its creation timestamp (absent for static inputs), and its default join mode (null when the input has none; CLI-012). The inputs get command returns one decoded object, regardless of enabled state. Field mapping to `InputResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `inputId` or `displayName`, or a `source` other than STATIC or EPHEMERAL is malformed per FR-013; `uri` is passed through unvalidated):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -1639,7 +1824,7 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 
   [Source: .specify/archive/003-inputs-list-get/spec.md -> "Input"; .specify/archive/003-inputs-list-get/data-model.md -> "Input"]
 
-- **Route**: A live connection routing audio from one input to one output or output group, managed by the hub. Attributes relevant to this feature: unique identifier, source input identifier, target identifier, target type (single output or output group), current lifecycle status (starting, active, stopping, stopped, or failed), creation timestamp, playback-started timestamp (absent until playback begins), whether it can be transferred to another target, whether it supports pause/resume, and whether it is currently paused. The routes list command shows the first five of these; the routes get command returns one decoded object with all ten. Field mapping to `RouteResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `routeId`, `inputId` or `targetId`, a `targetType` other than SINGLE_OUTPUT or OUTPUT_GROUP, or a `status` outside the five values is malformed per FR-013; timestamps are passed through unparsed):
+- **Route**: A live connection routing audio from one input to one output or output group, managed by the hub. Attributes relevant to this feature: unique identifier, source input identifier, target identifier, target type (single output or output group), current lifecycle status (starting, active, stopping, stopped, or failed), creation timestamp, playback-started timestamp (absent until playback begins), whether it can be transferred to another target, whether it supports pause/resume, and whether it is currently paused, its join mode, and the outputs it plays on right now (API 0.1.21; CLI-012). The routes list command shows the first five of these; the routes get command returns one decoded object with all twelve. Field mapping to `RouteResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `routeId`, `inputId` or `targetId`, a `targetType` other than SINGLE_OUTPUT or OUTPUT_GROUP, or a `status` outside the five values is malformed per FR-013; timestamps are passed through unparsed):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -1707,6 +1892,9 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 - **Published Hub Spec**: The contents of `api/openapi.json`, importable at the same version as the client. [Source: .specify/archive/010-public-hub-package/spec.md -> "Published hub spec"]
 - **Release Tag**: An immutable module version consumers pin to. [Source: .specify/archive/010-public-hub-package/spec.md -> "Release tag"]
 - **Route Refusal**: A 409 answer to a route request, with a human-readable detail, an open-ended reason and, for output-level reasons only, the output that failed (`APIError.OutputID` is empty for `INPUT_DISABLED`, `GROUP_DISABLED` and `ROUTE_CHANGING_OUTPUTS`). `ROUTE_CHANGING_OUTPUTS` is the one reason that clears without the user doing anything; it classifies as a conflict (exit `14`) with the message "the route is still adding an output; retry in a moment", and every other reason, or none, keeps the hub's `detail`, else `title`, else the generic conflict text. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Route refusal"; .specify/archive/011-hub-0128-alignment/data-model.md -> "Route refusal (`hub.APIError`, 409)"]
+- **Join Mode**: how a route joins the outputs it targets: `REPLACE`, `MIX` or `DUCK_OTHERS`. It is set on a route or play request, or on an input as the default for its routes, and it is reported on each route. [Source: .specify/archive/012-join-modes/spec.md -> "Join mode"]
+- **Route on Output**: one route as seen from one output. It has the route's own fields, plus its duck state on that output (`FULL` or `LOWERED`, open to more values) and whether it is the output's main route. A group route appears once under each member output it plays on. [Source: .specify/archive/012-join-modes/spec.md -> "Route on an output"]
+- **Output Main Route**: the first route to join the output that is not a ducking route, or, if every route is ducking, the first route. [Source: .specify/archive/012-join-modes/spec.md -> "Output's main route"]
 
 ## Success Criteria
 
@@ -1780,6 +1968,11 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 - **SC-054**: The output of every command other than `play` and `transfer`, and of `play` against a hub that omits the display name, is byte-for-byte identical to the release before the hub 0.1.25–0.1.28 alignment in the existing test suite. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-005]
 
 - **SC-055**: A rename or `--reset` changes the input's display name on the hub with one request, and the record printed afterwards shows the name the hub stored, so an operator can confirm the change at once. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
+- **SC-056**: A user can play an announcement over running music without stopping it, in one command. [Source: .specify/archive/012-join-modes/spec.md -> SC-001]
+- **SC-057**: A user can find out everything playing on an output, including group routes, in one command, without cross-referencing `list routes` and `get groups`. [Source: .specify/archive/012-join-modes/spec.md -> SC-002]
+- **SC-058**: Against a hub older than 0.1.21, `get outputs/<id> --include-routes` never says that an existing output was not found. Its message names the hub version required. [Source: .specify/archive/012-join-modes/spec.md -> SC-003]
+- **SC-059**: Every command run without the new flags sends the same requests and prints the same output as the previous release, byte for byte, across the existing test suite, apart from the join-mode fields FR-173 and FR-174 add to the route and input YAML. [Source: .specify/archive/012-join-modes/spec.md -> SC-004]
+- **SC-060**: An invalid join mode is rejected before any request reaches the hub, in 100% of the tested cases. [Source: .specify/archive/012-join-modes/spec.md -> SC-005]
 
 ## Assumptions
 
@@ -1835,11 +2028,17 @@ A person runs `sonora rename inputs/<input-id> <name>` to give an input a new di
 - **AS-035**: Publishing the spec (FR-133 / User Story 53) is recommended by the source plan; it is in scope but may be dropped at planning time without blocking User Stories 51 and 52. [Source: .specify/archive/010-public-hub-package/spec.md -> "Publishing the spec"]
 - **AS-036**: Counts from the source plan were verified against the repo on 2026-09-27 and bound the scope of mechanical changes: 111 files import the module path and 77 import the internal client; 30 CLI files use the exit-code mapping (the source plan said 34). [Source: .specify/archive/010-public-hub-package/spec.md -> "Counts from the source plan"]
 - **AS-037**: Out of scope: the sonora-mcp rewrite, new hub operations, new CLI commands, making config discovery public, and splitting the client into its own repository (option 2b). [Source: .specify/archive/010-public-hub-package/spec.md -> "Out of scope: the sonora-mcp rewrite"]
-- **AS-038**: The production hub runs 0.1.28 (checked 2026-10-22); older hubs must still work, so every new response field is optional on the client side. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "The production hub runs 0.1.28"]
+- **AS-038**: The production hub runs 0.1.28 (checked 2026-10-22); older hubs must still work, so every new response field is optional on the client side; hubs older than 0.1.21 must also keep working for every command that does not use the new join-mode flags (CLI-012). [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "The production hub runs 0.1.28"] [Source: .specify/archive/012-join-modes/spec.md -> "The production hub runs 0.1.28"]
 - **AS-039**: A transfer retry window of about 2 seconds is generous: the hub's own measurement of a rejoin was 0.16 s, and the contract says the `ROUTE_CHANGING_OUTPUTS` refusal clears "within moments". The exact delays are a planning decision. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "A retry window of about 2 seconds is generous"]
 - **AS-040**: Retrying belongs to the CLI command, not to the hub client's transfer operation, so each client operation keeps sending exactly one request and other consumers choose their own policy. The client may offer a way to recognise the transient reason. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Retrying belongs to the CLI command"]
 - **AS-041**: Typed constants for the refusal reasons are not required. The earlier decision (tinyspec `decode-route-refusals-409`) to keep the reason an open string stands; named values may be added only if they keep it open. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Typed constants for the refusal reasons are not required"]
 - **AS-042**: `sonora transfer` already checks that the target exists before transferring; that check is not repeated on retries. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "`sonora transfer` already checks that the target exists"]
 - **AS-043**: No prompt, warning or `--force` flag is added to `sonora disable`; the backlog item leaves that as an open question for later. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "No prompt, warning or `--force` flag is added to `sonora disable`"]
-- **AS-044**: sonora-mcp picks up the hub client changes of the hub 0.1.25–0.1.28 alignment with its next update of this module; changing sonora-mcp is out of scope. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "sonora-mcp picks up the client changes"]
+- **AS-044**: sonora-mcp picks up the hub client changes of the hub 0.1.25–0.1.28 alignment and of join modes (CLI-012) with its next update of this module; changing sonora-mcp is out of scope. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "sonora-mcp picks up the client changes"] [Source: .specify/archive/012-join-modes/spec.md -> "sonora-mcp picks up the client changes"]
 - **AS-045**: Name length, allowed characters and trimming are the hub's rules, not the CLI's: the CLI sends the name as given, and a name the hub refuses is reported with the hub's detail. A rename does not persist past a restart for a configured input, and a runtime input's rename ends when it is removed (FR-158). [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
+- **AS-046**: **List views stay as they are** (the backlog's open question, settled in Clarifications). `list routes` and `list inputs` keep their fixed fields. The join mode appears in `get routes/<id>`, `get inputs/<id>` and in the routes shown by `--include-routes`, which is where a user asks about one route or one output. Adding columns to the lists would change their shape for every script that reads them, for little gain. [Source: .specify/archive/012-join-modes/spec.md -> "List views stay as they are"]
+- **AS-047**: `sonora play` and `sonora route` do not show the join mode in their own output. Their output stays as it is, and `get routes/<id>` shows the join mode afterwards. [Source: .specify/archive/012-join-modes/spec.md -> "sonora play and sonora route do not show the join mode"]
+- **AS-048**: sonora-tts's announcement playback mode is out of scope until sonora-tts documents it. [Source: .specify/archive/012-join-modes/spec.md -> "sonora-tts's announcement playback mode"]
+- **AS-049**: The flag check mirrors `--status` on `list routes`: the valid values are a fixed list in the CLI, taken from the contract's enum. [Source: .specify/archive/012-join-modes/spec.md -> "The flag check mirrors"]
+- **AS-050**: The exit code for an older hub on `--include-routes` (3) follows the README's meaning "hub returned an unexpected response". The hub answered 404 to a request for an output it had just returned. [Source: .specify/archive/012-join-modes/spec.md -> "The exit code for an older hub on --include-routes"]
+- **AS-051**: If the hub later adds `?includeRoutes=true` to the output request (proposed in `sonora-multiroom/docs/backlog/routes-per-output-in-outputs-list.md`), the flag can switch to one request without changing what users see. That switch is not part of this feature. [Source: .specify/archive/012-join-modes/spec.md -> "If the hub later adds"]

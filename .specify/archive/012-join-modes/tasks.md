@@ -5,7 +5,7 @@ description: "Task list for 012-join-modes"
 
 # Tasks: Join Modes in the CLI
 
-**Input**: Design documents from `specs/012-join-modes/`
+**Input**: Design documents from `.specify/archive/012-join-modes/`
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/cli.md](contracts/cli.md),
@@ -42,7 +42,7 @@ task starts.
 
 **Purpose**: Confirm the baseline the feature starts from.
 
-- [X] T001 Confirm that `api/openapi.json` reads `"version": "0.1.28"`, and that `gofmt -l .`, `go vet ./...` and `go test -count=1 ./...` pass on branch `012-join-modes` before any change. Create `specs/012-join-modes/verification.md` with a `## Baseline` section: the date, the commands, the exit codes and the package count.
+- [X] T001 Confirm that `api/openapi.json` reads `"version": "0.1.28"`, and that `gofmt -l .`, `go vet ./...` and `go test -count=1 ./...` pass on branch `012-join-modes` before any change. Create `.specify/archive/012-join-modes/verification.md` with a `## Baseline` section: the date, the commands, the exit codes and the package count.
 
 ---
 
@@ -83,7 +83,7 @@ US1, the first story.
 
   Also add `TestJoinModeValues`, asserting that `joinmode.Values` equals `[]string{hub.JoinModeReplace, hub.JoinModeMix, hub.JoinModeDuckOthers}`, in that order.
 - [X] T006 [P] [US1] In `tests/unit/cli_play_test.go`, add three tests:
-  - `TestPlayRun_HelpDescribesJoinMode`: the `--help` stdout contains `-join-mode MODE` and the text from the `play` row of `specs/012-join-modes/contracts/cli.md`, including "without it, REPLACE".
+  - `TestPlayRun_HelpDescribesJoinMode`: the `--help` stdout contains `-join-mode MODE` and the text from the `play` row of `.specify/archive/012-join-modes/contracts/cli.md`, including "without it, REPLACE".
   - `TestPlayRun_InvalidJoinMode_UsageErrorNoRequest`: a table over `fade`, `""` and `duck-others`, each run against `countingHub`. Assert exit 2; that stderr's first line is the play usage line; that stderr contains `error: unknown join mode "<v>"; valid modes: REPLACE, MIX, DUCK_OTHERS`; and that the hub count is 0.
   - `TestPlayRun_InvalidJoinMode_CheckedAfterArguments`: a missing `<target-path>` combined with `--join-mode fade` reports the missing argument, not the join mode. This fixes the order of the checks.
 - [X] T007 [P] [US1] In `tests/unit/cli_route_test.go`, add `TestRouteRun_HelpDescribesJoinMode` (the `route` row text, including "the input's default join mode, else REPLACE") and `TestRouteRun_InvalidJoinMode_UsageErrorNoRequest`. The second follows T006's pattern and uses `countingRouteHub`.
@@ -105,7 +105,7 @@ US1, the first story.
 ### Implementation for User Story 1
 
 - [X] T012 [US1] In `hub/routes.go`:
-  - add the `JoinModeReplace`, `JoinModeMix` and `JoinModeDuckOthers` constants, with the godoc from `specs/012-join-modes/contracts/hub-package.md`;
+  - add the `JoinModeReplace`, `JoinModeMix` and `JoinModeDuckOthers` constants, with the godoc from `.specify/archive/012-join-modes/contracts/hub-package.md`;
   - add to `CreateRouteRequest` the field ``JoinMode *string `json:"joinMode,omitempty"` ``, documented as "how the route joins its target (a JoinMode* value). Nil leaves it to the hub: the input's default join mode, else REPLACE."
 
   This makes T002 pass.
@@ -193,7 +193,7 @@ exactly one request is sent.
 - [X] T026 [US2] In `hub/routes.go`, extract `validateRouteFields(routeID, inputID, targetID, targetType, status string) error` from `validateRoute`, keeping its exact messages, and make `validateRoute` call it. Do not change any behaviour; the existing route contract tests must still pass.
 - [X] T027 [US2] In `hub/outputs.go`:
   - add the `DuckStateFull` and `DuckStateLowered` constants (godoc: "the hub may add values; treat an unknown one as DuckStateFull");
-  - add the `RouteOnOutput` type, mirroring `#/components/schemas/RouteOnOutputResponse` field for field, in the order and with the Go types of `specs/012-join-modes/data-model.md`. `StartedAt` is a `*string`. Write godoc on the type, and on `JoinMode`, `DuckState` and `Main`.
+  - add the `RouteOnOutput` type, mirroring `#/components/schemas/RouteOnOutputResponse` field for field, in the order and with the Go types of `.specify/archive/012-join-modes/data-model.md`. `StartedAt` is a `*string`. Write godoc on the type, and on `JoinMode`, `DuckState` and `Main`.
   - add `func (r RouteOnOutput) Lowered() bool { return r.DuckState == DuckStateLowered }`, with godoc;
   - add `GetRoutesForOutput(ctx context.Context, client *http.Client, baseURL, outputID string) ([]RouteOnOutput, error)`, built like `GetOutput` and `ListRoutes`. It calls `GET {baseURL}/api/v2/outputs/{url.PathEscape(outputID)}/routes`. A 404 gives `&NotFoundError{Resource: "output", ID: outputID}`, and any other non-2xx gives `&StatusError`. It decodes into `[]RouteOnOutput`, turns nil into `[]RouteOnOutput{}`, and checks each entry with `validateRouteFields`, wrapping a failure in `&DecodeError`. It does not check `JoinMode` or `DuckState`.
 
@@ -276,12 +276,12 @@ T035 differ only by the new last line.
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T039 Run `gofmt -l .` (it must print nothing), `go vet ./...` and `go test -count=1 ./...`, reading each command's own exit code. Fix any failure, including in `tests/unit/hub_godoc_test.go` and `tests/unit/stray_refs_test.go`. Also confirm that `git diff main -- go.mod go.sum` prints nothing: the feature adds no dependency.
-- [X] T040 Work through `specs/012-join-modes/quickstart.md`:
+- [X] T040 Work through `.specify/archive/012-join-modes/quickstart.md`:
   - the four `--help` outputs, via `go run ./cmd/sonora …`;
   - the **read-only** checks against `http://multiroom.lan:8080`: `get outputs/<id> --include-routes`, the same with `--json`, `get routes/<id>` and `get inputs/<id>`, comparing against `curl -s …/api/v2/outputs/<id>/routes`.
 
   Make no request that plays, stops or changes anything on `multiroom.lan`. An audible `--join-mode` check needs the user's permission first.
-- [X] T041 Record the T039 and T040 results in `specs/012-join-modes/verification.md`: the dates, the commands, the test counts, and the production hub version from `/api-docs`. Mark the tasks `[X]` in this file as they are done.
+- [X] T041 Record the T039 and T040 results in `.specify/archive/012-join-modes/verification.md`: the dates, the commands, the test counts, and the production hub version from `/api-docs`. Mark the tasks `[X]` in this file as they are done.
 - [X] T042 Update `docs/backlog/`: delete `join-modes-in-cli.md`, and remove its row from `docs/backlog/INDEX.md`.
 - [X] T043 Run `git ls-files --eol` over the changed and new files, and confirm that none shows `w/crlf`.
 

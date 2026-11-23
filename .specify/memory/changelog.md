@@ -2,6 +2,20 @@
 
 ## Merged Features Log
 
+### Join Modes in the CLI (`--join-mode`, `--default-join-mode`, `get outputs --include-routes`) — archived 2026-11-24
+**Branch:** 012-join-modes
+**Spec:** [.specify/archive/012-join-modes/spec.md](../archive/012-join-modes/spec.md)
+
+**What was added:**
+- User Stories 59–61 (P1–P3): announcing over music or playing alongside it with `--join-mode` on `play` and `route`, and a default join mode on `create inputs`; seeing an output's routes, including group routes, with `get outputs/<id> --include-routes`; seeing a route's join mode and outputs, and an input's default join mode, in `get routes/<id>` and `get inputs/<id>`
+- FR-161–FR-178, SC-056–SC-060, AS-046–AS-051, eleven edge cases, and the Join Mode, Route on Output and Output Main Route entities; FR-154 gained the join-mode rules (012 FR-018), AS-038 and AS-044 gained the join-mode clauses, and the Input and Route entities gained their new fields
+
+**New Components:**
+- `hub`: `CreateRouteRequest.JoinMode`, `PlaybackRequest.JoinMode` and `CreateInputRequest.DefaultJoinMode` (`*string`, `omitempty`); `RouteOnOutput` with `Lowered()`; `GetRoutesForOutput`; `JoinMode*` and `DuckState*` constants (additive; the plan targets v0.3.0)
+- `internal/cli/joinmode` (the flag check shared by `play`, `route` and `create inputs`); the `--include-routes` second request and its older-hub message in `internal/cli/outputs`; `RenderRouteYAML` and `RenderInputYAML` show the new fields
+
+**Tasks Completed:** 43/43 tasks
+
 ### Align the CLI with Hub 0.1.25–0.1.28 — archived 2026-11-23
 **Branch:** 011-hub-0128-alignment
 **Spec:** [.specify/archive/011-hub-0128-alignment/spec.md](../archive/011-hub-0128-alignment/spec.md)

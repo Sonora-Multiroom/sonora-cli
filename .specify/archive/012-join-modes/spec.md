@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-22
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "docs/backlog/join-modes-in-cli.md"
 
