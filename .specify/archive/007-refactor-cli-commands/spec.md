@@ -216,7 +216,7 @@ verifying the same playback result as today's `sonora play <uri> <id> --output` 
 
 - Only commands that are already implemented today are in scope: `inputs`/`outputs`/`groups`/
   `routes` `list`/`get`, and `play`. The `route` command itself is out of scope — it's
-  already specified separately (`specs/008-route-command`) and not yet implemented.
+  already specified separately (`.specify/archive/008-route-command`) and not yet implemented.
 - Commands documented in `docs/cli-command-landscape.md` that aren't implemented yet
   (`create`, `delete`, `enable`/`disable`, `mute`/`unmute`, `set ... volume`, `transfer`,
   `stop`/`pause`/`resume`, `master-mute`) are out of scope here; this feature only brings

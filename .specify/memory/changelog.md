@@ -2,6 +2,21 @@
 
 ## Merged Features Log
 
+### Route an Existing Input (`route`) — archived 2026-11-23
+**Branch:** 008-route-command
+**Spec:** [.specify/archive/008-route-command/spec.md](../archive/008-route-command/spec.md)
+
+**What was added:**
+- User Stories 30–31 (P1–P2): `sonora route inputs/<input-id> <outputs|groups>/<target-id>` connects an existing input to one output or one output group in one command, without creating a new input; the target type comes from the path prefix, so an output and a group sharing an identifier need no flag
+- Exit codes `11` (input not found) and `12` (target not found); route creation failed reuses `8`
+- FR-071–FR-079, SC-030–SC-033, AS-018–AS-021, six route edge cases and the Routing Request and Routing Result entities; shared FR-006, FR-007, FR-009, FR-011 and FR-013 widened to cover the route command, and FR-067 to cover its target path
+
+**New Components:**
+- `internal/cli/route/` (`Run`); `internal/hub/routes.go` (`CreateRouteRequest`, `CreateRoute`); `internal/hub/errors.go` (`ClassInputNotFound`, `ClassTargetNotFound`); `internal/render/route.go`; `cmd/sonora/main.go`: early `route` special case beside `play`
+- `tests/{unit,contract,integration}` route tests
+
+**Tasks Completed:** 17/17 tasks
+
 ### Adopt Verb-First Command Landscape — archived 2026-11-23
 **Branch:** 007-refactor-cli-commands
 **Spec:** [.specify/archive/007-refactor-cli-commands/spec.md](../archive/007-refactor-cli-commands/spec.md)

@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-27
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "`sonora route inputs/<input-id> <outputs|groups>/<target-id>`
 (singular, top-level, no subcommand, path-style resource addressing) — mirrors `sonora play

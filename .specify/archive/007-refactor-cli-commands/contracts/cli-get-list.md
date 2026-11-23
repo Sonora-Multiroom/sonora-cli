@@ -67,4 +67,4 @@ which command lines route to that behavior.
 - Any mutation (`create`/`delete`/`enable`/`disable`/`set ... volume`/`mute`) — not yet
   implemented; tracked separately per `docs/cli-command-landscape.md`.
 - `master-mute` — not yet implemented.
-- The `route` command — specified separately (`specs/008-route-command`), not yet implemented.
+- The `route` command — specified separately (`.specify/archive/008-route-command`), not yet implemented.

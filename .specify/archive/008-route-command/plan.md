@@ -2,7 +2,7 @@
 
 **Branch**: `008-route-command` | **Date**: 2026-08-28 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/008-route-command/spec.md`
+**Input**: Feature specification from `.specify/archive/008-route-command/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -83,7 +83,7 @@ No violations requiring justification — the Complexity Tracking table below is
 ### Documentation (this feature)
 
 ```text
-specs/008-route-command/
+.specify/archive/008-route-command/
 ├── plan.md               # This file (/speckit-plan command output)
 ├── research.md            # Phase 0 output (/speckit-plan command)
 ├── data-model.md          # Phase 1 output (/speckit-plan command)

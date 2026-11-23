@@ -5,7 +5,7 @@ description: "Task list for `sonora route`"
 
 # Tasks: Route an Existing Input (`route`)
 
-**Input**: Design documents from `/specs/008-route-command/`
+**Input**: Design documents from `.specify/archive/008-route-command/`
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/cli-route.md](contracts/cli-route.md),

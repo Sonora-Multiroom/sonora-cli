@@ -8,6 +8,7 @@
 > **Revision**: 2026-11-23 — Archived .specify/archive/006-play-command (moved from specs/ in the same run): added User Stories 22–25, FR-047–FR-056, SC-022–SC-025, AS-010–AS-013 and the Playback Request and Playback Result entities. Its FR-007, FR-008, FR-010, FR-011 and FR-012 were folded into FR-006–FR-009, FR-011 and FR-013, widening those entries to cover the play command as well; its SC-005 and SC-006 into SC-003 and SC-004; its assumptions AS-001–AS-004 into the existing entries; and its unreachable, timeout and malformed-response edge cases into the existing ones. Its nine failure edge cases are new. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-046, SC-021 and AS-009.
 > **Revision**: 2026-11-23 — tinyspec help-command (.specify/archive/tiny/2026-08-26-help-command/help-command.md): added User Story 26 and FR-057–FR-058 for the usage help. `help`, `-h`, `--help` and bare invocation print the usage text to stdout and exit `0`; the zero-argument invocation, previously a usage error (exit `2`), is now help. FR-058 keeps the missing-verb and unknown-command usage errors unchanged.
 > **Revision**: 2026-11-23 — Archived .specify/archive/007-refactor-cli-commands (moved from specs/ in the same run): added User Stories 27–29, FR-059–FR-070, SC-026–SC-029, AS-014–AS-017, six edge cases and the Resource Kind and Resource Path entities. The feature replaces the noun-verb read commands and `play`'s `--group`/`--output`/`--name` with verb-first `get`/`list <resource>[/<id>]` and `play <uri> <outputs|groups>/<id> --display-name`. On the user's confirmation, FR-015, FR-023, FR-033, FR-042 (get with no identifier is a usage error), FR-049, FR-050, FR-051, FR-052 and AS-012 were removed and their IDs retired (see changelog.md); their replacements are FR-060 (for FR-015, FR-023, FR-033, FR-042) and FR-067 (for FR-050, FR-052); FR-049, FR-051 and AS-012 have none. No incoming item folded into an existing entry. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-058, SC-025 and AS-013.
+> **Revision**: 2026-11-23 — Archived .specify/archive/008-route-command (moved from specs/ in the same run): added User Stories 30–31, FR-071–FR-079, SC-030–SC-033, AS-018–AS-021, the Routing Request and Routing Result entities and six route edge cases. Its FR-006, FR-007 and FR-009 were folded into FR-006, FR-007 and FR-009, its FR-010 into FR-011 and its FR-011 into FR-013, and its FR-003 into FR-067, widening those entries to cover the route command; its SC-004 into SC-003 and its assumptions AS-001–AS-004 into the existing entries. No existing ID was renumbered. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-070, SC-029 and AS-017; retired AS-012 is not reused.
 
 ## User Scenarios & Testing
 
@@ -729,6 +730,69 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 
 ---
 
+### User Story 30 - Route an existing input to a single output (Priority: P1)
+
+A person operating the audio system has an input that already exists (e.g. a line-in, a
+previously created stream, or one created by an earlier `play`) and wants to send it to one
+speaker, without creating a new input or a duplicate playback session.
+
+**Why this priority**: This is the core value of the feature — connecting something that's
+already playing (or already defined) to a destination in one command. Without it, the only
+way to get audio to a target is `play`, which always mints a brand-new input even when a
+perfectly good one already exists.
+
+**Independent Test**: Can be fully tested by running the route command with the path of an
+existing, enabled input and the path of a single existing output, then verifying the command
+reports the resulting route's identifier and status exactly as returned by the hub, without
+creating any new input.
+
+**Acceptance Scenarios**:
+
+1. **Given** the path of an existing, enabled input and the path of an existing, enabled
+   output, **When** the user runs `sonora route inputs/<input-id> outputs/<output-id>`,
+   **Then** the command succeeds and displays the route's identifier, status, and a
+   human-readable confirmation message.
+2. **Given** the same successful routing request, **When** the user requests
+   machine-readable output, **Then** the result is valid, strictly parseable structured data
+   containing the same fields as the human-readable view.
+3. **Given** a successful routing request, **When** the user subsequently inspects the
+   input (e.g. via the existing input inspection command), **Then** the input is unchanged —
+   no new input was created as a side effect.
+
+[Source: .specify/archive/008-route-command/spec.md -> User Story 1]
+
+---
+
+### User Story 31 - Route an existing input to an output group (Priority: P2)
+
+A person wants to send an existing input to a group of outputs at once (e.g. "whole house")
+rather than a single speaker.
+
+**Why this priority**: Groups are a first-class routing target already supported elsewhere
+in the CLI; routing should work the same way against a group as against a single output, but
+this is secondary to the single-output happy path.
+
+**Independent Test**: Can be fully tested by running `sonora route inputs/<input-id>
+groups/<group-id>` and verifying the same success output as User Story 30, with the route's
+target reflecting the group.
+
+**Acceptance Scenarios**:
+
+1. **Given** the path of an existing input and the path of an existing output group,
+   **When** the user runs `sonora route inputs/<input-id> groups/<group-id>`, **Then** the
+   command succeeds and displays the route's identifier and status, and confirms the target
+   is a group.
+2. **Given** an output and a group that happen to share the same identifier, **When** the
+   user runs `sonora route inputs/<input-id> groups/<id>`, **Then** the command targets the
+   group, regardless of an output also existing with that same identifier.
+3. **Given** the same colliding identifiers, **When** the user runs `sonora route
+   inputs/<input-id> outputs/<id>`, **Then** the command targets the output rather than the
+   group.
+
+[Source: .specify/archive/008-route-command/spec.md -> User Story 2]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -771,6 +835,12 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 - What happens when a resource path carries a stray slash or extra segment (`sonora get out/foo/bar`)? Since ids match `^[a-zA-Z0-9_-]{1,255}$` and never contain `/`, an extra slash unambiguously means the argument is malformed; the command must fail with a clear usage error rather than guessing which segment is the id. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when the user mixes an alias and a full name incorrectly"]
 - What happens when the collection filter flags (`--include-disabled`, `--status`, `--input-id`, `--target-id`) are combined with the `get`/`list` verbs? They must continue to filter exactly as before — only the verb/resource-path shape changed. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when existing collection filter flags"]
 - What happens to `--json`, `--hub-url`, and `--verbose` on the refactored commands? They must keep working, unchanged. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens to `--json`, `--hub-url`, and `--verbose`?"]
+- What happens when the input path (`inputs/<id>` or `in/<id>`) names no existing input? The command must fail with a clear "input not found" error, distinct from "target not found" (exit `11`). [Source: .specify/archive/008-route-command/spec.md -> "What happens when the input path does not correspond to an existing input?"]
+- What happens when the target path names an identifier that matches no resource of exactly that type, even though a resource of the other type has that identifier? The command must fail with a clear "target not found" error (exit `12`) and must never retarget the other type. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the target path (`outputs/<id>` or `groups/<id>`) does not correspond"]
+- What happens when the input or target path's prefix is not an accepted one (e.g. `sonora route outputs/x outputs/y`)? The command must fail with a usage error that names the invalid prefix, rather than guessing a resource type. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the input path's prefix is not `inputs`/`in`"]
+- What happens when neither the input path nor the target path is supplied to the route command? The user must see a usage error explaining what is required, not a confusing failure. [Source: .specify/archive/008-route-command/spec.md -> "What happens when neither the input path nor the target path is supplied?"]
+- What happens when the hub accepts the request but cannot create the route (e.g. the input is disabled, or the target is already at capacity)? The command must fail with a "route creation failed" error (exit `8`), distinct from "not found" and from validation errors. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the hub accepts the request but cannot create the underlying route"]
+- What happens when the input is already routed to that target, or the input and target identifiers refer to the same underlying entity? The command must surface whatever outcome the hub reports, rather than silently blocking or deduplicating the request. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the input identifier and the target identifier refer to the same underlying entity"]
 
 ## Requirements
 
@@ -789,30 +859,30 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 - **FR-005**: An output that is enabled but whose hardware is currently unavailable MUST
   be visibly distinguishable from an available output in the default human-readable view.
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-005; .specify/archive/002-outputs-get/spec.md -> FR-005]
-- **FR-006**: Each outputs, inputs, routes and groups command's default output, and the play command's default output, MUST be human-readable and legible without any
-  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006; .specify/archive/003-inputs-list-get/spec.md -> FR-009; .specify/archive/004-routes-list-get/spec.md -> FR-008; .specify/archive/005-groups-list-get/spec.md -> FR-009; .specify/archive/006-play-command/spec.md -> FR-007]
-- **FR-007**: Each outputs, inputs, routes and groups command, and the play command, MUST provide an explicit option to switch to strict,
+- **FR-006**: Each outputs, inputs, routes and groups command's default output, and the play and route commands' default output, MUST be human-readable and legible without any
+  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006; .specify/archive/003-inputs-list-get/spec.md -> FR-009; .specify/archive/004-routes-list-get/spec.md -> FR-008; .specify/archive/005-groups-list-get/spec.md -> FR-009; .specify/archive/006-play-command/spec.md -> FR-007; .specify/archive/008-route-command/spec.md -> FR-006]
+- **FR-007**: Each outputs, inputs, routes and groups command, and the play and route commands, MUST provide an explicit option to switch to strict,
   script-parseable output instead of the human-readable default.
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010; .specify/archive/004-routes-list-get/spec.md -> FR-009; .specify/archive/005-groups-list-get/spec.md -> FR-010; .specify/archive/006-play-command/spec.md -> FR-008]
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010; .specify/archive/004-routes-list-get/spec.md -> FR-009; .specify/archive/005-groups-list-get/spec.md -> FR-010; .specify/archive/006-play-command/spec.md -> FR-008; .specify/archive/008-route-command/spec.md -> FR-007]
 - **FR-008**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message — not a raw
   technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009; .specify/archive/003-inputs-list-get/spec.md -> FR-012; .specify/archive/004-routes-list-get/spec.md -> FR-011; .specify/archive/005-groups-list-get/spec.md -> FR-012; .specify/archive/006-play-command/spec.md -> FR-010]
-- **FR-009**: Each outputs, inputs, routes and groups command, and the play command, MUST fail with a clear, actionable error message when the hub
+- **FR-009**: Each outputs, inputs, routes and groups command, and the play and route commands, MUST fail with a clear, actionable error message when the hub
   does not respond within a bounded amount of time; it MUST NOT wait indefinitely. Each
   command MUST make a single attempt and MUST NOT automatically retry on network or
-  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012; .specify/archive/005-groups-list-get/spec.md -> FR-013; .specify/archive/006-play-command/spec.md -> FR-010]
+  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012; .specify/archive/005-groups-list-get/spec.md -> FR-013; .specify/archive/006-play-command/spec.md -> FR-010; .specify/archive/008-route-command/spec.md -> FR-009]
 - **FR-010**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message when the hub
   returns an error response, distinguishing that case from a connectivity failure and,
   for the get commands, from a "not found" result.
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011; .specify/archive/003-inputs-list-get/spec.md -> FR-014; .specify/archive/004-routes-list-get/spec.md -> FR-013; .specify/archive/005-groups-list-get/spec.md -> FR-014]
 - **FR-011**: Each outputs, inputs, routes and groups command MUST exit with a status that is programmatically distinguishable
   between success, a usage error, a hub-reported error, and a connectivity/network error
-  and, for the get commands, "not found". For the play command, a validation error, a route creation failure, an unreachable source and an unavailable upstream service each also have their own exit code (6–10); "target not found" uses the not-found exit code (5).
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015; .specify/archive/004-routes-list-get/spec.md -> FR-014; .specify/archive/005-groups-list-get/spec.md -> FR-015; .specify/archive/006-play-command/spec.md -> FR-011]
+  and, for the get commands, "not found". For the play command, a validation error, a route creation failure, an unreachable source and an unavailable upstream service each also have their own exit code (6–10); "target not found" uses the not-found exit code (5). For the route command, the exit codes are those of FR-079.
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015; .specify/archive/004-routes-list-get/spec.md -> FR-014; .specify/archive/005-groups-list-get/spec.md -> FR-015; .specify/archive/006-play-command/spec.md -> FR-011; .specify/archive/008-route-command/spec.md -> FR-010]
 - **FR-012**: The command MUST clearly communicate when there are zero outputs to show,
   distinct from a failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-012]
 - **FR-013**: Each outputs, inputs and routes command, and the play command, MUST reject any output, input, route, group or playback data from the hub that does not match the
   expected structure with a clear error, rather than displaying partial or malformed
-  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017; .specify/archive/004-routes-list-get/spec.md -> FR-016; .specify/archive/005-groups-list-get/spec.md -> FR-017; .specify/archive/006-play-command/spec.md -> FR-012]
+  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017; .specify/archive/004-routes-list-get/spec.md -> FR-016; .specify/archive/005-groups-list-get/spec.md -> FR-017; .specify/archive/006-play-command/spec.md -> FR-012; .specify/archive/008-route-command/spec.md -> FR-011]
 - **FR-014**: The CLI MUST provide a command that retrieves a single audio output from
   the hub by its identifier. [Source: .specify/archive/002-outputs-get/spec.md -> FR-001]
 - **FR-016**: The get command MUST return the requested output regardless of its
@@ -863,10 +933,19 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 - **FR-064**: The CLI MUST remove the old `sonora <resource> list` and `sonora <resource> get <id>` command forms for inputs, outputs, groups, and routes, rather than keeping them as hidden or deprecated aliases. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-005]
 - **FR-065**: The CLI MUST fail with a clear, standard usage error — not a silent misinterpretation or incorrect result — when given an old-style invocation, an unrecognized resource name or alias, or a malformed resource path. The CLI is NOT required to specifically detect old-style syntax in order to name it or point to its new equivalent; a generic "unrecognized command"-style error is sufficient. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006]
 - **FR-066**: When `get` or `list` is given no resource argument at all (`sonora get`, `sonora list`), the CLI MUST fail with a usage error whose message enumerates the valid resource names. This is a deliberate exception to FR-065's "generic error is sufficient" allowance: there the user typed something wrong and the CLI need not diagnose it, whereas here the user typed a valid verb and nothing else, so the set of valid completions is unambiguous and the only useful thing to say. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006a]
-- **FR-067**: The play command's target argument MUST be a resource path (`outputs/<id>`, `groups/<id>`, or their aliases), and the separate `--group` and `--output` disambiguation flags MUST NOT exist. A path naming any other resource (e.g. `inputs/<id>`), or one without an id, is a usage error. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-007; .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"]
+- **FR-067**: The play and route commands' target argument MUST be a resource path (`outputs/<id>`, `groups/<id>`, or their aliases), and the separate `--group` and `--output` disambiguation flags MUST NOT exist on either command. A path naming any other resource (e.g. `inputs/<id>`), or one without an id, is a usage error. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-007; .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"; .specify/archive/008-route-command/spec.md -> FR-003]
 - **FR-068**: The play command's display-name flag MUST be `--display-name`, and the command MUST fail with a clear usage error if the old `--name`, `--group`, or `--output` flags are supplied. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-008]
 - **FR-069**: The CLI MUST preserve `--json`, `--hub-url`, and `--verbose` unchanged, in meaning and behavior, on every refactored command. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-009]
 - **FR-070**: The CLI MUST preserve the exact displayed data (fields and values, in both the default and `--json` views) of every refactored read command — only the invocation shape changes, not what is shown. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-010]
+- **FR-071**: The CLI MUST provide a top-level `route` command that starts routing an existing, already-defined input to a target output or output group, without creating any new input as a side effect. [Source: .specify/archive/008-route-command/spec.md -> FR-001]
+- **FR-072**: The route command MUST require an input path (`inputs/<input-id>` or `in/<input-id>`) and a target path (`outputs/<target-id>` or `groups/<target-id>`, or `out/` and `gr/`) as arguments, and MUST fail with a clear usage error if either is omitted. [Source: .specify/archive/008-route-command/spec.md -> FR-002]
+- **FR-073**: The route command MUST fail with a clear usage error if the input path's prefix is not `inputs` or its alias `in`. [Source: .specify/archive/008-route-command/spec.md -> FR-002a]
+- **FR-074**: The route command MUST fail with a clear usage error if the target path's prefix is not one of `outputs`/`out` or `groups`/`gr`. [Source: .specify/archive/008-route-command/spec.md -> FR-002b]
+- **FR-075**: When the target path names a type and identifier for which no matching resource exists, the route command MUST fail with a clear "target not found" error, even if a resource with the same identifier exists as the other type. [Source: .specify/archive/008-route-command/spec.md -> FR-003a]
+- **FR-076**: When the input identifier matches no existing input, the route command MUST fail with a clear "input not found" error, distinguishable from "target not found". [Source: .specify/archive/008-route-command/spec.md -> FR-004]
+- **FR-077**: On success the route command MUST display the resulting route's identifier and status exactly as the hub returned them, with a human-readable confirmation message, in both the default human-readable view and the `--json` view. [Source: .specify/archive/008-route-command/spec.md -> FR-005]
+- **FR-078**: The route command MUST fail with a clear, actionable error, distinguishable from every other failure type, for each of: a usage error, "input not found", "target not found", and "route creation failed". [Source: .specify/archive/008-route-command/spec.md -> FR-008]
+- **FR-079**: The route command's exit codes MUST be programmatically distinguishable across success (`0`), usage error (`2`), hub-reported error (`3`), connectivity error (`4`), validation error from a hub `400` (`6`), route creation failed (`8`), input not found (`11`) and target not found (`12`). [Source: .specify/archive/008-route-command/spec.md -> FR-010; .specify/archive/008-route-command/data-model.md -> "Exit Code Table"]
 
 ### Key Entities
 
@@ -953,6 +1032,8 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 
 - **Resource Path**: The parsed form of a command-line argument such as `outputs/office-speaker` or `out/office-speaker`: a Resource Kind (the segment before the first `/`, or the whole argument when there is no `/`) and an optional identifier (the segment after the first `/`) matching `^[a-zA-Z0-9_-]{1,255}$`. A second `/` in the identifier segment is malformed, not a deeper path. `get` accepts a path with or without an id; `list` accepts a bare resource only; `play`'s target must resolve to `outputs` or `groups` and requires an id.
   [Source: .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"]
+- **Routing Request**: A one-shot instruction to connect an existing input (`inputs/<input-id>`) to a target output or output group (`outputs/<target-id>` or `groups/<target-id>`). The command checks that the input and the target exist, then sends the request as one `POST /api/v2/routes` call. [Source: .specify/archive/008-route-command/spec.md -> "Routing Request"; .specify/archive/008-route-command/data-model.md -> "CreateRouteRequest"]
+- **Routing Result**: The outcome of a routing request: the identifier and status of the route the hub created, and the confirmation message the CLI builds around them. [Source: .specify/archive/008-route-command/data-model.md -> "RoutingResult"]
 
 ## Success Criteria
 
@@ -963,8 +1044,8 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 - **SC-002**: When the hub is unreachable or unresponsive, the user receives a clear
   failure message within 5 seconds (not an indefinite hang) in 100% of such cases, for the outputs, inputs, routes and groups commands.
   [Source: .specify/archive/001-list-outputs/spec.md -> SC-002; .specify/archive/002-outputs-get/spec.md -> SC-003; .specify/archive/003-inputs-list-get/spec.md -> SC-004; .specify/archive/004-routes-list-get/spec.md -> SC-004; .specify/archive/005-groups-list-get/spec.md -> SC-004]
-- **SC-003**: 100% of machine-readable output produced by the outputs, inputs, routes, groups or play commands can be parsed by a
-  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-005; .specify/archive/004-routes-list-get/spec.md -> SC-005; .specify/archive/005-groups-list-get/spec.md -> SC-005; .specify/archive/006-play-command/spec.md -> SC-005]
+- **SC-003**: 100% of machine-readable output produced by the outputs, inputs, routes, groups, play or route commands can be parsed by a
+  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-005; .specify/archive/004-routes-list-get/spec.md -> SC-005; .specify/archive/005-groups-list-get/spec.md -> SC-005; .specify/archive/006-play-command/spec.md -> SC-005; .specify/archive/008-route-command/spec.md -> SC-004]
 - **SC-004**: A user can always tell, without ambiguity, whether "no outputs, inputs, routes or groups were found"
   or "the command failed" occurred, and for the play command whether playback was accepted or failed. [Source: .specify/archive/001-list-outputs/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-006; .specify/archive/004-routes-list-get/spec.md -> SC-006; .specify/archive/005-groups-list-get/spec.md -> SC-006; .specify/archive/006-play-command/spec.md -> SC-006]
 - **SC-005**: A user can identify a specific output's current volume, mute state, and
@@ -998,19 +1079,23 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 - **SC-027**: A user substituting any documented resource alias (`in`/`out`/`gr`/`rt`) for its full resource name gets identical output, for every refactored command. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-002]
 - **SC-028**: A user running any pre-refactor command form (old noun-verb commands, or `play` with `--group`/`--output`/`--name`) receives a clear usage error in 100% of cases, rather than an incorrect or silently reinterpreted result. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-003]
 - **SC-029**: For every refactored command, the data displayed (in both default and `--json` output) is byte-for-byte unchanged from before the refactor, given the same underlying hub state. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-004]
+- **SC-030**: A user can connect an existing input to a single output or a group in one command invocation, without creating a duplicate input as a side effect. [Source: .specify/archive/008-route-command/spec.md -> SC-001]
+- **SC-031**: A user receives a response confirming the hub has accepted the routing request (or a clear failure) in under 5 seconds under normal network conditions. [Source: .specify/archive/008-route-command/spec.md -> SC-002]
+- **SC-032**: 100% of route command failure cases return a message that lets the user tell apart a usage error, input not found, target not found, route creation failure, and a connectivity or timeout problem. [Source: .specify/archive/008-route-command/spec.md -> SC-003]
+- **SC-033**: A user can always tell, without ambiguity, whether the route was created successfully or the command failed. [Source: .specify/archive/008-route-command/spec.md -> SC-005]
 
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
   established once (e.g. a default matching the API's documented default server, overridable
   by the user); this feature consumes that mechanism but does not define it.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/004-routes-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/005-groups-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/006-play-command/spec.md -> "The hub's network location (host/port) is available"]
-- **AS-002**: The hub API requires no authentication for this read-only endpoint, consistent with the
-  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/005-groups-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/006-play-command/spec.md -> "The hub API requires no authentication"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/004-routes-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/005-groups-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/006-play-command/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/008-route-command/spec.md -> "The hub's network location (host/port) is available"]
+- **AS-002**: The hub API requires no authentication for the read-only endpoints and the creation endpoints (`play`, `route`), consistent with the
+  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/005-groups-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/006-play-command/spec.md -> "The hub API requires no authentication"; .specify/archive/008-route-command/spec.md -> "The hub API requires no authentication"]
 - **AS-003**: "Human-readable" default output presents the same set of fields as the machine-readable
   output, formatted for readability rather than strict parsing.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/004-routes-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/005-groups-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/006-play-command/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
-- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/003-inputs-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/004-routes-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/005-groups-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/006-play-command/spec.md -> "The default request timeout is 5 seconds"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/004-routes-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/005-groups-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/006-play-command/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/008-route-command/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
+- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/003-inputs-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/004-routes-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/005-groups-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/006-play-command/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/008-route-command/spec.md -> "The default request timeout is 5 seconds"]
 - **AS-005**: Outputs, inputs, routes and groups are unordered by the hub API; the commands may present them in the order received
   without imposing additional sorting guarantees.
   [Source: .specify/archive/001-list-outputs/spec.md -> "Outputs are unordered by the hub API"; .specify/archive/003-inputs-list-get/spec.md -> "Inputs are unordered by the hub API"; .specify/archive/004-routes-list-get/spec.md -> "Routes are unordered by the hub API"; .specify/archive/005-groups-list-get/spec.md -> "Groups are unordered by the hub API"]
@@ -1034,3 +1119,7 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
   [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "`--json`, `--hub-url`, and `--verbose` are unaffected by this refactor"]
 - **AS-017**: The hub API and its response shapes are unchanged by the refactor; it is a CLI-surface-only change.
   [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "The underlying hub API and response shapes are unchanged"]
+- **AS-018**: The route command accepts no starting volume or display-name option. Those apply only to the ephemeral input `play` creates; an existing input's name and settings are managed elsewhere. [Source: .specify/archive/008-route-command/spec.md -> "This command does not accept a starting volume or a display-name option"]
+- **AS-019**: Stopping, pausing, transferring, or otherwise managing the route the route command creates is out of scope; the command covers only creating the route, mirroring AS-010. [Source: .specify/archive/008-route-command/spec.md -> "Stopping, pausing, or otherwise managing the resulting route"]
+- **AS-020**: Whether an input can be routed to more than one target at once, or whether routing an already-routed input to the same target succeeds, is decided by the hub; the CLI applies no client-side restriction and surfaces the outcome the hub reports. [Source: .specify/archive/008-route-command/spec.md -> "Whether a given input can be routed to more than one target at once"]
+- **AS-021**: Output and group identifiers may collide; the target's path prefix decides which one is meant, so the route command needs no disambiguation flag. [Source: .specify/archive/008-route-command/spec.md -> "Output identifiers and group identifiers may occasionally collide"]

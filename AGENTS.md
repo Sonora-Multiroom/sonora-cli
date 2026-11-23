@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `008-route-command` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `009-tts-commands` through `014-radio-station-search`; small changes in `specs/tiny/`.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
 Distilled, up-to-date specs summarising the current understanding of each feature or domain.
@@ -91,7 +91,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Project Structure
 
-- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs, .specify/archive/007-refactor-cli-commands)
+- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `internal/cli/route` (`sonora route`) creates a route from an existing input; `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs, .specify/archive/007-refactor-cli-commands, .specify/archive/008-route-command)
 
 ## Commands
 
@@ -99,6 +99,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/008-route-command: `sonora route inputs/<input-id> <outputs|groups>/<target-id>` routes an existing input to one output or group via one `POST /api/v2/routes` call, creating no input; input and target are checked first (`GET /api/v2/inputs/{id}`, then the target type's own endpoint); exit codes `11` (input not found) and `12` (target not found) added, route creation failed reuses `8`
 - .specify/archive/007-refactor-cli-commands: verb-first grammar — `sonora get <resource>[/<id>]` and `sonora list <resource>` (inputs, outputs, groups, routes; aliases `in`, `out`, `gr`, `rt`) replace `sonora <resource> list|get`; `sonora play <uri> <outputs|groups>/<id>` with `--display-name` replaces `<target-id>` plus `--group`/`--output`/`--name`; old forms fail with a usage error (exit `2`); exit code `7` (ambiguous target) retired
 - .specify/archive/006-play-command: `sonora play <uri> <target-id>` (`--group`, `--output`, `--volume`, `--name`, `--json`, `--verbose`, `--hub-url`); one `POST /api/v2/play` call, returns on hub acceptance without polling; exit codes 6–10 for validation, ambiguous target, route creation failed, source unreachable and service unavailable; target resolved via `GET /api/v2/outputs/{id}` and `GET /api/v2/groups/{id}`
 - .specify/archive/005-groups-list-get: `sonora groups list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora groups get <group-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`, `inputs get` and `routes get`
