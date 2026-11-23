@@ -6,9 +6,9 @@ get <id>`, `sonora groups list`, `sonora groups get <id>`, `sonora routes list`,
 routes get <id>`. The underlying HTTP contracts (`listInputs`, `getInput`, `listOutputs`,
 `getOutput`, `listGroups`, `getGroup`, `listRoutes`, `getRoute` in `api/openapi.json`) are
 unchanged and not duplicated here — see
-[001](../../../.specify/archive/001-list-outputs/contracts), [002](../../../.specify/archive/002-outputs-get/contracts),
-[003](../../../.specify/archive/003-inputs-list-get/contracts), [004](../../../.specify/archive/004-routes-list-get/contracts), and
-[005](../../../.specify/archive/005-groups-list-get/contracts) for those.
+[001](../../001-list-outputs/contracts), [002](../../002-outputs-get/contracts),
+[003](../../003-inputs-list-get/contracts), [004](../../004-routes-list-get/contracts), and
+[005](../../005-groups-list-get/contracts) for those.
 
 ## Invocation
 

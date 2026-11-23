@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `007-refactor-cli-commands` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `008-route-command` through `014-radio-station-search`; small changes in `specs/tiny/`.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
 Distilled, up-to-date specs summarising the current understanding of each feature or domain.
@@ -83,6 +83,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `004-routes-list-get` — `sonora routes list` and `sonora routes get <route-id>`: routes, `--status`/`--input-id`/`--target-id`, `--json`, not-found exit code 5
 - `005-groups-list-get` — `sonora groups list` and `sonora groups get <group-id>`: output groups, `--include-disabled`, `--json`, not-found exit code 5
 - `006-play-command` — `sonora play <uri> <target-id>`: one playback request, `--group`/`--output`, `--volume`, `--name`, `--json`; exit codes 6–10 for the play failure classes
+- `007-refactor-cli-commands` — verb-first grammar: `sonora get <resource>[/<id>]`, `sonora list <resource>`, aliases `in`/`out`/`gr`/`rt`; `play <uri> <outputs|groups>/<id>` with `--display-name`; old noun-verb forms and `--group`/`--output`/`--name` removed; exit code 7 retired
 
 ## Active Technologies
 
@@ -90,7 +91,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Project Structure
 
-- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs)
+- `cmd/sonora` entrypoint; `internal/{hub,config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs, .specify/archive/007-refactor-cli-commands)
 
 ## Commands
 
@@ -98,6 +99,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/007-refactor-cli-commands: verb-first grammar — `sonora get <resource>[/<id>]` and `sonora list <resource>` (inputs, outputs, groups, routes; aliases `in`, `out`, `gr`, `rt`) replace `sonora <resource> list|get`; `sonora play <uri> <outputs|groups>/<id>` with `--display-name` replaces `<target-id>` plus `--group`/`--output`/`--name`; old forms fail with a usage error (exit `2`); exit code `7` (ambiguous target) retired
 - .specify/archive/006-play-command: `sonora play <uri> <target-id>` (`--group`, `--output`, `--volume`, `--name`, `--json`, `--verbose`, `--hub-url`); one `POST /api/v2/play` call, returns on hub acceptance without polling; exit codes 6–10 for validation, ambiguous target, route creation failed, source unreachable and service unavailable; target resolved via `GET /api/v2/outputs/{id}` and `GET /api/v2/groups/{id}`
 - .specify/archive/005-groups-list-get: `sonora groups list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora groups get <group-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`, `inputs get` and `routes get`
 - .specify/archive/004-routes-list-get: `sonora routes list` (`--status`, `--input-id`, `--target-id`, `--json`, `--verbose`, `--hub-url`) and `sonora routes get <route-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get` and `inputs get`
@@ -108,6 +110,6 @@ Retired or superseded specs kept for historical context and decision archaeology
 ## Known Issues & Gotchas
 
 ### ⚠️ Verb-less noun swallows its first argument
-**Issue:** `sonora play <uri> <target-id>` has no verb token, so the generic `noun, verb, rest := args[0], args[1], args[2:]` split in `run()` binds `<uri>` to `verb` and drops it before dispatch.
+**Issue:** `sonora play <uri> <outputs|groups>/<id>` has no verb token after `play`, so a generic `verb, resource, rest` split would bind `<uri>` to the resource and drop it before dispatch; `run()` special-cases `play` first.
 **Root Cause:** The `len(args) < 2` gate and the noun/verb split assume every command has a verb; the one-operation `play` noun does not.
 **Prevention Rule:** Route a verb-less noun with an early special case in `cmd/sonora/main.go`, before the `len(args) < 2` gate and the noun/verb split, and let its own `Run` validate the positional count.

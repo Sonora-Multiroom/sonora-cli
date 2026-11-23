@@ -2,6 +2,34 @@
 
 ## Merged Features Log
 
+### Adopt Verb-First Command Landscape — archived 2026-11-23
+**Branch:** 007-refactor-cli-commands
+**Spec:** [.specify/archive/007-refactor-cli-commands/spec.md](../archive/007-refactor-cli-commands/spec.md)
+
+**What was added:**
+- User Stories 27–29 (P1–P3): `sonora get <resource>[/<id>]` and `sonora list <resource>` replace the `sonora <resource> list|get` commands for inputs, outputs, groups and routes; aliases `in`/`out`/`gr`/`rt`; `play`'s target is now `outputs/<id>` or `groups/<id>` and its name flag is `--display-name`
+- Hard cutover: the old command forms and `play`'s `--group`/`--output`/`--name` fail with a standard usage error
+- FR-059–FR-070, SC-026–SC-029, AS-014–AS-017, six edge cases and the Resource Kind and Resource Path entities
+- Exit code `7` (ambiguous target) is gone, since a path prefix makes the target type unambiguous
+
+**New Components:**
+- `internal/cli/respath/` (alias table, `resource/id` split, id pattern); `cmd/sonora/main.go` verb-first dispatcher (`get`, `list`, `play`); `internal/cli/play` takes a path target and `--display-name`
+- `internal/hub/play.go`: `ResolveTarget` replaced by a per-type existence check; `internal/hub/errors.go`: `ClassAmbiguous` and `AmbiguousTargetError` removed
+- `internal/cli/clihelp/usage.go`: help text for the new grammar; `tests/{unit,contract,integration}` updated for the new invocation shape
+
+**Superseded:**
+- RETIRED: FR-015 (from .specify/archive/002-outputs-get/spec.md -> FR-002) → replaced by FR-060. Reason: `get outputs` with no id is now the collection form, not a usage error.
+- RETIRED: FR-023 (from .specify/archive/003-inputs-list-get/spec.md -> FR-006) → replaced by FR-060. Reason: `get inputs` with no id is now the collection form, not a usage error.
+- RETIRED: FR-033 (from .specify/archive/004-routes-list-get/spec.md -> FR-006) → replaced by FR-060. Reason: `get routes` with no id is now the collection form, not a usage error.
+- RETIRED: FR-042 (from .specify/archive/005-groups-list-get/spec.md -> FR-006) → replaced by FR-060. Reason: `get groups` with no id is now the collection form, not a usage error.
+- RETIRED: FR-049 (from .specify/archive/006-play-command/spec.md -> FR-002a) → no replacement. Reason: the `--group` and `--output` flags no longer exist.
+- RETIRED: FR-050 (from .specify/archive/006-play-command/spec.md -> FR-003) → replaced by FR-067. Reason: the target type comes from the path prefix, not from auto-detection or forcing flags.
+- RETIRED: FR-051 (from .specify/archive/006-play-command/spec.md -> FR-003a) → no replacement. Reason: path-style targets make an ambiguous output/group identifier impossible.
+- RETIRED: FR-052 (from .specify/archive/006-play-command/spec.md -> FR-003b) → replaced by FR-067. Reason: the path prefix fixes the type to look up; a missing id of that type is plain "not found".
+- RETIRED: AS-012 (from .specify/archive/006-play-command/spec.md -> "Output identifiers and group identifiers may occasionally collide") → no replacement. Reason: a path prefix breaks any output/group identifier tie, so no flags are needed.
+
+**Tasks Completed:** 32/32 tasks
+
 ### Help Command (`help`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-08-26-help-command/help-command.md
 **Implemented:** 2026-08-26

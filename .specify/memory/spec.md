@@ -7,6 +7,7 @@
 > **Revision**: 2026-11-23 — Archived .specify/archive/005-groups-list-get (moved from specs/ in the same run): added User Stories 17–21, FR-037–FR-046, SC-017–SC-021, AS-009 and the Output Group entity. Its FR-009, FR-010, FR-012–FR-015 and FR-017 were folded into FR-006–FR-011 and FR-013, its SC-004–SC-006 into SC-002–SC-004, and its assumptions into AS-001–AS-006, widening those entries to cover the groups commands as well; its no-identifier, unreachable, timeout, hub-error and malformed-response edge cases were folded into the existing edge cases, and its zero-member-outputs edge case is new. No existing ID was renumbered; the feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-036 and SC-016.
 > **Revision**: 2026-11-23 — Archived .specify/archive/006-play-command (moved from specs/ in the same run): added User Stories 22–25, FR-047–FR-056, SC-022–SC-025, AS-010–AS-013 and the Playback Request and Playback Result entities. Its FR-007, FR-008, FR-010, FR-011 and FR-012 were folded into FR-006–FR-009, FR-011 and FR-013, widening those entries to cover the play command as well; its SC-005 and SC-006 into SC-003 and SC-004; its assumptions AS-001–AS-004 into the existing entries; and its unreachable, timeout and malformed-response edge cases into the existing ones. Its nine failure edge cases are new. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-046, SC-021 and AS-009.
 > **Revision**: 2026-11-23 — tinyspec help-command (.specify/archive/tiny/2026-08-26-help-command/help-command.md): added User Story 26 and FR-057–FR-058 for the usage help. `help`, `-h`, `--help` and bare invocation print the usage text to stdout and exit `0`; the zero-argument invocation, previously a usage error (exit `2`), is now help. FR-058 keeps the missing-verb and unknown-command usage errors unchanged.
+> **Revision**: 2026-11-23 — Archived .specify/archive/007-refactor-cli-commands (moved from specs/ in the same run): added User Stories 27–29, FR-059–FR-070, SC-026–SC-029, AS-014–AS-017, six edge cases and the Resource Kind and Resource Path entities. The feature replaces the noun-verb read commands and `play`'s `--group`/`--output`/`--name` with verb-first `get`/`list <resource>[/<id>]` and `play <uri> <outputs|groups>/<id> --display-name`. On the user's confirmation, FR-015, FR-023, FR-033, FR-042 (get with no identifier is a usage error), FR-049, FR-050, FR-051, FR-052 and AS-012 were removed and their IDs retired (see changelog.md); their replacements are FR-060 (for FR-015, FR-023, FR-033, FR-042) and FR-067 (for FR-050, FR-052); FR-049, FR-051 and AS-012 have none. No incoming item folded into an existing entry. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-058, SC-025 and AS-013.
 
 ## User Scenarios & Testing
 
@@ -599,13 +600,6 @@ Story 1, with the route's target reflecting the group.
    **When** the user runs the play command targeting that group, **Then** the command
    succeeds and displays the created input identifier, the route identifier and status,
    and confirms the target is a group.
-2. **Given** an output and a group that share the same identifier, **When** the user runs
-   the play command with the explicit group option, **Then** the command targets the group
-   rather than the output, regardless of which one auto-detection would otherwise have
-   picked.
-3. **Given** an output and a group that share the same identifier, **When** the user runs
-   the play command with the explicit output option, **Then** the command targets the
-   output rather than the group.
 
 [Source: .specify/archive/006-play-command/spec.md -> User Story 2]
 
@@ -679,6 +673,62 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 
 ---
 
+### User Story 27 - Read commands follow the verb-first, path-style shape (Priority: P1)
+
+An operator who has learned the new `sonora route inputs/<id> outputs/<id>` command (from the separately specified `route` feature) expects every other resource — inputs, outputs, groups, and routes — to read the same way: verb first, resource path second. Reading those resources previously used the `sonora <resource> <verb>` shape (`sonora inputs list`, `sonora outputs get <id>`), which was inconsistent with `route` and with the documented command landscape.
+
+**Why this priority**: This is the actual inconsistency prompting the refactor — the CLI spoke two different command grammars depending on which resource you were touching. Unifying the already-shipped read commands onto one grammar is the highest-value, lowest-risk piece of the refactor, since these commands don't mutate anything.
+
+**Independent Test**: Can be fully tested by running `sonora get inputs`, `sonora get outputs`, `sonora get groups`, and `sonora get routes` (each with and without a trailing `/<id>`), and verifying each returns exactly the same data as the pre-refactor `sonora <resource> list` / `sonora <resource> get <id>` commands.
+
+**Acceptance Scenarios**:
+
+1. **Given** existing inputs, outputs, groups, or routes, **When** the user runs `sonora get <resource>` for any of the four resources, **Then** the command returns the same collection data as the pre-refactor `sonora <resource> list`, including support for the existing collection filter flags (`--include-disabled` for inputs/outputs/groups; `--status`, `--input-id`, `--target-id` for routes).
+2. **Given** an existing resource of a known identifier, **When** the user runs `sonora get <resource>/<id>`, **Then** the command returns the same single-item data as the pre-refactor `sonora <resource> get <id>`.
+3. **Given** any of the four resources, **When** the user runs `sonora list <resource>` (no id), **Then** the result is identical to `sonora get <resource>` — `list` behaves as an exact synonym for the collection form only.
+4. **Given** any of the four resources, **When** the user runs `sonora list <resource>/<id>` (an id after `list`), **Then** the command fails with a clear usage error, since `list` is valid only for the collection form.
+5. **Given** the old command shape, **When** the user runs `sonora inputs list`, `sonora outputs get <id>`, or any other pre-refactor invocation, **Then** the command fails with a clear usage error rather than being silently reinterpreted or producing incorrect output.
+
+[Source: .specify/archive/007-refactor-cli-commands/spec.md -> User Story 1]
+
+---
+
+### User Story 28 - Resource aliases work everywhere a resource path appears (Priority: P2)
+
+An operator who frequently types commands wants to use the short aliases (`in`, `out`, `gr`, `rt`) documented alongside the full resource names, so `sonora get out/<id>` works exactly like `sonora get outputs/<id>`.
+
+**Why this priority**: Aliases are a documented part of the same landscape and a natural companion to User Story 27, but they're a convenience layer on top of the core grammar change, not a prerequisite for it.
+
+**Independent Test**: Can be fully tested by running the collection and single-item forms of `get`/`list` for each resource using its alias instead of its full name, and verifying identical results to using the full name.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing input, output, group, or route, **When** the user substitutes the resource's short alias (`in`, `out`, `gr`, `rt` respectively) for its full name in any `get`/`list` command, **Then** the command behaves identically to using the full resource name.
+2. **Given** an unrecognized resource name or alias, **When** the user runs `sonora get <unrecognized>`, **Then** the command fails with a clear usage error naming the unrecognized resource.
+
+[Source: .specify/archive/007-refactor-cli-commands/spec.md -> User Story 2]
+
+---
+
+### User Story 29 - `play`'s target and flags match the new landscape (Priority: P3)
+
+An operator using `sonora play <uri> <target-id> --output` expects `play` to address its target the same way `route` does — a path like `outputs/<id>` or `groups/<id>` — instead of a bare id plus a separate `--group`/`--output` flag, and expects the display-name flag to be named consistently with the rest of the CLI.
+
+**Why this priority**: `play` is the one already-implemented command that mutates state, so its change carries the most user-facing risk (existing scripts calling it will break). It's sequenced last so the lower-risk read-command grammar lands and stabilizes first.
+
+**Independent Test**: Can be fully tested by running `sonora play <uri> outputs/<id>` and `sonora play <uri> groups/<id>` (including with `--display-name` and `--volume`), and verifying the same playback result as the pre-refactor `sonora play <uri> <id> --output` / `sonora play <uri> <id> --group`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a playable URI and an existing output, **When** the user runs `sonora play <uri> outputs/<output-id>`, **Then** playback starts on that output exactly as `sonora play <uri> <output-id> --output` did.
+2. **Given** a playable URI and an existing group, **When** the user runs `sonora play <uri> groups/<group-id>`, **Then** playback starts on that group exactly as `sonora play <uri> <group-id> --group` did.
+3. **Given** a playable URI and a target, **When** the user supplies `--display-name`, **Then** it sets the new input's display name exactly as the former `--name` flag did.
+4. **Given** the old invocation, **When** the user runs `sonora play <uri> <id> --group` or `sonora play <uri> <id> --output` or `sonora play <uri> <id> --name <name>`, **Then** the command fails with a clear usage error rather than silently accepting the old flags.
+
+[Source: .specify/archive/007-refactor-cli-commands/spec.md -> User Story 3]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -697,8 +747,8 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 - What happens when an output has a physically disconnected/unavailable device but is
   still enabled? Its availability state must be visibly distinguishable from an available
   output. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when an output has a physically disconnected/unavailable device"; .specify/archive/002-outputs-get/spec.md -> "What happens when the requested output exists but is enabled with unavailable hardware?"]
-- What happens when no identifier is provided to the outputs, inputs, routes or groups get command? The user must see a
-  clear usage error explaining that an identifier is required, not a confusing failure.
+- What happens when a get command is given a missing or malformed identifier? A path with no id (`sonora get outputs`) is the valid collection form, a bare `get` with no resource lists the valid resources (FR-066), and an id outside the identifier pattern is a usage error (FR-063); the user must see a
+  clear usage error rather than a confusing failure.
   [Source: .specify/archive/002-outputs-get/spec.md -> "What happens when no identifier is provided?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when no input identifier is provided to the get command?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when no route identifier is provided to the get command?"; .specify/archive/005-groups-list-get/spec.md -> "What happens when no group identifier is provided to the get command?"]
 - What happens when a static (YAML-configured) input is returned? It has no creation
   timestamp; this must be displayed clearly (e.g. "n/a") rather than as an error or blank
@@ -711,13 +761,16 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
   [Source: .specify/archive/005-groups-list-get/spec.md -> "What happens when a group has zero member outputs?"]
 - What happens when the URI is malformed or of an unsupported scheme? The play command must fail with a clear validation error rather than an ambiguous or generic failure. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the URI is malformed or of an unsupported scheme?"]
 - What happens when the play target identifier does not exist as an output or a group? The command must fail with a clear "target not found" error distinct from other failure types; an identifier matching neither is the same case. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the target output or group identifier does not exist?"; .specify/archive/006-play-command/spec.md -> "What happens when the target identifier matches neither an existing output nor an existing group?"]
-- What happens when the target identifier matches both an existing output and an existing group, and the user did not use the explicit group or output option? The command must fail with a clear "ambiguous target" error rather than silently guessing. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the target identifier matches both an existing output and an existing group, and the user did not use the explicit group or output option?"]
-- What happens when the user uses the explicit group (or output) option but the identifier does not exist as that type — even if it exists as the other type? The command must fail with a clear "target not found" error rather than silently falling back to the other type. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the user uses the explicit group (or output) option but the identifier does not exist as that type"]
-- What happens when the user supplies both the explicit group option and the explicit output option in the same invocation? The command must fail with a clear usage error rather than silently honoring one of them. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the user supplies both the explicit group option and the explicit output option in the same invocation?"]
 - What happens when neither `uri` nor `targetId` is supplied to the play command? The user must see a clear usage error explaining what is required, not a confusing failure. [Source: .specify/archive/006-play-command/spec.md -> "What happens when neither `uri` nor `targetId` is supplied?"]
 - What happens when the hub accepts the request but cannot create the underlying route (e.g. target already at capacity)? The command must fail with a clear "route creation failed" message distinct from "not found" and from validation errors. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the hub accepts the request but cannot create the underlying route"]
 - What happens when the URI is well-formed but unreachable (e.g. dead stream link, DNS failure on the hub's side)? The command must fail with a clear error distinguishing "the source could not be reached" from a local network problem or a hub bug. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the URI is well-formed but unreachable"]
 - What happens when the hub's upstream playback service is temporarily unavailable? The command must fail with a clear, distinguishable "service unavailable" error. [Source: .specify/archive/006-play-command/spec.md -> "What happens when the hub's upstream playback service is temporarily unavailable?"]
+- What happens when a resource path's prefix names a real resource type but the id after the slash doesn't exist (e.g. `sonora get outputs/does-not-exist`)? The command must fail with the same "not found" error the former `sonora outputs get does-not-exist` produced. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when a resource path's prefix names a real resource type but the id after the slash doesn't exist"]
+- What happens when a resource path has no slash and no id, only the bare resource name (e.g. `sonora get outputs`)? This is the valid collection form, not an error. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when a resource path has no slash and no id at all"]
+- What happens when the user runs a bare verb with nothing after it (e.g. `sonora get`)? The command must fail with a clear usage error listing the valid resources. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when the user runs a bare verb with nothing after it"]
+- What happens when a resource path carries a stray slash or extra segment (`sonora get out/foo/bar`)? Since ids match `^[a-zA-Z0-9_-]{1,255}$` and never contain `/`, an extra slash unambiguously means the argument is malformed; the command must fail with a clear usage error rather than guessing which segment is the id. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when the user mixes an alias and a full name incorrectly"]
+- What happens when the collection filter flags (`--include-disabled`, `--status`, `--input-id`, `--target-id`) are combined with the `get`/`list` verbs? They must continue to filter exactly as before — only the verb/resource-path shape changed. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens when existing collection filter flags"]
+- What happens to `--json`, `--hub-url`, and `--verbose` on the refactored commands? They must keep working, unchanged. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "What happens to `--json`, `--hub-url`, and `--verbose`?"]
 
 ## Requirements
 
@@ -753,7 +806,7 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011; .specify/archive/003-inputs-list-get/spec.md -> FR-014; .specify/archive/004-routes-list-get/spec.md -> FR-013; .specify/archive/005-groups-list-get/spec.md -> FR-014]
 - **FR-011**: Each outputs, inputs, routes and groups command MUST exit with a status that is programmatically distinguishable
   between success, a usage error, a hub-reported error, and a connectivity/network error
-  and, for the get commands, "not found". For the play command, a validation error, an ambiguous target, a route creation failure, an unreachable source and an unavailable upstream service each also have their own exit code (6–10); "target not found" uses the not-found exit code (5).
+  and, for the get commands, "not found". For the play command, a validation error, a route creation failure, an unreachable source and an unavailable upstream service each also have their own exit code (6–10); "target not found" uses the not-found exit code (5).
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015; .specify/archive/004-routes-list-get/spec.md -> FR-014; .specify/archive/005-groups-list-get/spec.md -> FR-015; .specify/archive/006-play-command/spec.md -> FR-011]
 - **FR-012**: The command MUST clearly communicate when there are zero outputs to show,
   distinct from a failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-012]
@@ -762,8 +815,6 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
   results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017; .specify/archive/004-routes-list-get/spec.md -> FR-016; .specify/archive/005-groups-list-get/spec.md -> FR-017; .specify/archive/006-play-command/spec.md -> FR-012]
 - **FR-014**: The CLI MUST provide a command that retrieves a single audio output from
   the hub by its identifier. [Source: .specify/archive/002-outputs-get/spec.md -> FR-001]
-- **FR-015**: The get command MUST require exactly one output identifier as input and MUST
-  fail with a clear usage error if it is omitted. [Source: .specify/archive/002-outputs-get/spec.md -> FR-002]
 - **FR-016**: The get command MUST return the requested output regardless of its
   enabled/disabled state (unlike the list command's default filtering).
   [Source: .specify/archive/002-outputs-get/spec.md -> FR-003]
@@ -775,7 +826,6 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 - **FR-020**: The inputs list command MUST provide an option for the user to additionally include disabled inputs in the results. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-003]
 - **FR-021**: For each input returned by the inputs list command, the CLI MUST display: its identifier, its human-readable display name, its source URI, whether it is enabled, its source type (static or ephemeral), whether it auto-removes when its route stops, whether it supports pause/resume, and its creation timestamp (or an explicit indication that none exists) — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-004]
 - **FR-022**: The CLI MUST provide a command that retrieves a single audio input from the hub by its identifier. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-005]
-- **FR-023**: The inputs get command MUST require exactly one input identifier as input and MUST fail with a clear usage error if it is omitted. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-006]
 - **FR-024**: The inputs get command MUST return the requested input regardless of its enabled/disabled state (unlike the inputs list command's default filtering). [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-007]
 - **FR-025**: For the input returned by the inputs get command, the CLI MUST display the same set of attributes specified in FR-021, in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-008]
 - **FR-026**: The inputs get command MUST fail with a clear, actionable "input not found" message, distinguishable from other failure types, when no input with the given identifier exists on the hub. [Source: .specify/archive/003-inputs-list-get/spec.md -> FR-011]
@@ -785,7 +835,6 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 - **FR-030**: The routes list command MUST provide optional filters to narrow results by status, by source input identifier, and by target identifier; when more than one filter is supplied, only routes matching all supplied filters MUST be returned. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-003]
 - **FR-031**: For each route returned by the routes list command, the CLI MUST display: its identifier, its source input identifier, its target identifier, its target type (single output or output group), and its current status — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-004]
 - **FR-032**: The CLI MUST provide a command that retrieves a single audio route from the hub by its identifier. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-005]
-- **FR-033**: The routes get command MUST require exactly one route identifier as input and MUST fail with a clear usage error if it is omitted. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-006]
 - **FR-034**: For the route returned by the routes get command, the CLI MUST display: its identifier, its source input identifier, its target identifier, its target type, its current status, its creation timestamp, its playback-started timestamp (or an explicit indication that playback has not started), whether it is transferable, whether it supports pause/resume, and whether it is currently paused — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-007]
 - **FR-035**: The routes get command MUST fail with a clear, actionable "route not found" message, distinguishable from other failure types, when no route with the given identifier exists on the hub. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-010]
 - **FR-036**: The routes list command MUST clearly communicate when there are zero routes to show, distinct from a failure. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-015]
@@ -794,23 +843,30 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 - **FR-039**: The groups list command MUST provide an option for the user to additionally include disabled groups in the results. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-003]
 - **FR-040**: For each group returned by the groups list command, the CLI MUST display: its identifier, its display name, its member output identifiers, its mute state, and its enabled state — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-004]
 - **FR-041**: The CLI MUST provide a command that retrieves a single audio output group from the hub by its identifier. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-005]
-- **FR-042**: The groups get command MUST require exactly one group identifier as input and MUST fail with a clear usage error if it is omitted. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-006]
 - **FR-043**: The groups get command MUST return the requested group regardless of its enabled/disabled state. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-007]
 - **FR-044**: For the group returned by the groups get command, the CLI MUST display: its identifier, its display name, its member output identifiers, its mute state, and its enabled state — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-008]
 - **FR-045**: The groups get command MUST fail with a clear, actionable "group not found" message, distinguishable from other failure types, when no group with the given identifier exists on the hub. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-011]
 - **FR-046**: The groups list command MUST clearly communicate when there are zero groups to show, distinct from a failure. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-016]
 - **FR-047**: The CLI MUST provide a command that starts instant playback of an audio URI to a target output or output group, creating the underlying ephemeral input and route in a single invocation. [Source: .specify/archive/006-play-command/spec.md -> FR-001]
 - **FR-048**: The play command MUST require a URI and a target identifier as input, and MUST fail with a clear usage error if either is omitted. [Source: .specify/archive/006-play-command/spec.md -> FR-002]
-- **FR-049**: The explicit group option and the explicit output option are mutually exclusive; the play command MUST fail with a clear usage error if both are supplied in the same invocation. [Source: .specify/archive/006-play-command/spec.md -> FR-002a]
-- **FR-050**: By default, the play command MUST determine on its own whether the target identifier refers to a single output or a group, by checking the identifier against both existing outputs and existing groups, without requiring the user to state which kind it is. If it matches exactly one of the two, the command MUST use that match's type. The command MUST also provide two explicit, mutually exclusive options — one to force the identifier to be treated as a group (`--group`), one to force it to be treated as a single output (`--output`) — for cases where an output and a group share the same identifier and auto-detection alone cannot tell which one the user means. [Source: .specify/archive/006-play-command/spec.md -> FR-003]
-- **FR-051**: When the target identifier matches both an existing output and an existing group and neither the explicit group option nor the explicit output option was used, the play command MUST fail with a clear "ambiguous target" error naming both possibilities, rather than silently picking one. [Source: .specify/archive/006-play-command/spec.md -> FR-003a]
-- **FR-052**: When an explicit group or output option is used, the play command MUST validate the identifier only against that type; if the identifier does not exist as that type, the command MUST fail with a clear "target not found" error, even if the identifier exists as the other type. [Source: .specify/archive/006-play-command/spec.md -> FR-003b]
 - **FR-053**: The play command MUST provide an optional way to set the starting volume (0-100) for the target, applied before playback begins, and MUST reject an out-of-range value with a clear usage/validation error before contacting the hub. [Source: .specify/archive/006-play-command/spec.md -> FR-004]
 - **FR-054**: The play command MUST provide an optional way to set a display name for the ephemeral input created for this playback session. [Source: .specify/archive/006-play-command/spec.md -> FR-005]
 - **FR-055**: On success, the play command MUST return as soon as the hub accepts the request, without waiting or polling for the route to reach any further state, and MUST display the created input's identifier, the resulting route's identifier and status exactly as returned by the hub, and a human-readable confirmation message — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/006-play-command/spec.md -> FR-006]
-- **FR-056**: The play command MUST fail with a clear, actionable error, distinguishable from all other failure types, for each of: a validation error (bad URI or bad request fields), a "target not found" error, an "ambiguous target" error, a "route creation failed" error, a "source unreachable" error, and an "upstream service unavailable" error. [Source: .specify/archive/006-play-command/spec.md -> FR-009]
+- **FR-056**: The play command MUST fail with a clear, actionable error, distinguishable from all other failure types, for each of: a validation error (bad URI or bad request fields), a "target not found" error, a "route creation failed" error, a "source unreachable" error, and an "upstream service unavailable" error. [Source: .specify/archive/006-play-command/spec.md -> FR-009]
 - **FR-057**: The CLI MUST print its usage text (the command table, the global flags and example invocations) to standard output and exit with status `0` when invoked as `sonora help`, `sonora -h`, `sonora --help`, or with no arguments. [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
-- **FR-058**: Help dispatch MUST NOT change the existing usage errors: a missing verb (`sonora outputs`) and an unknown noun or verb still fail with a usage error on standard error and exit status `2` (FR-011). `--version` and `-v` are still checked before help dispatch. [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
+- **FR-058**: Help dispatch MUST NOT change the existing usage errors: an unknown verb (including the removed noun-verb forms such as `sonora outputs list`) still fails with a usage error on standard error and exit status `2` (FR-011). `--version` and `-v` are still checked before help dispatch. [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
+- **FR-059**: The CLI MUST provide `sonora get <resource>` for each of inputs, outputs, groups, and routes, returning the same collection data as the pre-refactor `sonora <resource> list`, including the collection filter flags. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-001]
+- **FR-060**: The CLI MUST provide `sonora get <resource>/<id>` for each of inputs, outputs, groups, and routes, returning the same single-item data as the pre-refactor `sonora <resource> get <id>`. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-002]
+- **FR-061**: The CLI MUST accept `sonora list <resource>` as an exact synonym of `sonora get <resource>` (collection form only), and MUST fail with a clear usage error if `list` is given a resource path that includes an id. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-003]
+- **FR-062**: The CLI MUST accept the short aliases `in`, `out`, `gr`, and `rt` interchangeably with `inputs`, `outputs`, `groups`, and `routes` respectively, everywhere a resource name or resource path is accepted. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-004]
+- **FR-063**: A resource path MUST be parsed by splitting on the first `/` into a resource-name segment and an identifier segment; the CLI MUST treat identifiers as matching `^[a-zA-Z0-9_-]{1,255}$` and MUST fail with a clear usage error if the identifier segment contains an additional `/` or otherwise doesn't match that pattern. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-004a]
+- **FR-064**: The CLI MUST remove the old `sonora <resource> list` and `sonora <resource> get <id>` command forms for inputs, outputs, groups, and routes, rather than keeping them as hidden or deprecated aliases. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-005]
+- **FR-065**: The CLI MUST fail with a clear, standard usage error — not a silent misinterpretation or incorrect result — when given an old-style invocation, an unrecognized resource name or alias, or a malformed resource path. The CLI is NOT required to specifically detect old-style syntax in order to name it or point to its new equivalent; a generic "unrecognized command"-style error is sufficient. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006]
+- **FR-066**: When `get` or `list` is given no resource argument at all (`sonora get`, `sonora list`), the CLI MUST fail with a usage error whose message enumerates the valid resource names. This is a deliberate exception to FR-065's "generic error is sufficient" allowance: there the user typed something wrong and the CLI need not diagnose it, whereas here the user typed a valid verb and nothing else, so the set of valid completions is unambiguous and the only useful thing to say. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006a]
+- **FR-067**: The play command's target argument MUST be a resource path (`outputs/<id>`, `groups/<id>`, or their aliases), and the separate `--group` and `--output` disambiguation flags MUST NOT exist. A path naming any other resource (e.g. `inputs/<id>`), or one without an id, is a usage error. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-007; .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"]
+- **FR-068**: The play command's display-name flag MUST be `--display-name`, and the command MUST fail with a clear usage error if the old `--name`, `--group`, or `--output` flags are supplied. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-008]
+- **FR-069**: The CLI MUST preserve `--json`, `--hub-url`, and `--verbose` unchanged, in meaning and behavior, on every refactored command. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-009]
+- **FR-070**: The CLI MUST preserve the exact displayed data (fields and values, in both the default and `--json` views) of every refactored read command — only the invocation shape changes, not what is shown. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-010]
 
 ### Key Entities
 
@@ -877,7 +933,7 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 
   [Source: .specify/archive/005-groups-list-get/spec.md -> "Output Group"; .specify/archive/005-groups-list-get/data-model.md -> "Group"]
 
-- **Playback Request**: A one-shot instruction to play a given audio source URI to a given target (a single output or an output group), with an optional starting volume and an optional display name for the resulting input. Field mapping to `PlaybackRequest` in `api/openapi.json` (required fields; the target type is set by the CLI from target resolution, never supplied by the user directly; `volume` is range-checked client-side to 0–100 before any request is sent; `uri` scheme and reachability are validated by the hub, not the CLI):
+- **Playback Request**: A one-shot instruction to play a given audio source URI to a given target (a single output or an output group), with an optional starting volume and an optional display name for the resulting input. Field mapping to `PlaybackRequest` in `api/openapi.json` (required fields; the target type is set by the CLI from the target path's prefix (`outputs/` or `groups/`), never supplied by the user directly; `volume` is range-checked client-side to 0–100 before any request is sent; `uri` scheme and reachability are validated by the hub, not the CLI):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -891,6 +947,12 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 
 - **Playback Result**: The outcome of a playback request — the identifier of the ephemeral input that was created, the identifier and status of the route created to carry audio from that input to the target, and a confirmation message. The command renders exactly four of these — `inputId`, `routeId`, `status` and `message` — from the `PlaybackResponse` in `api/openapi.json`. The response's nested route is decoded in full for contract fidelity but its other fields are not rendered, because managing the route is out of scope. A response missing any of those four required values is malformed (FR-013).
   [Source: .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"]
+
+- **Resource Kind**: A closed enumeration of the four resources `get`/`list` cover; a CLI-surface concept, not a hub one. Each has a canonical name and a short alias: `inputs`/`in`, `outputs`/`out`, `groups`/`gr`, `routes`/`rt`. An unrecognized name or alias in either position (the `get`/`list` argument, or the prefix of `play`'s target) is a usage error, exit `2`.
+  [Source: .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourceKind"]
+
+- **Resource Path**: The parsed form of a command-line argument such as `outputs/office-speaker` or `out/office-speaker`: a Resource Kind (the segment before the first `/`, or the whole argument when there is no `/`) and an optional identifier (the segment after the first `/`) matching `^[a-zA-Z0-9_-]{1,255}$`. A second `/` in the identifier segment is malformed, not a deeper path. `get` accepts a path with or without an id; `list` accepts a bare resource only; `play`'s target must resolve to `outputs` or `groups` and requires an id.
+  [Source: .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"]
 
 ## Success Criteria
 
@@ -931,7 +993,11 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 - **SC-022**: A user can start playback to a single output or a group in one command invocation, without separately creating an input or a route. [Source: .specify/archive/006-play-command/spec.md -> SC-001]
 - **SC-023**: A user can start playback with a chosen starting volume and/or a chosen display name in the same single command invocation. [Source: .specify/archive/006-play-command/spec.md -> SC-002]
 - **SC-024**: A user receives a response confirming the hub has accepted the playback request (or a clear failure) in under 5 seconds under normal network conditions; this confirms the request was accepted, not that audio has been confirmed playing. [Source: .specify/archive/006-play-command/spec.md -> SC-003]
-- **SC-025**: 100% of failure cases of the play command return a message that lets the user tell apart: bad input, target not found, ambiguous target, route creation failure, unreachable source, unavailable service, and a connectivity/timeout problem. [Source: .specify/archive/006-play-command/spec.md -> SC-004]
+- **SC-025**: 100% of failure cases of the play command return a message that lets the user tell apart: bad input, target not found, route creation failure, unreachable source, unavailable service, and a connectivity/timeout problem. [Source: .specify/archive/006-play-command/spec.md -> SC-004]
+- **SC-026**: 100% of the implemented inputs/outputs/groups/routes read commands are reachable only through the verb-first, path-style shape (`sonora get <resource>[/<id>]`, `sonora list <resource>`) — none remain reachable through the old `sonora <resource> <verb>` shape. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-001]
+- **SC-027**: A user substituting any documented resource alias (`in`/`out`/`gr`/`rt`) for its full resource name gets identical output, for every refactored command. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-002]
+- **SC-028**: A user running any pre-refactor command form (old noun-verb commands, or `play` with `--group`/`--output`/`--name`) receives a clear usage error in 100% of cases, rather than an incorrect or silently reinterpreted result. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-003]
+- **SC-029**: For every refactored command, the data displayed (in both default and `--json` output) is byte-for-byte unchanged from before the refactor, given the same underlying hub state. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> SC-004]
 
 ## Assumptions
 
@@ -959,5 +1025,12 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
   [Source: .specify/archive/005-groups-list-get/spec.md -> "Creating, deleting, and modifying groups (membership, volume, mute, enabled state) are out of scope for this feature"]
 - **AS-010**: Stopping, pausing, or otherwise managing the route and input created by playback is out of scope for this feature; it covers only starting playback. Managing the resulting route/input is expected to be handled by future route/input management commands. [Source: .specify/archive/006-play-command/spec.md -> "Stopping, pausing, or otherwise managing the route and input created by playback is out of scope for this feature"]
 - **AS-011**: The set of supported URI schemes (e.g. YouTube, SoundCloud, direct stream URLs) is determined entirely by the hub; the CLI performs no client-side allow-listing of schemes and passes the URI through as given. [Source: .specify/archive/006-play-command/spec.md -> "The set of supported URI schemes"]
-- **AS-012**: Output identifiers and group identifiers may occasionally collide (the hub does not guarantee a shared namespace between the two), so auto-detection alone cannot always resolve target type; the explicit group and output options exist specifically to break that tie in either direction. [Source: .specify/archive/006-play-command/spec.md -> "Output identifiers and group identifiers may occasionally collide"]
 - **AS-013**: The hub's playback response reflects only the route's initial state (typically `STARTING`); it is the caller's responsibility to poll `routes get` afterward if confirmation that audio has actually begun playing is needed — that polling is out of scope for this command. [Source: .specify/archive/006-play-command/spec.md -> "The hub's playback response reflects only the route's initial state"]
+- **AS-014**: Only commands already implemented are in scope of the verb-first refactor: the `inputs`/`outputs`/`groups`/`routes` `list`/`get` commands and `play`. The `route` command is out of scope here; it is specified separately.
+  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "Only commands that are already implemented today are in scope"]
+- **AS-015**: Commands documented in the command landscape but not yet implemented (`create`, `delete`, `enable`/`disable`, `mute`/`unmute`, `set ... volume`, `transfer`, `stop`/`pause`/`resume`, `master-mute`) are out of scope; the refactor only brought already-shipped commands in line with the documented grammar.
+  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "Commands documented in `docs/cli-command-landscape.md` that aren't implemented yet"]
+- **AS-016**: `--json`, `--hub-url`, and `--verbose` are unaffected by the refactor; it changed only command and argument parsing, not request behavior or output rendering.
+  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "`--json`, `--hub-url`, and `--verbose` are unaffected by this refactor"]
+- **AS-017**: The hub API and its response shapes are unchanged by the refactor; it is a CLI-surface-only change.
+  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "The underlying hub API and response shapes are unchanged"]

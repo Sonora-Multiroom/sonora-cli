@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-27
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "need refactoring - adopt already implemented commands as
 specified in docs/cli-command-landscape.md"

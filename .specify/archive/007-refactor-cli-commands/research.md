@@ -70,7 +70,7 @@ one later.
 
 **Consequence for exit codes**: `play`'s existing exit code `7` ("target matches both an
 output and a group; use --group or --output to disambiguate", per
-`specs/006-play-command/contracts/cli-play.md`) becomes unreachable and is removed — path-style
+`.specify/archive/006-play-command/contracts/cli-play.md`) becomes unreachable and is removed — path-style
 addressing makes that ambiguity structurally impossible (spec Clarifications, id-collision
 question). "Target not found" for a path naming a type+id that doesn't exist continues to use
 exit code `5`, now uniformly rather than via `--group <id>`/`--output <id>`-specific branches.
