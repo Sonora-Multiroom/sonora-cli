@@ -43,7 +43,7 @@
 
 ## Active Technologies
 
-- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`) (specs/001-list-outputs)
+- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`, `net/url`) (specs/001-list-outputs, specs/002-outputs-get)
 
 ## Project Structure
 
@@ -55,4 +55,5 @@
 
 ## Recent Changes
 
+- specs/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
 - specs/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout
