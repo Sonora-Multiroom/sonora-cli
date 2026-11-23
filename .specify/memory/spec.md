@@ -21,6 +21,8 @@
 > **Revision**: 2026-11-23 — tinyspec outputs-set-volume-command (.specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md): added User Story 41 and FR-096. Adds the `set` verb and `sonora set outputs/<output-id> volume <0-100>` (`PUT /api/v2/outputs/{id}/volume`). No existing ID was renumbered or rewritten.
 > **Revision**: 2026-11-23 — tinyspec route-pause-resume-command (.specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md): added User Story 42 and FR-097. Adds `sonora pause routes/<id>` and `sonora resume routes/<id>` (`PUT /api/v2/routes/{id}/pause`). No existing ID was renumbered or rewritten.
 > **Revision**: 2026-11-23 — tinyspec stop-routes-command (.specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md): added User Story 43 and FR-098–FR-099. Adds bulk stop: `sonora stop routes`, `sonora stop outputs/<id>` and `sonora stop groups/<id>`; `stop` is no longer a routes-only alias. No ID was renumbered. AS-019 was extended in place with a note that stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098); its original text is unchanged.
+> **Revision**: 2026-11-23 — Archived .specify/archive/009-tts-commands (moved from specs/ in the same run): added User Stories 44–49, FR-100–FR-117, SC-034–SC-041, AS-023–AS-030, the Announcement Request, Announcement Acceptance, TTS Cache Statistics and TTS Error entities, and sixteen edge cases for the `speak`, `get tts-cache` and `clear tts-cache` commands. Its FR-002 was folded into FR-067 and its FR-014 into FR-009, widening those entries to cover the speak and TTS cache commands (target path rule; no automatic retry); the shared AS-002 and AS-022 were widened to cover the TTS operations (no authentication; no confirmation prompt); and its malformed-body and unreachable-hub cases were folded into the existing edge cases. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-099, SC-033 and AS-022.
+> **Revision**: 2026-11-23 — the TTS "Unknown target output or group" edge case now states exit `12`, matching FR-113 and the spec's clarification; it had said the playback target's class, which is `5`.
 
 ## User Scenarios & Testing
 
@@ -1019,11 +1021,121 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 
 ---
 
+### User Story 44 - Announce text on a single output (Priority: P1)
+
+A person (or a script driven by a home automation) wants a spoken announcement — "Dinner is ready" — to play on one speaker, with a single command.
+
+**Why this priority**: This is the whole point of the TTS extension and the smallest slice that delivers value. Everything else in this feature is secondary to getting text spoken in a room.
+
+**Independent Test**: Run the speak command with a short text and the identifier of an existing output on a hub that has the TTS extension loaded; verify the command succeeds, prints the announcement identifier, whether the audio came from cache, and the target's queue depth, and that the announcement is heard on that output.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with the TTS extension loaded and an existing output `kitchen`, **When** the user runs `sonora speak "Dinner is ready" outputs/kitchen`, **Then** the command succeeds and displays the announcement identifier, whether the audio was served from cache, and the number of announcements now queued for that target.
+2. **Given** the same successful request, **When** the user adds `--json`, **Then** the output is strict, parseable JSON carrying the same three fields.
+3. **Given** a successful request, **When** the command returns, **Then** it has not waited for the announcement to finish playing — it returns as soon as the hub has accepted it (by which time the audio already exists and is queued).
+4. **Given** empty or whitespace-only text, **When** the user runs the speak command, **Then** it fails with a clear usage error and no request is sent to the hub.
+5. **Given** text piped on standard input, **When** the user runs `echo "Dinner is ready" | sonora speak - outputs/kitchen`, **Then** the hub receives `Dinner is ready` (trailing newline removed) and the command succeeds as in scenario 1. Empty piped input fails as in scenario 4.
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 1]
+
+---
+
+### User Story 45 - Announce text on an output group (Priority: P2)
+
+A person wants one announcement — "Motion detected in garden" — to play on every speaker in a group at once.
+
+**Why this priority**: Whole-house announcements are the next most valuable use case, and reuse the same command with a different target kind.
+
+**Independent Test**: Run the speak command targeting an existing group and verify the same success output as User Story 44, with the announcement heard across the group's outputs.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing group `all-rooms`, **When** the user runs `sonora speak "Motion detected in garden" groups/all-rooms`, **Then** the command succeeds with the same output fields as for a single output.
+2. **Given** a target written with a resource alias (`gr/all-rooms`, `out/kitchen`), **When** the user runs the speak command, **Then** it behaves identically to the full resource name, as for every other command that takes a target.
+3. **Given** a target path whose resource kind is not `outputs` or `groups` (e.g. `routes/x`, `inputs/x`) or that has no identifier, **When** the user runs the speak command, **Then** it fails with a clear usage error before contacting the hub.
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 2]
+
+---
+
+### User Story 46 - Choose provider, voice, or language per announcement (Priority: P3)
+
+An operator has several TTS providers configured on the hub (e.g. a cloud one as default and a local one for offline use) and wants a particular announcement to use a specific provider, voice, or language.
+
+**Why this priority**: Useful but optional — every announcement works with the hub's configured defaults.
+
+**Independent Test**: Run the speak command with each override option and confirm the hub received the chosen value; run it with an unknown provider name and confirm a clear "provider not found" failure.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with a provider named `piper-local`, **When** the user runs the speak command with `--provider piper-local`, **Then** the announcement is requested from that provider.
+2. **Given** the user supplies `--voice` and/or `--language`, **When** the speak command runs, **Then** those values are sent to the hub; omitted ones fall back to the provider's defaults on the hub.
+3. **Given** a provider name the hub does not know, **When** the user runs the speak command, **Then** it fails with a clear "provider not found" error, distinct from "target not found".
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 3]
+
+---
+
+### User Story 47 - Inspect the TTS cache (Priority: P3)
+
+An operator wants to see how much disk the TTS cache uses, against its configured limit, and how the entries split across providers.
+
+**Why this priority**: Observability for the extension; not needed to make announcements.
+
+**Independent Test**: Run the cache-statistics command against a hub with the TTS extension loaded and verify it prints total entries, total size, maximum size, and per-provider entry counts, in YAML by default and JSON with `--json`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with the TTS extension loaded, **When** the user runs `sonora get tts-cache`, **Then** the command prints the total number of cached entries, their total size, the configured maximum size, and the entry count per provider.
+2. **Given** an empty cache, **When** the user runs the same command, **Then** it succeeds and shows zero entries, zero size, and an empty per-provider breakdown (not an error and not a missing field).
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 4]
+
+---
+
+### User Story 48 - Clear the TTS cache (Priority: P4)
+
+An operator wants to force fresh synthesis — for example after changing a provider's voice settings — by clearing the cache entirely or only for one provider.
+
+**Why this priority**: An administrative action needed rarely.
+
+**Independent Test**: Run the cache-clear command with and without a provider option and verify that the hub reports success and that the statistics command afterwards reflects the cleared entries.
+
+**Acceptance Scenarios**:
+
+1. **Given** a populated cache, **When** the user runs `sonora clear tts-cache`, **Then** the whole cache is cleared and the command prints `cleared: all`.
+2. **Given** a populated cache, **When** the user runs `sonora clear tts-cache --provider openai`, **Then** only that provider's entries are cleared and the command prints `cleared: provider` and `provider: openai`.
+3. **Given** a provider name the hub does not know, **When** the user runs the clear command with that `--provider`, **Then** it fails with a clear "provider not found" error and nothing is cleared.
+4. **Given** an already-empty cache, **When** the user clears it, **Then** the command still succeeds (clearing is idempotent).
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 5]
+
+---
+
+### User Story 49 - Override the response wait for a slow TTS provider (Priority: P4)
+
+An operator whose hub's TTS provider is configured with a longer synthesis timeout than the hub's 10-second default wants `speak` to wait long enough to receive the hub's own timeout error, instead of the CLI giving up first and misreporting a network failure.
+
+**Why this priority**: Only relevant when a hub deviates from the assumed 10-second default; the fixed 15-second bound (FR-114) already covers the common case.
+
+**Independent Test**: Run `speak` against a fake hub that takes longer than 15 seconds to respond, with `--timeout` set high enough to cover it, and confirm the command waits and reports the hub's actual response rather than a CLI-side timeout.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub whose provider takes longer than 15 seconds, **When** the user runs `speak` with `--timeout 30s`, **Then** the command waits up to 30 seconds and reports the hub's own response (success or provider error) rather than a CLI network timeout.
+2. **Given** no `--timeout` is supplied, **When** the user runs `speak`, **Then** the default 15-second bound (FR-114) applies unchanged.
+3. **Given** `--timeout` is supplied with a zero, negative, or unparsable value, **When** the user runs the speak command, **Then** it fails with a usage error before contacting the hub.
+
+[Source: .specify/archive/009-tts-commands/spec.md -> User Story 6]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
   The user must see a clear, actionable error rather than the command hanging indefinitely
-  or crashing. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/006-play-command/spec.md -> "What happens when the hub is unreachable or does not respond within a bounded time"]
+  or crashing. [Source: .specify/archive/009-tts-commands/spec.md -> "Hub unreachable or not answering"; .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/006-play-command/spec.md -> "What happens when the hub is unreachable or does not respond within a bounded time"]
 - What happens when the hub takes too long to respond? The command must fail with a clear
   timeout error rather than waiting indefinitely. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/006-play-command/spec.md -> "What happens when the hub is unreachable or does not respond within a bounded time"]
 - What happens when the hub returns an error response (e.g. 5xx)? The user must see a
@@ -1032,7 +1144,7 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
   [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns an error response"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub returns an error response other than"]
 - What happens when the hub returns data that doesn't match the expected shape (e.g. a
   malformed or unexpected response)? The command must fail clearly rather than displaying
-  garbled or silently incomplete output.
+  garbled or silently incomplete output. For the TTS cache statistics, an absent or null `entriesByProvider` is not malformed and is shown as an empty breakdown (FR-105). [Source: .specify/archive/009-tts-commands/spec.md -> "Malformed success body"]
   [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/006-play-command/spec.md -> "What happens when the hub returns a response that doesn't match the expected shape"]
 - What happens when an output has a physically disconnected/unavailable device but is
   still enabled? Its availability state must be visibly distinguishable from an available
@@ -1067,6 +1179,22 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 - What happens when neither the input path nor the target path is supplied to the route command? The user must see a usage error explaining what is required, not a confusing failure. [Source: .specify/archive/008-route-command/spec.md -> "What happens when neither the input path nor the target path is supplied?"]
 - What happens when the hub accepts the request but cannot create the route (e.g. the input is disabled, or the target is already at capacity)? The command must fail with a "route creation failed" error (exit `8`), distinct from "not found" and from validation errors. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the hub accepts the request but cannot create the underlying route"]
 - What happens when the input is already routed to that target, or the input and target identifiers refer to the same underlying entity? The command must surface whatever outcome the hub reports, rather than silently blocking or deduplicating the request. [Source: .specify/archive/008-route-command/spec.md -> "What happens when the input identifier and the target identifier refer to the same underlying entity"]
+- **TTS extension not installed, disabled, rejected, or inert on the hub**: the TTS operations do not exist on that hub and answer 404. Every TTS command MUST fail with a clear message saying the hub does not offer text-to-speech and, where the extension inventory can tell, why. It MUST NOT show a generic "not found" that could be mistaken for an unknown output or group (FR-110). [Source: .specify/archive/009-tts-commands/spec.md -> "TTS extension not installed, disabled, rejected, or inert on the hub"]
+- **Extension inventory also answers 404**: the hub serves the inventory from its control API (REST) extension, not from core. So a 404 there means the configured address is not serving the hub API at all: the hub URL points somewhere else, or the REST extension is missing or failed to load. The CLI says so, names the URL it used, and exits with the network/connectivity class instead of blaming TTS. [Source: .specify/archive/009-tts-commands/spec.md -> "Extension inventory also answers 404"]
+- **Extension inventory unreachable or broken for any other reason** (network failure, 5xx, malformed body): the command still reports "TTS not available on this hub", with no reason, and keeps the same exit class. [Source: .specify/archive/009-tts-commands/spec.md -> "Extension inventory unreachable or broken for any other reason"]
+- **Inventory lists `tts` as active, but the TTS operation answered 404**: the hub's extension and this CLI disagree on the TTS API. The CLI reports it as a version mismatch, not as "not installed". [Source: .specify/archive/009-tts-commands/spec.md -> "Inventory lists `tts` as active, but the TTS operation answered 404"]
+- **Unknown target output or group**: the hub rejects the request with its `TARGET_NOT_FOUND` code; the CLI reports "target not found" and exits `12`, as FR-113 maps it. [Source: .specify/archive/009-tts-commands/spec.md -> "Unknown target output or group"]
+- **Text longer than the hub allows**: the maximum length is configurable on the hub (default 500 characters), so the CLI does not enforce a limit of its own; it reports the hub's `INVALID_REQUEST` rejection and message as a validation error. [Source: .specify/archive/009-tts-commands/spec.md -> "Text longer than the hub allows"]
+- **Provider timeout, rate limit, provider error, or unconvertible audio**: the hub answers "service unavailable" with one of `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`, `PROVIDER_ERROR`, `FORMAT_NORMALIZATION_FAILED`. The CLI reports these as a service-unavailable failure, shows the hub's message, and exposes the code so scripts can tell them apart. The CLI does not retry automatically. [Source: .specify/archive/009-tts-commands/spec.md -> "Provider timeout, rate limit, provider error, or unconvertible audio"]
+- **Slow synthesis**: the hub synthesizes before it answers, and its default provider timeout is 10 seconds. The speak command MUST wait long enough to receive the hub's own timeout error rather than giving up first and misreporting it as a network failure — yet it MUST remain bounded. [Source: .specify/archive/009-tts-commands/spec.md -> "Slow synthesis"]
+- **Error code the CLI does not recognise** (the hub adds a new one later): the command still fails with the correct exit class for the HTTP status and shows the code and message verbatim. [Source: .specify/archive/009-tts-commands/spec.md -> "Error code the CLI does not recognise"]
+- **Error body in the core API's shape, or no parseable body at all** (e.g. a proxy error page): the command fails with a clear hub-error message rather than garbled output. [Source: .specify/archive/009-tts-commands/spec.md -> "Error body in the core API's shape, or no parseable body at all"]
+- **Text beginning with a dash**: the user can still speak it (e.g. by placing it after a `--` end-of-flags marker) without it being parsed as a flag. A text argument that is exactly `-` always means standard input (FR-102). To speak a lone dash, pipe it in. [Source: .specify/archive/009-tts-commands/spec.md -> "Text beginning with a dash"]
+- **Standard input empty, whitespace-only, or unreadable when the text is `-`**: usage error, and no request is sent. [Source: .specify/archive/009-tts-commands/spec.md -> "Standard input empty, whitespace-only, or unreadable when the text is `-`"]
+- **Positional arguments in the wrong order or extra positional arguments**: usage error. [Source: .specify/archive/009-tts-commands/spec.md -> "Positional arguments in the wrong order or extra positional arguments"]
+- **`--provider`, `--voice` or `--language` given an empty or whitespace-only value**: usage error before any request is sent, on every command that takes the flag. [Source: .specify/archive/009-tts-commands/spec.md -> "`--provider`, `--voice` or `--language` given an empty or whitespace-only value"]
+- **Hub configured with a provider timeout longer than 10 seconds**: the default 15-second bound (FR-114) is not enough, and the user sees a CLI network timeout instead of the hub's own error. `--timeout` (FR-115) lets the user raise the bound for that invocation; other TTS commands keep their standard 5-second bound, unaffected. [Source: .specify/archive/009-tts-commands/spec.md -> "Hub configured with a provider timeout longer than 10 seconds"]
+- **`--timeout` given a zero, negative, or unparsable value**: usage error before any request is sent. [Source: .specify/archive/009-tts-commands/spec.md -> "`--timeout` given a zero, negative, or unparsable value"]
 
 ## Requirements
 
@@ -1092,10 +1220,10 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010; .specify/archive/004-routes-list-get/spec.md -> FR-009; .specify/archive/005-groups-list-get/spec.md -> FR-010; .specify/archive/006-play-command/spec.md -> FR-008; .specify/archive/008-route-command/spec.md -> FR-007]
 - **FR-008**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message — not a raw
   technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009; .specify/archive/003-inputs-list-get/spec.md -> FR-012; .specify/archive/004-routes-list-get/spec.md -> FR-011; .specify/archive/005-groups-list-get/spec.md -> FR-012; .specify/archive/006-play-command/spec.md -> FR-010]
-- **FR-009**: Each outputs, inputs, routes and groups command, and the play and route commands, MUST fail with a clear, actionable error message when the hub
+- **FR-009**: Each outputs, inputs, routes and groups command, and the play, route, speak, get tts-cache and clear tts-cache commands, MUST fail with a clear, actionable error message when the hub
   does not respond within a bounded amount of time; it MUST NOT wait indefinitely. Each
   command MUST make a single attempt and MUST NOT automatically retry on network or
-  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012; .specify/archive/005-groups-list-get/spec.md -> FR-013; .specify/archive/006-play-command/spec.md -> FR-010; .specify/archive/008-route-command/spec.md -> FR-009]
+  timeout failure. [Source: .specify/archive/009-tts-commands/spec.md -> FR-014; .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012; .specify/archive/005-groups-list-get/spec.md -> FR-013; .specify/archive/006-play-command/spec.md -> FR-010; .specify/archive/008-route-command/spec.md -> FR-009]
 - **FR-010**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message when the hub
   returns an error response, distinguishing that case from a connectivity failure and,
   for the get commands, from a "not found" result.
@@ -1159,7 +1287,7 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 - **FR-064**: The CLI MUST remove the old `sonora <resource> list` and `sonora <resource> get <id>` command forms for inputs, outputs, groups, and routes, rather than keeping them as hidden or deprecated aliases. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-005]
 - **FR-065**: The CLI MUST fail with a clear, standard usage error — not a silent misinterpretation or incorrect result — when given an old-style invocation, an unrecognized resource name or alias, or a malformed resource path. The CLI is NOT required to specifically detect old-style syntax in order to name it or point to its new equivalent; a generic "unrecognized command"-style error is sufficient. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006]
 - **FR-066**: When `get` or `list` is given no resource argument at all (`sonora get`, `sonora list`), the CLI MUST fail with a usage error whose message enumerates the valid resource names. This is a deliberate exception to FR-065's "generic error is sufficient" allowance: there the user typed something wrong and the CLI need not diagnose it, whereas here the user typed a valid verb and nothing else, so the set of valid completions is unambiguous and the only useful thing to say. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-006a]
-- **FR-067**: The play and route commands' target argument MUST be a resource path (`outputs/<id>`, `groups/<id>`, or their aliases), and the separate `--group` and `--output` disambiguation flags MUST NOT exist on either command. A path naming any other resource (e.g. `inputs/<id>`), or one without an id, is a usage error. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-007; .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"; .specify/archive/008-route-command/spec.md -> FR-003]
+- **FR-067**: The play, route and speak commands' target argument MUST be a resource path (`outputs/<id>`, `groups/<id>`, or their aliases), and the separate `--group` and `--output` disambiguation flags MUST NOT exist on any of these commands. A path naming any other resource (e.g. `inputs/<id>`), or one without an id, is a usage error. [Source: .specify/archive/009-tts-commands/spec.md -> FR-002; .specify/archive/007-refactor-cli-commands/spec.md -> FR-007; .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourcePath"; .specify/archive/008-route-command/spec.md -> FR-003]
 - **FR-068**: The play command's display-name flag MUST be `--display-name`, and the command MUST fail with a clear usage error if the old `--name`, `--group`, or `--output` flags are supplied. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-008]
 - **FR-069**: The CLI MUST preserve `--json`, `--hub-url`, and `--verbose` unchanged, in meaning and behavior, on every refactored command. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-009]
 - **FR-070**: The CLI MUST preserve the exact displayed data (fields and values, in both the default and `--json` views) of every refactored read command — only the invocation shape changes, not what is shown. [Source: .specify/archive/007-refactor-cli-commands/spec.md -> FR-010]
@@ -1192,6 +1320,39 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 - **FR-097**: The CLI MUST provide `sonora pause routes/<route-id>` and `sonora resume routes/<route-id>`, which send `PUT /api/v2/routes/{id}/pause` with `{"paused": true}` or `{"paused": false}`. On success (200) they print the route identifier, paused flag, status and a message (YAML, or JSON with `--json`) and exit `0`. Pausing a paused route or resuming an active one is a success, since the hub is idempotent; the CLI reads no state first. A 404 is reported as "route not found: <id>" (exit `5`); a 400 (route not active, input not pausable, other validation) with the hub's detail (exit `6`). Only `routes/<id>` (alias `rt`) is accepted; any other kind or a missing identifier is a usage error with no request. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
 - **FR-098**: The CLI MUST provide three bulk stop forms: bare `sonora stop routes` (`DELETE /api/v2/routes`, every route), `sonora stop outputs/<output-id>` (`DELETE /api/v2/outputs/{id}/routes`) and `sonora stop groups/<group-id>` (`DELETE /api/v2/groups/{id}/routes`). On success (200) each prints the stopped count and the stopped routes, each with its identifier, target type, target identifier and nullable stop reason (YAML, or JSON with `--json`), and exits `0`, including when none was stopped. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 - **FR-099**: A 404 for an output or group MUST be reported as "output not found" or "group not found" (exit `5`); the system-wide form has no documented 404. `sonora stop routes/<route-id>` is unchanged: it is still the alias of FR-083. Extra arguments, `stop outputs` or `stop groups` without an identifier, and `stop inputs/<id>` are usage errors (exit `2`), so `stop` is no longer limited to routes. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
+
+- **FR-100**: The CLI MUST provide a `speak` command of the form `sonora speak <text> <outputs|groups>/<id>` that requests a TTS announcement of the given text on the given output or output group. [Source: .specify/archive/009-tts-commands/spec.md -> FR-001]
+- **FR-101**: The command MUST reject empty or whitespace-only text with a usage error before contacting the hub. It MUST NOT impose its own maximum text length; that limit belongs to the hub. [Source: .specify/archive/009-tts-commands/spec.md -> FR-003]
+- **FR-102**: When the text argument is exactly `-`, the command MUST read the text from standard input until end of input and trim trailing newlines (CR/LF). The text is sent as-is otherwise: inner line breaks are kept. FR-101's empty or whitespace-only check applies to the text read. If standard input cannot be read, that is a usage error raised before contacting the hub. [Source: .specify/archive/009-tts-commands/spec.md -> FR-003a]
+- **FR-103**: The command MUST accept optional `--provider <name>`, `--voice <id>`, and `--language <tag>` options, each sent to the hub only when supplied. An option supplied with an empty or whitespace-only value MUST be a usage error. [Source: .specify/archive/009-tts-commands/spec.md -> FR-004]
+- **FR-104**: On acceptance, the command MUST return immediately — without waiting or polling for playback to start or finish — and MUST display the announcement identifier, whether the audio was served from cache, and the target's queue depth, exactly as the hub reported them. [Source: .specify/archive/009-tts-commands/spec.md -> FR-005]
+- **FR-105**: Although `api/openapi.json` marks no success-response field as required, the CLI MUST treat these as required and reject a body missing any of them as malformed (hub-error class, 3): `announcementId`, `cacheHit`, `queueDepth` (speak) and `totalEntries`, `totalSizeBytes`, `maxSizeBytes` (cache stats). An empty `announcementId` counts as missing. An absent or null `entriesByProvider` MUST be shown as an empty breakdown, not rejected. [Source: .specify/archive/009-tts-commands/spec.md -> FR-005a]
+- **FR-106**: The CLI MUST provide `sonora get tts-cache`, which displays the TTS cache's total entry count, total size in bytes, configured maximum size in bytes, and entry count per provider. `tts-cache` is a singleton keyword like `master-mute`: it takes no id and has no `list` form. [Source: .specify/archive/009-tts-commands/spec.md -> FR-006]
+- **FR-107**: The CLI MUST provide `sonora clear tts-cache [--provider <name>]`, which clears the whole TTS cache, or only the named provider's entries when `--provider` is given. On success (hub 204, no body), it prints a structured confirmation: `cleared: all`, or `cleared: provider` plus `provider: <name>`. The output is YAML by default and the same fields as a JSON object with `--json`. `--provider` follows FR-103's empty-value rule. `clear` is a new verb and applies only to `tts-cache` in this feature; any other resource is a usage error. [Source: .specify/archive/009-tts-commands/spec.md -> FR-007]
+- **FR-108**: Clearing an already-empty cache MUST succeed. [Source: .specify/archive/009-tts-commands/spec.md -> FR-008]
+- **FR-109**: Every new command MUST support `--json`, `--hub-url`, and `--verbose` with the same meaning as on existing commands, and MUST default to YAML output. [Source: .specify/archive/009-tts-commands/spec.md -> FR-009]
+- **FR-110**: When a TTS operation answers 404, the command MUST treat TTS as unavailable on this hub and fail with a message distinguishable from "target not found" and "provider not found". To explain why, it MUST then query the hub's extension inventory once and look up the entry whose id is `tts`:
+
+  | Inventory result | Reported reason |
+  | --- | --- |
+  | no `tts` entry | TTS extension is not installed on this hub |
+  | no `tts` entry, and the inventory reports `loadingEnabled: false` | TTS extension is not installed on this hub, noting that extension loading is switched off in the hub's configuration |
+  | status `DISABLED` | TTS extension is installed but disabled in the hub's configuration |
+  | status `REJECTED` | TTS extension failed to load, followed by the hub's rejection reason |
+  | status `INERT` | TTS extension is loaded but inactive |
+  | status `ACTIVE` | hub's TTS API does not match this CLI (version mismatch) |
+  | any other status value | none: generic "TTS not available on this hub" |
+  | inventory itself answers 404 | the address is not a Multiroom Audio Hub API: either the hub URL is wrong, or the hub's control API (REST) extension is not installed or not loaded. The message names the URL that was used and how to change it (`--hub-url`, `MULTIROOM_URL`, config file) |
+  | inventory lookup fails any other way (network, 5xx, malformed body) | none: generic "TTS not available on this hub" |
+
+  [Source: .specify/archive/009-tts-commands/spec.md -> FR-010]
+- **FR-111**: The inventory MUST NOT be queried on any path other than a 404 from a TTS operation, so a successful TTS command makes exactly one request. The exit class is "TTS not available" in every row of FR-110's table except one. When the inventory itself answers 404, the fault is the hub address or the REST extension, not TTS, so the exit class is network/connectivity: the same class as an unreachable hub. Any other lookup failure is visible only with `--verbose` and does not change the exit class. [Source: .specify/archive/009-tts-commands/spec.md -> FR-010a]
+- **FR-112**: When a TTS operation fails with the extension's error shape, the CLI MUST show the hub's human-readable message and MUST make the machine-readable code (`INVALID_REQUEST`, `TARGET_NOT_FOUND`, `PROVIDER_NOT_FOUND`, `PROVIDER_TIMEOUT`, `PROVIDER_RATE_LIMITED`, `PROVIDER_ERROR`, `FORMAT_NORMALIZATION_FAILED`) visible in the error output. [Source: .specify/archive/009-tts-commands/spec.md -> FR-011]
+- **FR-113**: Failures MUST map to exit codes as follows: `TARGET_NOT_FOUND` → target not found (12); `INVALID_REQUEST` → validation error (6); `PROVIDER_NOT_FOUND` → generic not found (5); any provider-side (503) failure → service unavailable (10); TTS not offered by the hub → a new "TTS not available" code, 13; hub unreachable, or the extension inventory answering 404 (FR-111) → network error (4). An unrecognised code MUST fall back to the class implied by the HTTP status. [Source: .specify/archive/009-tts-commands/spec.md -> FR-012]
+- **FR-114**: The speak command's wait for a response MUST be bounded, and MUST default to long enough to receive the hub's default 10-second synthesis-timeout error rather than timing out first. Other TTS commands keep the CLI's standard request bound. [Source: .specify/archive/009-tts-commands/spec.md -> FR-013]
+- **FR-115**: The speak command MUST accept an optional `--timeout <duration>` flag that overrides FR-114's default bound for that invocation. The value MUST be a positive duration; a zero, negative, or unparsable value MUST be a usage error raised before contacting the hub. Other TTS commands are unaffected by this flag. [Source: .specify/archive/009-tts-commands/spec.md -> FR-013a]
+- **FR-116**: The new commands, the `tts-cache` keyword, and the `clear` verb MUST appear in `sonora help`, the README command table, and the CLI command landscape document. The README MUST also list the CLI's exit codes, including the new code 13. [Source: .specify/archive/009-tts-commands/spec.md -> FR-015]
+- **FR-117**: All request and response handling MUST follow the TTS operations as published in the hub's API description (`api/openapi.json`); where that description is less precise than the extension's own contract (e.g. error codes, which it leaves as free text), the CLI MUST accept anything the extension's contract allows. [Source: .specify/archive/009-tts-commands/spec.md -> FR-016]
 
 ### Key Entities
 
@@ -1285,6 +1446,11 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 
 - **Bulk Stop Result**: The outcome of a bulk stop: the number of routes stopped and, for each, its route identifier, target type, target identifier and an optional stop reason. The list is empty when nothing was playing. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 
+- **Announcement Request**: A one-shot request to speak a text on a target (one output or one output group, by id), with optional provider, voice, and language overrides. Sent to the extension's `speak` operation as text, a target id and target type, and the optional fields only when supplied. [Source: .specify/archive/009-tts-commands/spec.md -> "Announcement request"]
+- **Announcement Acceptance**: The hub's acceptance of an announcement: the announcement identifier, a flag saying whether the audio was served from cache, and the queue depth for the target, including this announcement. [Source: .specify/archive/009-tts-commands/spec.md -> "Announcement acceptance"]
+- **TTS Cache Statistics**: The TTS cache's total entries, total size in bytes, maximum size in bytes, and a provider-name to entry-count breakdown (which may be empty). [Source: .specify/archive/009-tts-commands/spec.md -> "TTS cache statistics"]
+- **TTS Error**: A machine-readable code plus a human-readable message, returned by the extension alongside a 400 (caller-fixable) or 503 (provider-side) status. The CLI keeps its own error shape separate from the core API's problem details. [Source: .specify/archive/009-tts-commands/spec.md -> "TTS error"]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -1334,6 +1500,15 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 - **SC-032**: 100% of route command failure cases return a message that lets the user tell apart a usage error, input not found, target not found, route creation failure, and a connectivity or timeout problem. [Source: .specify/archive/008-route-command/spec.md -> SC-003]
 - **SC-033**: A user can always tell, without ambiguity, whether the route was created successfully or the command failed. [Source: .specify/archive/008-route-command/spec.md -> SC-005]
 
+- **SC-034**: A user can trigger an announcement on any output or group with one command and no more than the text and a target path. [Source: .specify/archive/009-tts-commands/spec.md -> SC-001]
+- **SC-035**: With an audio cache hit, `speak` reports acceptance within 1 second of being run on a local network. [Source: .specify/archive/009-tts-commands/spec.md -> SC-002]
+- **SC-036**: When the hub's provider times out at its default 10-second limit, the user sees the hub's provider-timeout error — not a CLI network timeout — 100% of the time. [Source: .specify/archive/009-tts-commands/spec.md -> SC-003]
+- **SC-037**: A user whose hub is configured with a provider timeout longer than 10 seconds can, by supplying `--timeout`, still receive the hub's own response rather than a CLI network timeout, 100% of the time. [Source: .specify/archive/009-tts-commands/spec.md -> SC-003a]
+- **SC-038**: Every failure listed in Edge Cases exits with the exit code class documented for it (FR-113; usage errors → 2) and a message that names the cause, verified by tests; no failure prints a raw program error or stack trace without `--verbose`. [Source: .specify/archive/009-tts-commands/spec.md -> SC-004]
+- **SC-039**: Against a hub where the TTS extension is not active, 100% of TTS commands report "TTS not available" rather than a misleading not-found error. Whenever the hub's extension inventory is reachable, they also name the reason (not installed, disabled, rejected with its reason, inert, or version mismatch). [Source: .specify/archive/009-tts-commands/spec.md -> SC-005]
+- **SC-040**: A successful TTS command makes exactly one request to the hub. [Source: .specify/archive/009-tts-commands/spec.md -> SC-005a]
+- **SC-041**: Existing commands' behaviour and startup time are unchanged by this feature. [Source: .specify/archive/009-tts-commands/spec.md -> SC-006]
+
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
@@ -1341,7 +1516,7 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
   by the user); this feature consumes that mechanism but does not define it.
   [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/004-routes-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/005-groups-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/006-play-command/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/008-route-command/spec.md -> "The hub's network location (host/port) is available"]
 - **AS-002**: The hub API requires no authentication for the read-only endpoints and the creation endpoints (`play`, `route`), consistent with the
-  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/005-groups-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/006-play-command/spec.md -> "The hub API requires no authentication"; .specify/archive/008-route-command/spec.md -> "The hub API requires no authentication"]
+  current API specification. The TTS operations (`speak`, `get tts-cache`, `clear tts-cache`) are guarded exactly as the rest of the hub's HTTP surface, so the CLI adds no authentication for them. [Source: .specify/archive/009-tts-commands/spec.md -> "No authentication is added"; .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/005-groups-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/006-play-command/spec.md -> "The hub API requires no authentication"; .specify/archive/008-route-command/spec.md -> "The hub API requires no authentication"]
 - **AS-003**: "Human-readable" default output presents the same set of fields as the machine-readable
   output, formatted for readability rather than strict parsing.
   [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/004-routes-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/005-groups-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/006-play-command/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/008-route-command/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
@@ -1373,4 +1548,12 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 - **AS-019**: Stopping, pausing, transferring, or otherwise managing the route the route command creates is out of scope; the command covers only creating the route, mirroring AS-010. The route command's own scope is unchanged; stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098). [Source: .specify/archive/008-route-command/spec.md -> "Stopping, pausing, or otherwise managing the resulting route"; .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 - **AS-020**: Whether an input can be routed to more than one target at once, or whether routing an already-routed input to the same target succeeds, is decided by the hub; the CLI applies no client-side restriction and surfaces the outcome the hub reports. [Source: .specify/archive/008-route-command/spec.md -> "Whether a given input can be routed to more than one target at once"]
 - **AS-021**: Output and group identifiers may collide; the target's path prefix decides which one is meant, so the route command needs no disambiguation flag. [Source: .specify/archive/008-route-command/spec.md -> "Output identifiers and group identifiers may occasionally collide"]
-- **AS-022**: Each mutating command (`enable`, `disable`, `delete`, `stop`, `create`, `transfer`, `set`, `mute`, `unmute`, `pause`, `resume`) sends one request and reports the hub's result. It does not ask for confirmation and does not read the current state first, so repeating a command is whatever the hub makes of it. [Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md; .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
+- **AS-022**: Each mutating command (`enable`, `disable`, `delete`, `stop`, `create`, `transfer`, `set`, `mute`, `unmute`, `pause`, `resume`, `speak`, `clear tts-cache`) sends one request and reports the hub's result. It does not ask for confirmation and does not read the current state first, so repeating a command is whatever the hub makes of it. `clear tts-cache` loses no user data, only costs a re-synthesis on the next request. [Source: .specify/archive/009-tts-commands/spec.md -> "clear does not prompt for confirmation"; .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md; .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
+- **AS-023**: The hub identifies a TTS target by the same id the CLI already uses for outputs and groups (`outputs/<id>`, `groups/<id>`); the extension's `targetName` field carries that id. [Source: .specify/archive/009-tts-commands/spec.md -> "The hub identifies a TTS target by the same id"]
+- **AS-024**: The TTS operations live under the extension's own paths, not the core v2 API, and answer 404 when the extension is not active. The extension never uses 404 itself: it reports unknown targets and providers as 400. So a 404 is conclusive evidence that TTS is unavailable. [Source: .specify/archive/009-tts-commands/spec.md -> "The TTS operations live under the extension's own paths"]
+- **AS-025**: The TTS extension's inventory id is `tts`, the `Extension-Id` in its distributable's manifest. Entries are matched on this machine identifier, never on the display name, as the hub's feature `019-extension-shared-classloader` (FR-002, FR-030) requires of consumers. [Source: .specify/archive/009-tts-commands/spec.md -> "The TTS extension's inventory id is `tts`"]
+- **AS-026**: Per `019-extension-shared-classloader` FR-030 to FR-032, core contributes no HTTP API path. The inventory operation (`/api/v2/extensions`) is served by the control API (REST) extension, and the TTS operations are served by the TTS extension. That is why the two lookups separate the causes: a 404 from TTS alone means TTS is unavailable, and a 404 from both means the REST extension is absent or the URL is wrong. The CLI MUST NOT fall back to the core-owned operational monitoring endpoint (`/actuator/extensions`), for three reasons: it is not in `api/openapi.json`, its shape is explicitly not a published contract, and as a diagnostic tool it may be reachable only from the hub's own host, so a remote CLI cannot rely on it. [Source: .specify/archive/009-tts-commands/spec.md -> "Per `019-extension-shared-classloader` FR-030 to FR-032"]
+- **AS-027**: A speak request's response wait defaults to 15 seconds (the hub's 10-second default synthesis timeout plus margin), overridable per invocation with `--timeout` (FR-115) for hubs configured with a longer provider timeout. [Source: .specify/archive/009-tts-commands/spec.md -> "A speak request's response wait defaults to 15 seconds"]
+- **AS-028**: The `speak` verb takes the text as its first positional argument and the target as its second, mirroring `play <uri> <target>`. The text may be `-` to read it from standard input (FR-102). [Source: .specify/archive/009-tts-commands/spec.md -> "The `speak` verb takes the text as its first positional argument"]
+- **AS-029**: A user-facing command for the extension inventory (e.g. `get extensions`) and the legacy `/api/**` (non-`v2`) operations present in `api/openapi.json` are out of scope. This feature uses `listExtensions` only internally, for FR-110's diagnosis. [Source: .specify/archive/009-tts-commands/spec.md -> "A user-facing command for the extension inventory"]
+- **AS-030**: Queue inspection, cancelling a queued announcement, and waiting for playback to finish are out of scope — the hub exposes no operation for them. [Source: .specify/archive/009-tts-commands/spec.md -> "Queue inspection, cancelling a queued announcement"]

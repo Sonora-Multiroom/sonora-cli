@@ -2,6 +2,21 @@
 
 ## Merged Features Log
 
+### Text-to-Speech Announcements (`speak`, `get tts-cache`, `clear tts-cache`) — archived 2026-11-23
+**Branch:** 009-tts-commands
+**Spec:** [.specify/archive/009-tts-commands/spec.md](../archive/009-tts-commands/spec.md)
+
+**What was added:**
+- User Stories 44–49 (P1–P4): `sonora speak <text|-> <outputs|groups>/<id>` announces text on one output or group, with `--provider`, `--voice`, `--language`, `--timeout` and standard input (`-`); `sonora get tts-cache` shows the TTS cache statistics; `sonora clear tts-cache [--provider]` clears the whole cache or one provider's entries
+- Exit code `13` (TTS not available); a 404 from a TTS operation triggers one extension-inventory lookup that explains why TTS is unavailable
+- FR-100–FR-117, SC-034–SC-041, AS-023–AS-030, the Announcement Request, Announcement Acceptance, TTS Cache Statistics and TTS Error entities and sixteen edge cases; shared FR-009, FR-067, AS-002 and AS-022 widened to cover the TTS commands
+
+**New Components:**
+- `internal/cli/tts/` (`RunSpeak`, `RunGetCache`, `RunClearCache`, shared failure path); `internal/hub/tts.go`, `internal/hub/extensions.go`; `internal/render/tts.go`; `internal/hub/client.go` (`NewClientWithTimeout`); `internal/hub/errors.go` (`ClassTTSUnavailable`); `cmd/sonora/main.go`: `speak` special case, `tts-cache` keyword, `clear` verb
+- `tests/{unit,contract,integration}` TTS tests
+
+**Tasks Completed:** 55/55 tasks
+
 ### Bulk Stop Routes (`stop routes`, `stop outputs/<id>`, `stop groups/<id>`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md
 **Implemented:** 2026-09-09
@@ -140,8 +155,6 @@ Adds `sonora help`, `-h`/`--help` and bare `sonora`, which print the command tab
 
 **Tasks Completed:** 24/24 tasks
 
-
-## Merged Features Log
 
 ### List and Get Output Groups — archived 2026-11-23
 **Branch:** 005-groups-list-get

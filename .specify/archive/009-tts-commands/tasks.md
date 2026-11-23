@@ -5,7 +5,7 @@ description: "Task list for `speak`, `get tts-cache`, `clear tts-cache`"
 
 # Tasks: Text-to-Speech Announcements (`speak`, TTS cache)
 
-**Input**: Design documents from `/specs/009-tts-commands/`
+**Input**: Design documents from `/.specify/archive/009-tts-commands/`
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/cli-tts.md](contracts/cli-tts.md),
@@ -326,7 +326,7 @@ prints `cleared: all` or `cleared: provider` + `provider: "<name>"`. It is idemp
 - [X] T045 Review cmd/sonora/main.go `helpText` as a whole: the new lines are aligned with existing entries, and the `Commands:` column widths are unchanged (FR-015). Re-run `go test ./cmd/...`.
 - [X] T046 Run `make check` (gofmt, go vet, the full `go test ./...` including the slow SC-003 test) and fix any findings in files touched by this feature.
 - [X] T047 Regression (SC-006): diff the `sonora help` output and the exit codes of existing commands against `main`, using `go test ./tests/... ./cmd/...` on both branches. Confirm no existing test changed expectation apart from the additive help-text assertions. Also measure cold start on both branches (for example, the median of 20 runs of `sonora get outputs --hub-url http://127.0.0.1:1`, which fails fast) and record the before/after timings under Notes (Principle I, Performance Standards).
-- [X] T048 Walk through specs/009-tts-commands/quickstart.md sections 1–2. Run section 3 against a real hub if one is available, including row 2 (cache-hit `speak` under 1 s, SC-002). Otherwise record under Notes in this file which manual rows were not run.
+- [X] T048 Walk through .specify/archive/009-tts-commands/quickstart.md sections 1–2. Run section 3 against a real hub if one is available, including row 2 (cache-hit `speak` under 1 s, SC-002). Otherwise record under Notes in this file which manual rows were not run.
 - [X] T049 Write the PR self-review against Constitution Principles I, III, IV and VI. It is required because this feature changes HTTP client construction (`hub.NewClientWithTimeout`). Cover: startup path unchanged (T047 timings); no new dependency; every request bounded (5 s / 15 s), with no retries and connection reuse through `http.DefaultTransport`; every behaviour had a failing test first. Put it in the PR description.
 
 ---

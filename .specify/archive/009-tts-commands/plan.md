@@ -2,7 +2,7 @@
 
 **Branch**: `009-tts-commands` | **Date**: 2026-09-21 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/009-tts-commands/spec.md`
+**Input**: Feature specification from `/.specify/archive/009-tts-commands/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
@@ -100,7 +100,7 @@ any other command's timeout.
 ### Documentation (this feature)
 
 ```text
-specs/009-tts-commands/
+.specify/archive/009-tts-commands/
 ├── plan.md              # This file
 ├── research.md          # Phase 0: design decisions
 ├── data-model.md        # Phase 1: wire types, error types, exit codes, rendered views

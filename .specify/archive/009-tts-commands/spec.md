@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-21
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "@api/openapi.json contains new endpoints - extension TTS (text-to-speech) and out CLI should also now provide this; @/d:/projects-sonora/sonora-tts/specs/001-tts-extension/contracts/tts-rest-api.yaml @/d:/projects-sonora/sonora-tts/specs/001-tts-extension/spec.md"
 
