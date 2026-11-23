@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `004-routes-list-get` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `005-groups-list-get` through `014-radio-station-search`; small changes in `specs/tiny/`.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
 Distilled, up-to-date specs summarising the current understanding of each feature or domain.
@@ -80,6 +80,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `001-list-outputs` — `sonora outputs list`: enabled outputs, `--include-disabled`, `--json`, exit codes, 5s timeout
 - `002-outputs-get` — `sonora outputs get <output-id>`: one output, `--json`, not-found exit code 5
 - `003-inputs-list-get` — `sonora inputs list` and `sonora inputs get <input-id>`: inputs, `--include-disabled`, `--json`, not-found exit code 5
+- `004-routes-list-get` — `sonora routes list` and `sonora routes get <route-id>`: routes, `--status`/`--input-id`/`--target-id`, `--json`, not-found exit code 5
 
 ## Active Technologies
 
@@ -95,6 +96,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/004-routes-list-get: `sonora routes list` (`--status`, `--input-id`, `--target-id`, `--json`, `--verbose`, `--hub-url`) and `sonora routes get <route-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get` and `inputs get`
 - .specify/archive/003-inputs-list-get: `sonora inputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora inputs get <input-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`
 - .specify/archive/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
 - .specify/archive/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout

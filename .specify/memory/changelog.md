@@ -2,6 +2,22 @@
 
 ## Merged Features Log
 
+### List and Get Audio Routes — archived 2026-11-23
+**Branch:** 004-routes-list-get
+**Spec:** [.specify/archive/004-routes-list-get/spec.md](../archive/004-routes-list-get/spec.md)
+
+**What was added:**
+- User Stories 12–16 (P1–P3): `sonora routes list` shows all routes (identifier, source input, target, target type, status), `--status`/`--input-id`/`--target-id` narrow it with AND logic, `--json` for scripts
+- `sonora routes get <route-id>` shows one route's full state, with a clear "route not found" exit `5`
+- FR-028–FR-036, SC-012–SC-016, AS-008 and the Route entity; shared outputs/inputs/routes requirements widened (FR-006–FR-011, FR-013, SC-002–SC-004, AS-001–AS-006)
+
+**New Components:**
+- `internal/cli/routes/` (`RunList`, `RunGet`); `internal/hub/routes.go` (`ListRoutes`, `GetRoute`); `internal/render/routes.go`
+- `tests/{unit,contract,integration}` routes tests
+
+**Tasks Completed:** 33/33 tasks
+
+
 ### List and Get Audio Inputs — archived 2026-11-23
 **Branch:** 003-inputs-list-get
 **Spec:** [.specify/archive/003-inputs-list-get/spec.md](../archive/003-inputs-list-get/spec.md)

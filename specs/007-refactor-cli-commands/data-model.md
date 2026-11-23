@@ -4,10 +4,10 @@
 
 This feature introduces no new hub-facing entities or endpoints — `Input`, `Output`, `Group`,
 and `Route` (and their list/get query parameters) are unchanged from
-[001-list-outputs](../001-list-outputs/data-model.md),
-[002-outputs-get](../002-outputs-get/data-model.md),
-[003-inputs-list-get](../003-inputs-list-get/data-model.md),
-[004-routes-list-get](../004-routes-list-get/data-model.md), and
+[001-list-outputs](../../.specify/archive/001-list-outputs/data-model.md),
+[002-outputs-get](../../.specify/archive/002-outputs-get/data-model.md),
+[003-inputs-list-get](../../.specify/archive/003-inputs-list-get/data-model.md),
+[004-routes-list-get](../../.specify/archive/004-routes-list-get/data-model.md), and
 [005-groups-list-get](../005-groups-list-get/data-model.md). What's new is purely CLI-surface:
 how a command line resolves into a call to that unchanged logic.
 

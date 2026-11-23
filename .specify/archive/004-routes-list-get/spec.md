@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-25
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "next feature, similar to already implemented `outputs list`, `outputs get`, `inputs list` and `inputs get`, logically, would be `routes list` and `routes get`"
 
