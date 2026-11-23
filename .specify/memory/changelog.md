@@ -2,6 +2,12 @@
 
 ## Merged Features Log
 
+### Help Command (`help`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-26-help-command/help-command.md
+**Implemented:** 2026-08-26
+
+Adds `sonora help`, `-h`/`--help` and bare `sonora`, which print the command table, global flags and examples to stdout with exit `0` (User Story 26, FR-057–FR-058; `cmd/sonora/main.go`, `cmd/sonora/main_test.go`). The missing-verb and unknown-command usage errors are unchanged.
+
 ### Instant Playback (`play`) — archived 2026-11-23
 **Branch:** 006-play-command
 **Spec:** [.specify/archive/006-play-command/spec.md](../../.specify/archive/006-play-command/spec.md)

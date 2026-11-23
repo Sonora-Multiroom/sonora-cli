@@ -1,11 +1,12 @@
 # Main Implementation Plan
 
-> **Revision**: 2026-11-23 — Seeded from specs/001-list-outputs (first archival): summary, Technical Context, project structure, hub-URL configuration, exit codes, testing strategy. Describes the layout as planned by that feature.
-> **Revision**: 2026-11-23 — Archived specs/002-outputs-get: added the `outputs get` command to Summary, Technical Context, Project Structure, Routing & Navigation (fifth exit code `5`) and Testing Strategy; `outputs.Run` is now `outputs.RunList`. No Technical Context value conflicted with the 001 values.
+> **Revision**: 2026-11-23 — Seeded from .specify/archive/001-list-outputs (first archival): summary, Technical Context, project structure, hub-URL configuration, exit codes, testing strategy. Describes the layout as planned by that feature.
+> **Revision**: 2026-11-23 — Archived .specify/archive/002-outputs-get: added the `outputs get` command to Summary, Technical Context, Project Structure, Routing & Navigation (fifth exit code `5`) and Testing Strategy; `outputs.Run` is now `outputs.RunList`. No Technical Context value conflicted with the 001 values.
 > **Revision**: 2026-11-23 — Archived .specify/archive/003-inputs-list-get: added `inputs list` and `inputs get` to Summary, Technical Context (Scale/Scope now composes four commands), Project Structure, Configuration, Routing & Navigation and Testing Strategy. `NotFoundError` is now resource-generic (`Resource`, `ID`), so `outputs get` and `inputs get` share one not-found type. No Technical Context value conflicted; the remaining values are identical to the 001/002 ones and each now carries a 003 ref. The main plan has no legacy per-feature blocks, so the layout is unmixed.
 > **Revision**: 2026-11-23 — Archived .specify/archive/004-routes-list-get (moved from specs/ in the same run): added `routes list` and `routes get` to Summary, Technical Context (Scale/Scope now composes six commands; Language/Version, Primary Dependencies, Storage, Target Platform, Project Type, Performance Goals and Constraints each take a 004 ref, stating the same values), Project Structure, Configuration, Routing & Navigation (exit `5` now covers route identifiers) and Testing Strategy. No Technical Context value conflicted with the 001–003 values.
 > **Revision**: 2026-11-23 — Archived .specify/archive/005-groups-list-get (moved from specs/ in the same run): added `groups list` and `groups get` to Summary, Technical Context (Scale/Scope now composes eight commands; Language/Version, Primary Dependencies, Storage, Testing, Target Platform, Project Type and Constraints each take a 005 ref for the same value; Performance Goals now names the groups commands as well), Project Structure, Configuration, Routing & Navigation (exit `5` now covers group identifiers) and Testing Strategy. No Technical Context value conflicted with the 001–004 values, and the main plan has no legacy per-feature blocks, so the layout is unmixed.
 > **Revision**: 2026-11-23 — Archived .specify/archive/006-play-command (moved from specs/ in the same run): added `play` to Summary, Technical Context (Scale/Scope now composes nine commands; Primary Dependencies adds `strconv`; Performance Goals adds the playback round trip; Constraints adds the play exit classes; Language/Version, Storage, Testing, Target Platform and Project Type each take a 006 ref for the same value), Configuration, Routing & Navigation (exit codes `6`–`10` and the play routing entry), Testing Strategy and the Structure Decision. The verb-less `play` noun needed an early `main.go` special case; that gotcha is recorded in the agent file. No Technical Context value conflicted with the 001–005 values, and the main plan has no legacy per-feature blocks, so the layout is unmixed.
+> **Revision**: 2026-11-23 — tinyspec help-command (.specify/archive/tiny/2026-08-26-help-command/help-command.md): `help`, `-h`, `--help` and bare invocation print the usage text to stdout with exit `0`, dispatched in `cmd/sonora/main.go` after the `--version`/`-v` check and before the noun/verb split; the help text is a constant there, and `cmd/sonora/main_test.go` covers the `run()` help and usage paths. The zero-argument case no longer exits `2`; missing-verb and unknown-command errors are unchanged.
 
 ## Summary
 
@@ -49,6 +50,9 @@ filters (`--status`, `--input-id`, `--target-id`) that the hub validates and app
 
 `sonora play <uri> <target-id>` is the CLI's first mutating command: one `POST /api/v2/play` (operationId `playback`) creates an ephemeral input and a route in a single hub round trip, and the command returns as soon as the hub responds, without polling. Its target is resolved against both outputs and groups (`--group`/`--output` force one type), and five new exit codes (6–10) separate the failure modes the hub's `400`, `422`, `502` and `503` responses describe. The `play` noun needs an early special case in `cmd/sonora/main.go`.
 [Source: .specify/archive/006-play-command/plan.md -> "Summary"]
+
+`sonora help`, `sonora -h`, `sonora --help` and bare `sonora` print the command table, the global flags and example invocations to stdout with exit `0`, without contacting the hub. The usage text is a constant in `cmd/sonora/main.go`, dispatched after the `--version`/`-v` check and ahead of the noun/verb split.
+[Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
 
 ## Technical Context
 
@@ -95,7 +99,8 @@ hub error / network error and, for lookups by identifier, not-found (exit `5`). 
 ```text
 cmd/
 └── sonora/
-    └── main.go                    # Entrypoint: top-level dispatch (`outputs` noun → `list`/`get` verbs), exit code translation
+    ├── main.go                    # Entrypoint: top-level dispatch (`outputs` noun → `list`/`get` verbs), exit code translation, usage text for `help`/`-h`/`--help`/bare invocation
+    └── main_test.go               # Unit tests for `run()`'s help and usage paths (tinyspec `help-command`)
 
 internal/
 ├── hub/                           # Hub API client — validated against api/openapi.json (Principle II)
@@ -198,6 +203,8 @@ The `play` noun (006) is verb-less, so it has no `RunList`/`RunGet` pair: `inter
   [Source: .specify/archive/005-groups-list-get/data-model.md -> "CLI invocation shape"; .specify/archive/005-groups-list-get/plan.md -> "Summary"]
 - `sonora play <uri> <target-id> [--group | --output] [--volume N] [--name NAME] [--json] [--verbose] [--hub-url URL]` → `POST {hub-url}/api/v2/play` (operationId `playback`), one request body carrying `uri`, `targetId`, `targetType` and, when given, `volume` and `displayName`; single attempt, 5s timeout, no retries, no polling. Exactly two positional arguments are required (exit `2` otherwise), and `--group` with `--output` is a usage error (exit `2`). Target resolution runs first and sequentially: `GET {hub-url}/api/v2/outputs/{id}`, then `GET {hub-url}/api/v2/groups/{id}`, reusing `hub.GetOutput` and `hub.GetGroup`. A match in only one picks that type; a match in both without a forcing flag is an ambiguous target (exit `7`); a forcing flag restricts the lookup to its type, and an identifier absent from that type is not found (exit `5`), even if it exists as the other type. An out-of-range `--volume` is a validation error (exit `6`) before any request. Success output is four fields — `inputId`, `routeId`, `status`, `message` — as YAML (default) or JSON (`--json`). Hub `400` exits `6`, `404` exits `5`, `422` exits `8`, `502` exits `9`, `503` exits `10`; any other non-2xx status or a malformed response exits `3`; unreachable or timed out exits `4`.
   [Source: .specify/archive/006-play-command/data-model.md -> "Target Resolution State"; .specify/archive/006-play-command/data-model.md -> "Exit Code Table (full, this feature's additions marked NEW)"; .specify/archive/006-play-command/research.md -> "4. Client-side vs. hub-side validation: volume range checked before any request"]
+- `sonora help`, `sonora -h`, `sonora --help` and bare `sonora` → usage text on stdout, exit `0`, no hub request; checked after `--version`/`-v`. A missing verb (`sonora outputs`) and an unknown noun or verb still exit `2` with the message on stderr.
+  [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
 - **Output**: YAML by default (a top-level `outputs:` list; string scalars always double-quoted; `available` always printed; zero outputs prints `outputs: []` plus a plain-text note), strict JSON `{"outputs": [...]}` with `--json`. Success payload on stdout, failures on stderr; `--verbose` appends the raw underlying error.
   [Source: .specify/archive/001-list-outputs/contracts/cli-outputs-list.md -> "Success output"]
 - **Exit codes**: `0` success (including zero outputs), `2` usage error, `3` hub-reported error (non-2xx other than a get's 404, or 2xx with a malformed body), `4` network/connectivity error (unreachable, DNS, timeout), `5` not found (hub answered `404` for the given output, input, route or group identifier; appended, nothing renumbered). `play` (006) appends `6` validation, `7` ambiguous target, `8` route creation failed, `9` source unreachable and `10` upstream service unavailable.
@@ -224,6 +231,9 @@ The `play` noun (006) is verb-less, so it has no `RunList`/`RunGet` pair: `inter
 
 - **Play** (006): unit `tests/unit/cli_play_test.go` and `render_play_test.go` (flag and positional parsing, the mutually exclusive `--group`/`--output` usage error, the volume range check, and the four-field YAML/JSON rendering); contract `tests/contract/play_test.go` (`httptest.Server` shaped from `playback`'s 200, 400, 404, 422, 502 and 503 bodies); integration `tests/integration/play_test.go` against a fake hub serving `/api/v2/play`, `/api/v2/outputs/{id}` and `/api/v2/groups/{id}`, covering each target mode and every exit code.
   [Source: .specify/archive/006-play-command/research.md -> "5. Testing strategy: a fake hub serving three endpoints per scenario"]
+
+- **Help** (tinyspec `help-command`): `cmd/sonora/main_test.go` calls `run()` directly. `help`, `-h`, `--help` and bare invocation print the command names to stdout with exit `0`; an unknown noun and a missing verb still exit `2` on stderr.
+  [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
 
 All written before implementation (Principle VI). `gofmt` and `go vet` are the baseline checks.
 [Source: .specify/archive/001-list-outputs/research.md -> "8. Testing strategy"]

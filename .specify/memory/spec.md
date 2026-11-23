@@ -1,11 +1,12 @@
 # Main Project Specification
 
-> **Revision**: 2026-11-23 — Seeded from specs/001-list-outputs (first archival): user stories 1–3, edge cases, FR-001–FR-013, Output entity, SC-001–SC-005, AS-001–AS-005.
-> **Revision**: 2026-11-23 — Archived specs/002-outputs-get: added User Stories 4–6, an edge case, FR-014–FR-017, SC-006–SC-007 and AS-006; folded its equivalent requirements, edge cases, outcomes, assumptions and the Output entity into existing entries (FR-004–FR-013, SC-002–SC-005, AS-001–AS-004), widening FR-004, FR-010, FR-011 and SC-005 to cover the get command and the not-found case.
+> **Revision**: 2026-11-23 — Seeded from .specify/archive/001-list-outputs (first archival): user stories 1–3, edge cases, FR-001–FR-013, Output entity, SC-001–SC-005, AS-001–AS-005.
+> **Revision**: 2026-11-23 — Archived .specify/archive/002-outputs-get: added User Stories 4–6, an edge case, FR-014–FR-017, SC-006–SC-007 and AS-006; folded its equivalent requirements, edge cases, outcomes, assumptions and the Output entity into existing entries (FR-004–FR-013, SC-002–SC-005, AS-001–AS-004), widening FR-004, FR-010, FR-011 and SC-005 to cover the get command and the not-found case.
 > **Revision**: 2026-11-23 — Archived .specify/archive/003-inputs-list-get: added User Stories 7–11, FR-018–FR-027, SC-008–SC-011, AS-007 and the Input entity. Its requirements (003 FR-009, FR-010, FR-012–FR-015 and FR-017) were folded into FR-006–FR-011 and FR-013; its outcomes (003 SC-004–SC-006) into SC-002–SC-004; its edge cases into the existing edge cases; and its assumptions into AS-001–AS-006, widening those entries to cover the inputs commands as well as the outputs ones. No existing ID was renumbered. The feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-017 and SC-007.
 > **Revision**: 2026-11-23 — Archived .specify/archive/004-routes-list-get (moved from specs/ in the same run): added User Stories 12–16, FR-028–FR-036, SC-012–SC-016, AS-008 and the Route entity. Its FR-008, FR-009, FR-011–FR-014 and FR-016 were folded into FR-006–FR-011 and FR-013, its SC-004–SC-006 into SC-002–SC-004, and its assumptions into AS-001–AS-006, widening those entries to cover the routes commands as well; its invalid-status and playback-not-started edge cases are new. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-027, SC-011 and AS-007.
 > **Revision**: 2026-11-23 — Archived .specify/archive/005-groups-list-get (moved from specs/ in the same run): added User Stories 17–21, FR-037–FR-046, SC-017–SC-021, AS-009 and the Output Group entity. Its FR-009, FR-010, FR-012–FR-015 and FR-017 were folded into FR-006–FR-011 and FR-013, its SC-004–SC-006 into SC-002–SC-004, and its assumptions into AS-001–AS-006, widening those entries to cover the groups commands as well; its no-identifier, unreachable, timeout, hub-error and malformed-response edge cases were folded into the existing edge cases, and its zero-member-outputs edge case is new. No existing ID was renumbered; the feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-036 and SC-016.
 > **Revision**: 2026-11-23 — Archived .specify/archive/006-play-command (moved from specs/ in the same run): added User Stories 22–25, FR-047–FR-056, SC-022–SC-025, AS-010–AS-013 and the Playback Request and Playback Result entities. Its FR-007, FR-008, FR-010, FR-011 and FR-012 were folded into FR-006–FR-009, FR-011 and FR-013, widening those entries to cover the play command as well; its SC-005 and SC-006 into SC-003 and SC-004; its assumptions AS-001–AS-004 into the existing entries; and its unreachable, timeout and malformed-response edge cases into the existing ones. Its nine failure edge cases are new. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-046, SC-021 and AS-009.
+> **Revision**: 2026-11-23 — tinyspec help-command (.specify/archive/tiny/2026-08-26-help-command/help-command.md): added User Story 26 and FR-057–FR-058 for the usage help. `help`, `-h`, `--help` and bare invocation print the usage text to stdout and exit `0`; the zero-argument invocation, previously a usage error (exit `2`), is now help. FR-058 keeps the missing-verb and unknown-command usage errors unchanged.
 
 ## User Scenarios & Testing
 
@@ -656,6 +657,28 @@ option and verifying the created input's name matches what was supplied.
 
 ---
 
+### User Story 26 - Show usage help (Priority: P3)
+
+A person who has forgotten the command syntax runs `sonora help`, `sonora -h`, `sonora --help`
+or plain `sonora` and sees the command table, the global flags and example invocations, instead
+of a usage error.
+
+**Why this priority**: Discoverability aid; every command works without it.
+
+**Independent Test**: Can be fully tested by running each help form and checking that the output
+names the noun/verb commands, the `play` command, the global flags and an example, and exits `0`.
+
+**Acceptance Scenarios**:
+
+1. **Given** no arguments, **When** the user runs `sonora`, **Then** the usage text is printed to
+   stdout and the exit status is `0`.
+2. **Given** `help`, `-h` or `--help`, **When** the user runs it, **Then** the same usage text is
+   printed to stdout and the exit status is `0`.
+
+[Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -786,6 +809,8 @@ option and verifying the created input's name matches what was supplied.
 - **FR-054**: The play command MUST provide an optional way to set a display name for the ephemeral input created for this playback session. [Source: .specify/archive/006-play-command/spec.md -> FR-005]
 - **FR-055**: On success, the play command MUST return as soon as the hub accepts the request, without waiting or polling for the route to reach any further state, and MUST display the created input's identifier, the resulting route's identifier and status exactly as returned by the hub, and a human-readable confirmation message — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/006-play-command/spec.md -> FR-006]
 - **FR-056**: The play command MUST fail with a clear, actionable error, distinguishable from all other failure types, for each of: a validation error (bad URI or bad request fields), a "target not found" error, an "ambiguous target" error, a "route creation failed" error, a "source unreachable" error, and an "upstream service unavailable" error. [Source: .specify/archive/006-play-command/spec.md -> FR-009]
+- **FR-057**: The CLI MUST print its usage text (the command table, the global flags and example invocations) to standard output and exit with status `0` when invoked as `sonora help`, `sonora -h`, `sonora --help`, or with no arguments. [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
+- **FR-058**: Help dispatch MUST NOT change the existing usage errors: a missing verb (`sonora outputs`) and an unknown noun or verb still fail with a usage error on standard error and exit status `2` (FR-011). `--version` and `-v` are still checked before help dispatch. [Source: .specify/archive/tiny/2026-08-26-help-command/help-command.md]
 
 ### Key Entities
 
