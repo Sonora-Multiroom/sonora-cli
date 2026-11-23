@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-22
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "docs/backlog/enable-disable-stops-playback-docs.md,
 docs/backlog/play-shows-resolved-name.md, docs/backlog/transient-route-changing-outputs.md"

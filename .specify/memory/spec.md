@@ -26,6 +26,8 @@
 > **Revision**: 2026-11-23 — tinyspec list-tts-voices-command (.specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md): added User Story 50, three edge cases, FR-118–FR-121, the TTS Voice entity, SC-042 and AS-031. Adds `sonora list tts-voices --provider <name> [--language] [--engine]` (`GET /api/tts/providers/{providerName}/voices`); `tts-voices` is a collection keyword under `list`, and `get tts-voices` is a usage error. The hub lists voices only for `google-cloud` and `google-gemini` entries.
 > **Revision**: 2026-11-23 — Archived .specify/archive/010-public-hub-package (moved from specs/ in the same run): added User Stories 51–54, FR-122–FR-136, SC-043–SC-049, AS-032–AS-037, six edge cases, and the Public Hub Client, Error Class, Exit-Code Mapping, Published Hub Spec and Release Tag entities. The feature publishes the Multiroom Audio Hub client as the public `hub/` package (moved from `internal/hub`), publishes the spec as `api.Spec`, and moves exit-code mapping into `internal/cli/exitcode`; the CLI's behaviour is unchanged. No existing entry was folded or retired. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-121, SC-042 and AS-031, and its user stories above User Story 50.
 > **Revision**: 2026-11-23 — tinyspec decode-route-refusals-409 (.specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md): added FR-137 (a hub 409 on route create, transfer or play is decoded and exits `14`) and FR-138 (`Route` gains `joinMode`/`outputs`; a conflict error class). Amended three existing entries to match the shipped behaviour: FR-079 (route exit codes gain `14`), FR-085 (a transfer keeps the route identifier) and FR-090 (a duplicate-ID 409 exits `14`, not `3`). No user story, success criterion, edge case or assumption changed.
+> **Revision**: 2026-11-23 — Archived .specify/archive/011-hub-0128-alignment (moved from specs/ in the same run): added User Stories 55–57, FR-139–FR-154, SC-050–SC-054, AS-038–AS-044, the Route Refusal entity and eight edge cases. The feature documents what enable/disable do to running playback (hub 0.1.25), shows the play response's `displayName` (hub 0.1.28), and makes `sonora transfer` retry the transient `ROUTE_CHANGING_OUTPUTS` refusal. On the user's confirmation, the Playback Result entity was redefined in place: "renders exactly four" became four fields plus `displayName` second when non-empty (no ID to retire; see changelog.md). No other entry was folded or retired. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-138, SC-049 and AS-037, and its user stories above User Story 54.
+> **Revision**: 2026-11-23 — Resolved the partial contradictions left by the 011 archival, on the user's request: User Stories 32, 35 and 39 now say what disabling (and enabling an output) does to running playback since hub 0.1.25; FR-137 names `ROUTE_CHANGING_OUTPUTS` as the exception to "the hub's `detail` alone"; AS-022 names `transfer`'s retry as the exception to "one request". Each gained a ref to .specify/archive/011-hub-0128-alignment; no ID changed.
 
 ## User Scenarios & Testing
 
@@ -812,7 +814,7 @@ target reflecting the group.
 
 ### User Story 32 - Enable or disable an input (Priority: P2)
 
-A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input-id>` to allow or block new playback from an input, and sees the input's updated record.
+A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input-id>` to allow or block new playback from an input, and sees the input's updated record. Since hub 0.1.25, disabling an input also stops every route playing it (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
 **Why this priority**: Controls the hub from the CLI; every read command works without it.
 
@@ -866,7 +868,7 @@ A person runs `sonora transfer routes/<route-id> <outputs|groups>/<target-id>` t
 
 ### User Story 35 - Enable or disable an output group (Priority: P2)
 
-A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group-id>` to allow or block new playback to a group, and sees the group's updated record.
+A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group-id>` to allow or block new playback to a group, and sees the group's updated record. Since hub 0.1.25, disabling a group also stops the routes addressed to it, while routes addressed to a member keep playing (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
 **Why this priority**: Controls the hub from the CLI; every read command works without it.
 
@@ -937,7 +939,7 @@ A person runs `sonora get master-mute` to see whether the whole system is muted,
 
 ### User Story 39 - Enable or disable an output (Priority: P2)
 
-A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<output-id>` to allow or block new playback to a speaker, and sees the output's updated record.
+A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<output-id>` to allow or block new playback to a speaker, and sees the output's updated record. Since hub 0.1.25, disabling an output also takes it out of every route playing on it, and enabling it puts it back into the live group routes of its enabled groups (FR-139). [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
 **Why this priority**: Controls the hub from the CLI; every read command works without it.
 
@@ -1223,6 +1225,67 @@ A maintainer tags a release of this module that contains the public client so co
 
 ---
 
+### User Story 55 - Know that a disable stops playback before running it (Priority: P1)
+
+A user wants to stop new routes from using the kitchen radio input and reads the help for `sonora disable` (or the README) first. The documentation tells them that disabling an input stops every route playing it right now, so they know the music will stop.
+
+**Why this priority**: The current documentation is wrong in a way that has an audible consequence: a user following it stops music they meant to keep. It is also the smallest change.
+
+**Independent Test**: Read `sonora enable --help`, `sonora disable --help` and the README's enable/disable section, and compare each statement with the hub 0.1.28 contract descriptions of `setInputEnabled`, `setOutputEnabled` and `setGroupEnabled`.
+
+**Acceptance Scenarios**:
+
+1. **Given** the README, **When** a user reads the enable/disable section, **Then** it states, for each of inputs, outputs and groups, what disabling does to routes that are playing, and what enabling does.
+2. **Given** `sonora disable inputs/<id> --help` (and the same for outputs and groups), **When** a user reads it, **Then** it says in one line what happens to playback that is running on that resource.
+3. **Given** `sonora enable outputs/<id> --help`, **When** a user reads it, **Then** it says the output rejoins the group routes still playing on its groups, and that a route stopped by the disable does not come back.
+4. **Given** the documentation of either command, **When** compared with the CLI before this feature, **Then** the command's arguments, flags, output and exit codes are unchanged.
+
+[Source: .specify/archive/011-hub-0128-alignment/spec.md -> User Story 1]
+
+---
+
+### User Story 56 - See what `sonora play` started (Priority: P2)
+
+A user plays a SoundCloud link without giving a name. The CLI's output shows the name the hub gave the input ("Flickermood — Forss"), so the user can tell what is playing and find it later in `sonora list inputs`. A script reading `--json` output gets the same name in a field.
+
+A developer of sonora-mcp, using this module's hub client, reads the same name from the play result.
+
+**Why this priority**: The hub client no longer mirrors the play response field for field, which this project treats as a defect, and both the CLI and sonora-mcp lose information the hub provides. Nothing fails, so it ranks below the misleading documentation.
+
+**Independent Test**: Run `sonora play` against a fake hub that returns a display name, and against one that omits it, and check the YAML and JSON output and the hub client's result in each case.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub that answers a play request with a display name, **When** the user runs `sonora play <uri> outputs/<id>`, **Then** the output shows that display name alongside the input ID, route ID, status and message, in YAML and in JSON.
+2. **Given** a hub older than 0.1.28, which does not return a display name, **When** the user runs the same command, **Then** the output has no display name field at all (not an empty one), and is otherwise identical to the output before this feature.
+3. **Given** a developer calling the hub client's play operation, **When** the hub returns a display name, **Then** the result carries it; **When** the hub omits it, **Then** the result's display name is empty and the call still succeeds.
+4. **Given** `sonora play --help` and the README, **When** a user reads about `--display-name`, **Then** they learn it is optional, that without it a SoundCloud or YouTube link is named after its track and other sources get a generated name, and that a name they give is kept.
+
+[Source: .specify/archive/011-hub-0128-alignment/spec.md -> User Story 2]
+
+---
+
+### User Story 57 - A transfer right after enabling an output just works (Priority: P3)
+
+A user re-enables the office speaker, which rejoins the living-room group route, and immediately moves that route to another group with `sonora transfer`. The hub briefly refuses the transfer because the route is still adding the office speaker. The CLI waits a moment and tries again, and the transfer succeeds without the user noticing. If the hub keeps refusing, the CLI says the route was still adding an output and to try again shortly, instead of telling the user to change the hub's state.
+
+**Why this priority**: It only happens in a narrow window (a transfer within a fraction of a second of an enable), most likely from scripts. When it happens today, the user gets wrong advice, but a manual retry works.
+
+**Independent Test**: Run `sonora transfer` against a fake hub that refuses the first N transfer requests with reason `ROUTE_CHANGING_OUTPUTS` and then accepts, for N within and beyond the retry allowance, and check output, stderr and exit code.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub that refuses a transfer once with reason `ROUTE_CHANGING_OUTPUTS` and then accepts it, **When** the user runs `sonora transfer routes/<id> groups/<id>`, **Then** the command succeeds with the same output and exit code as a transfer accepted at once, and prints nothing extra.
+2. **Given** a hub that keeps refusing with that reason, **When** the user runs the transfer, **Then** the CLI stops retrying within about 2 seconds of the first refusal, exits with the conflict exit code (14), and its error message says the route is still adding an output and to retry shortly.
+3. **Given** a hub that refuses a transfer with any other reason (for example `OUTPUT_DISABLED`), or with no reason, **When** the user runs the transfer, **Then** the CLI does not retry and reports the refusal exactly as before this feature.
+4. **Given** `--verbose`, **When** the retries run out, **Then** the underlying hub error is shown as it is for any other conflict.
+5. **Given** the README's exit-code table, **When** a user reads the row for 14, **Then** it mentions that one kind of refusal clears by itself and the CLI retries it during a transfer.
+6. **Given** a developer reading the hub client's documentation of refusal reasons, **When** they look up the reasons and which of them name an output, **Then** `ROUTE_CHANGING_OUTPUTS` is listed, described as transient, and listed among the reasons that name no output.
+
+[Source: .specify/archive/011-hub-0128-alignment/spec.md -> User Story 3]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1297,6 +1360,14 @@ A maintainer tags a release of this module that contains the public client so co
 - **A consumer tries to import CLI internals (config discovery, renderers)**: this MUST remain impossible; only the client package and published spec are public. [Source: .specify/archive/010-public-hub-package/spec.md -> "A consumer tries to import CLI internals"]
 - **The error-classification messages must stay free of CLI-specific wording**: they must not mention flags, exit codes, environment variables, config files or "this CLI", so they read correctly when surfaced by a non-CLI consumer such as an AI assistant. Today the TTS "hub address" and "version mismatch" messages break this rule; the CLI must add that wording itself instead (FR-136). [Source: .specify/archive/010-public-hub-package/spec.md -> "The error-classification messages must stay free of CLI-specific wording"]
 - **Contract tests move with the client**: they MUST keep running in this repo as the conformance gate, not be dropped during the move. [Source: .specify/archive/010-public-hub-package/spec.md -> "Contract tests move with the client"]
+- **Play display name with characters outside ASCII** (Cyrillic titles, an em dash): shown as written in YAML and JSON, not escaped into something unreadable. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Display name with characters outside ASCII"]
+- **Play display name present but empty**: treated like an absent one; no field is shown. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Display name present but empty"]
+- **The user gave `--display-name`**: the hub returns that name; the CLI shows what the hub returns, not what the user sent. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "The user gave `--display-name`"]
+- **Transfer refused with `ROUTE_CHANGING_OUTPUTS`, then with a different reason on a retry**: the CLI stops retrying and reports the second refusal as it would any other. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Transfer refused with `ROUTE_CHANGING_OUTPUTS`, then with a different reason on a retry"]
+- **Transfer refused with `ROUTE_CHANGING_OUTPUTS`, then the route is gone (404) on a retry**: reported as the route not being found, as before. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Transfer refused with `ROUTE_CHANGING_OUTPUTS`, then the route is gone (404) on a retry"]
+- **Network failure or timeout during a transfer retry**: reported as a network failure, as before; the CLI does not retry network failures. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Network failure or timeout during a retry"]
+- **`ROUTE_CHANGING_OUTPUTS` on a command other than transfer**: the contract documents it only for a transfer. If another command receives it, the CLI does not retry, but the error message still says the refusal is transient. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "`ROUTE_CHANGING_OUTPUTS` on a command other than transfer"]
+- **Unknown future refusal reasons**: still reported as a generic conflict, exit 14, with no retry. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Unknown future reasons"]
 
 ## Requirements
 
@@ -1474,8 +1545,36 @@ A maintainer tags a release of this module that contains the public client so co
 - **FR-134**: Hub URL configuration discovery and output rendering MUST stay internal to the CLI and MUST NOT be made public by this feature. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-013]
 - **FR-135**: After merge, a release tag containing the public client (and published spec) MUST be created; published tags MUST never be moved or re-created. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-014]
 - **FR-136**: Messages produced by the public client (`ClassifyError` and the `Error()` methods of its error types) MUST NOT mention CLI flags, environment variables, config files, exit codes or "the CLI". Where the CLI shows such hints today, the CLI MUST add them itself so its output stays identical (FR-131). [Source: .specify/archive/010-public-hub-package/spec.md -> FR-015]
-- **FR-137**: A `409` from route creation (`CreateRoute`), transfer (`TransferRoute`) or play (`Playback`) MUST be decoded into the hub's problem details: `detail`, `title`, `reason` and the optional `outputId` (empty when the hub omits them). The CLI MUST report a decoded refusal with the hub's `detail` alone, on standard error, and exit `14` (the hub refused for its current state: change that state and retry); nothing goes to standard output. A `409` whose body cannot be decoded also exits `14`, with a generic conflict message. `reason` is an open string: an unknown value is a generic conflict, so a new hub reason needs no client release. [Source: .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md]
+- **FR-137**: A `409` from route creation (`CreateRoute`), transfer (`TransferRoute`) or play (`Playback`) MUST be decoded into the hub's problem details: `detail`, `title`, `reason` and the optional `outputId` (empty when the hub omits them). The CLI MUST report a decoded refusal with the hub's `detail` alone, on standard error, and exit `14` (the hub refused for its current state: change that state and retry); nothing goes to standard output. The one exception is reason `ROUTE_CHANGING_OUTPUTS` (hub 0.1.25), which clears by itself: it still exits `14`, but its message says the route is still adding an output and to retry in a moment (FR-148, FR-150), and `transfer` retries it first (FR-146). A `409` whose body cannot be decoded also exits `14`, with a generic conflict message. `reason` is an open string: an unknown value is a generic conflict, so a new hub reason needs no client release. [Source: .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md; .specify/archive/011-hub-0128-alignment/spec.md -> FR-012]
 - **FR-138**: The public `Route` record MUST carry `joinMode` and `outputs` (API 0.1.22; `outputs` lists the outputs a route plays on right now). Both are optional on decode, so a hub that omits them changes nothing. Error classification gains a conflict class for `409` that keeps the public client's messages free of CLI wording (FR-136). [Source: .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md]
+
+**Enable and disable documentation (hub 0.1.25)**
+
+- **FR-139**: The README MUST state what each enable and disable does to playback, as the hub 0.1.25 contract describes it: disabling an input stops every route playing it (paused routes and routes sharing its hardware input too) and removes an input registered to remove itself; disabling a group stops the routes addressed to the group while routes addressed to a member keep playing; disabling an output takes it out of every route playing on it, so a route addressed to it stops and a group route keeps playing on its other members; enabling an output puts it back into the live group routes of its enabled groups under the same route ID, and a route stopped by the disable does not come back; enabling an input or a group starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
+- **FR-140**: The help of `sonora enable` and `sonora disable`, for each of `inputs`, `outputs` and `groups`, MUST include one line on what happens to running playback. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-002]
+- **FR-141**: The enable and disable commands' arguments, flags, output, error output and exit codes MUST NOT change; only their `--help` text gains the description line. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-003]
+
+**Play shows the resolved display name (hub 0.1.28)**
+
+- **FR-142**: The hub client's play result MUST carry the display name the hub returns, and MUST still succeed, with an empty name, when the hub omits it. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-004]
+- **FR-143**: `sonora play` MUST show the display name in YAML and JSON output, directly after the input ID, when the hub returns a non-empty one. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-005]
+- **FR-144**: When the hub returns no display name, or an empty one, `sonora play` output MUST NOT contain a display name field and MUST otherwise be identical to its output before this feature. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-006]
+- **FR-145**: The help of `sonora play` and the README MUST describe `--display-name` as optional and say what the hub names an input when it is left out. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-007]
+
+**Transient transfer refusal (hub 0.1.25)**
+
+- **FR-146**: When the hub refuses a transfer with reason `ROUTE_CHANGING_OUTPUTS`, `sonora transfer` MUST retry the same transfer automatically, with a short delay between attempts, for no more than about 2 seconds after the first refusal. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-008]
+- **FR-147**: A retry that is accepted MUST produce exactly the output and exit code of a transfer accepted on the first attempt, with nothing extra on stdout or stderr. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-009]
+- **FR-148**: When the retries run out, the CLI MUST exit with the conflict exit code (14) and print a message saying the route is still adding an output and the user should retry shortly. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-010]
+- **FR-149**: The CLI MUST NOT retry any other refusal reason, a refusal without a reason, a 404, any other hub error or a network failure; each MUST be reported exactly as before this feature. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-011]
+- **FR-150**: Wherever else the CLI reports a refusal with reason `ROUTE_CHANGING_OUTPUTS`, its message MUST say the refusal is transient rather than asking the user to change the hub's state. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-012]
+- **FR-151**: The hub client's documentation of refusal reasons MUST list `ROUTE_CHANGING_OUTPUTS`, describe it as transient, and include it among the reasons that name no output. The reason MUST stay an open string, so that unknown reasons keep working without a client release. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-013]
+- **FR-152**: The README's exit-code row for 14 MUST mention the transient refusal and that a transfer retries it. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-014]
+
+**Hub 0.1.25–0.1.28 alignment: general**
+
+- **FR-153**: Every behaviour changed by the hub 0.1.25–0.1.28 alignment MUST be covered by tests written before the change, against a fake hub whose responses follow `api/openapi.json` at 0.1.28. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-015]
+- **FR-154**: The hub 0.1.25–0.1.28 alignment MUST NOT add a third-party dependency, command or flag, nor anything on the CLI's startup path. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-016]
 
 ### Key Entities
 
@@ -1554,8 +1653,8 @@ A maintainer tags a release of this module that contains the public client so co
 
   [Source: .specify/archive/006-play-command/spec.md -> "Playback Request"; .specify/archive/006-play-command/data-model.md -> "PlaybackRequest (outbound, `internal/hub.PlaybackRequest`)"]
 
-- **Playback Result**: The outcome of a playback request — the identifier of the ephemeral input that was created, the identifier and status of the route created to carry audio from that input to the target, and a confirmation message. The command renders exactly four of these — `inputId`, `routeId`, `status` and `message` — from the `PlaybackResponse` in `api/openapi.json`. The response's nested route is decoded in full for contract fidelity but its other fields are not rendered, because managing the route is out of scope. A response missing any of those four required values is malformed (FR-013).
-  [Source: .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"]
+- **Playback Result**: The outcome of a playback request — the identifier of the ephemeral input that was created, the identifier and status of the route created to carry audio from that input to the target, and a confirmation message; since hub 0.1.28 also the input's display name once the route exists (the name sent with the request, the title a SoundCloud or YouTube link resolved to, or a generated placeholder). The command renders four of these — `inputId`, `routeId`, `status` and `message` — from the `PlaybackResponse` in `api/openapi.json`, plus `displayName` as the second field, after `inputId`, only when the hub returns a non-empty one; with no display name the record is byte-identical to the four-field record. The response's nested route is decoded in full for contract fidelity but its other fields are not rendered, because managing the route is out of scope. A response missing any of those four required values is malformed (FR-013); a missing or empty `displayName` is not an error and decodes to `""` (a hub before 0.1.28 omits it).
+  [Source: .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"; .specify/archive/011-hub-0128-alignment/spec.md -> "Play result"; .specify/archive/011-hub-0128-alignment/data-model.md -> "Rendered play record (`sonora play`)"]
 
 - **Resource Kind**: A closed enumeration of the four resources `get`/`list` cover; a CLI-surface concept, not a hub one. Each has a canonical name and a short alias: `inputs`/`in`, `outputs`/`out`, `groups`/`gr`, `routes`/`rt`. An unrecognized name or alias in either position (the `get`/`list` argument, or the prefix of `play`'s target) is a usage error, exit `2`.
   [Source: .specify/archive/007-refactor-cli-commands/data-model.md -> "ResourceKind"]
@@ -1580,6 +1679,7 @@ A maintainer tags a release of this module that contains the public client so co
 - **Exit-Code Mapping**: CLI-only translation of an error class into a process exit code. [Source: .specify/archive/010-public-hub-package/spec.md -> "Exit-code mapping"]
 - **Published Hub Spec**: The contents of `api/openapi.json`, importable at the same version as the client. [Source: .specify/archive/010-public-hub-package/spec.md -> "Published hub spec"]
 - **Release Tag**: An immutable module version consumers pin to. [Source: .specify/archive/010-public-hub-package/spec.md -> "Release tag"]
+- **Route Refusal**: A 409 answer to a route request, with a human-readable detail, an open-ended reason and, for output-level reasons only, the output that failed (`APIError.OutputID` is empty for `INPUT_DISABLED`, `GROUP_DISABLED` and `ROUTE_CHANGING_OUTPUTS`). `ROUTE_CHANGING_OUTPUTS` is the one reason that clears without the user doing anything; it classifies as a conflict (exit `14`) with the message "the route is still adding an output; retry in a moment", and every other reason, or none, keeps the hub's `detail`, else `title`, else the generic conflict text. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Route refusal"; .specify/archive/011-hub-0128-alignment/data-model.md -> "Route refusal (`hub.APIError`, 409)"]
 
 ## Success Criteria
 
@@ -1646,6 +1746,11 @@ A maintainer tags a release of this module that contains the public client so co
 - **SC-047**: 100% of the public client's exported identifiers have documentation, and 0 of those docs reference internal spec artifacts or constitution principles. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-005]
 - **SC-048**: The public client pulls in 0 third-party dependencies. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-006]
 - **SC-049**: A build with a supplied version reports that exact version in 100% of release builds. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-007]
+- **SC-050**: Every statement about enabling and disabling in the README and in the six enable/disable help texts agrees with the hub 0.1.28 contract; a review finds zero contradictions. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-001]
+- **SC-051**: For a play of a link that the hub names, the user can read the input's name from the command's output on the first try, without a second command. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-002]
+- **SC-052**: A transfer refused once as transient completes successfully with no user action, and the whole command takes less than 1 second longer than an immediate success. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-003]
+- **SC-053**: A transfer that stays refused as transient ends within 3 seconds of being started, with exit code 14 and a message that names the transient cause. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-004]
+- **SC-054**: The output of every command other than `play` and `transfer`, and of `play` against a hub that omits the display name, is byte-for-byte identical to the release before the hub 0.1.25–0.1.28 alignment in the existing test suite. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-005]
 
 ## Assumptions
 
@@ -1686,7 +1791,7 @@ A maintainer tags a release of this module that contains the public client so co
 - **AS-019**: Stopping, pausing, transferring, or otherwise managing the route the route command creates is out of scope; the command covers only creating the route, mirroring AS-010. The route command's own scope is unchanged; stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098). [Source: .specify/archive/008-route-command/spec.md -> "Stopping, pausing, or otherwise managing the resulting route"; .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 - **AS-020**: Whether an input can be routed to more than one target at once, or whether routing an already-routed input to the same target succeeds, is decided by the hub; the CLI applies no client-side restriction and surfaces the outcome the hub reports. [Source: .specify/archive/008-route-command/spec.md -> "Whether a given input can be routed to more than one target at once"]
 - **AS-021**: Output and group identifiers may collide; the target's path prefix decides which one is meant, so the route command needs no disambiguation flag. [Source: .specify/archive/008-route-command/spec.md -> "Output identifiers and group identifiers may occasionally collide"]
-- **AS-022**: Each mutating command (`enable`, `disable`, `delete`, `stop`, `create`, `transfer`, `set`, `mute`, `unmute`, `pause`, `resume`, `speak`, `clear tts-cache`) sends one request and reports the hub's result. It does not ask for confirmation and does not read the current state first, so repeating a command is whatever the hub makes of it. `clear tts-cache` loses no user data, only costs a re-synthesis on the next request. [Source: .specify/archive/009-tts-commands/spec.md -> "clear does not prompt for confirmation"; .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md; .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
+- **AS-022**: Each mutating command (`enable`, `disable`, `delete`, `stop`, `create`, `transfer`, `set`, `mute`, `unmute`, `pause`, `resume`, `speak`, `clear tts-cache`) sends one request and reports the hub's result; the one exception is `transfer`, which repeats its request after a transient `ROUTE_CHANGING_OUTPUTS` refusal, up to five attempts (FR-146) [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-008]. It does not ask for confirmation and does not read the current state first, so repeating a command is whatever the hub makes of it. `clear tts-cache` loses no user data, only costs a re-synthesis on the next request. [Source: .specify/archive/009-tts-commands/spec.md -> "clear does not prompt for confirmation"; .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md; .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
 - **AS-023**: The hub identifies a TTS target by the same id the CLI already uses for outputs and groups (`outputs/<id>`, `groups/<id>`); the extension's `targetName` field carries that id. [Source: .specify/archive/009-tts-commands/spec.md -> "The hub identifies a TTS target by the same id"]
 - **AS-024**: The TTS operations live under the extension's own paths, not the core v2 API, and answer 404 when the extension is not active. The extension never uses 404 itself: it reports unknown targets and providers as 400. So a 404 is conclusive evidence that TTS is unavailable. [Source: .specify/archive/009-tts-commands/spec.md -> "The TTS operations live under the extension's own paths"]
 - **AS-025**: The TTS extension's inventory id is `tts`, the `Extension-Id` in its distributable's manifest. Entries are matched on this machine identifier, never on the display name, as the hub's feature `019-extension-shared-classloader` (FR-002, FR-030) requires of consumers. [Source: .specify/archive/009-tts-commands/spec.md -> "The TTS extension's inventory id is `tts`"]
@@ -1701,3 +1806,10 @@ A maintainer tags a release of this module that contains the public client so co
 - **AS-035**: Publishing the spec (FR-133 / User Story 53) is recommended by the source plan; it is in scope but may be dropped at planning time without blocking User Stories 51 and 52. [Source: .specify/archive/010-public-hub-package/spec.md -> "Publishing the spec"]
 - **AS-036**: Counts from the source plan were verified against the repo on 2026-09-27 and bound the scope of mechanical changes: 111 files import the module path and 77 import the internal client; 30 CLI files use the exit-code mapping (the source plan said 34). [Source: .specify/archive/010-public-hub-package/spec.md -> "Counts from the source plan"]
 - **AS-037**: Out of scope: the sonora-mcp rewrite, new hub operations, new CLI commands, making config discovery public, and splitting the client into its own repository (option 2b). [Source: .specify/archive/010-public-hub-package/spec.md -> "Out of scope: the sonora-mcp rewrite"]
+- **AS-038**: The production hub runs 0.1.28 (checked 2026-10-22); older hubs must still work, so every new response field is optional on the client side. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "The production hub runs 0.1.28"]
+- **AS-039**: A transfer retry window of about 2 seconds is generous: the hub's own measurement of a rejoin was 0.16 s, and the contract says the `ROUTE_CHANGING_OUTPUTS` refusal clears "within moments". The exact delays are a planning decision. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "A retry window of about 2 seconds is generous"]
+- **AS-040**: Retrying belongs to the CLI command, not to the hub client's transfer operation, so each client operation keeps sending exactly one request and other consumers choose their own policy. The client may offer a way to recognise the transient reason. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Retrying belongs to the CLI command"]
+- **AS-041**: Typed constants for the refusal reasons are not required. The earlier decision (tinyspec `decode-route-refusals-409`) to keep the reason an open string stands; named values may be added only if they keep it open. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "Typed constants for the refusal reasons are not required"]
+- **AS-042**: `sonora transfer` already checks that the target exists before transferring; that check is not repeated on retries. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "`sonora transfer` already checks that the target exists"]
+- **AS-043**: No prompt, warning or `--force` flag is added to `sonora disable`; the backlog item leaves that as an open question for later. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "No prompt, warning or `--force` flag is added to `sonora disable`"]
+- **AS-044**: sonora-mcp picks up the hub client changes of the hub 0.1.25–0.1.28 alignment with its next update of this module; changing sonora-mcp is out of scope. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> "sonora-mcp picks up the client changes"]

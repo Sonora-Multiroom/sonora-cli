@@ -2,6 +2,24 @@
 
 ## Merged Features Log
 
+### Align the CLI with Hub 0.1.25–0.1.28 — archived 2026-11-23
+**Branch:** 011-hub-0128-alignment
+**Spec:** [.specify/archive/011-hub-0128-alignment/spec.md](../archive/011-hub-0128-alignment/spec.md)
+
+**What was added:**
+- User Stories 55–57 (P1–P3): the `enable`/`disable` help and README say what each command does to running playback (hub 0.1.25); `sonora play` shows the hub's resolved `displayName` (hub 0.1.28), and the hub client's play result carries it; `sonora transfer` retries the transient `ROUTE_CHANGING_OUTPUTS` refusal for about 1.5 s, then exits `14` with a transient message
+- FR-139–FR-154, SC-050–SC-054, AS-038–AS-044, the Route Refusal entity and eight edge cases; no new command, flag or dependency
+
+**New Components:**
+- `hub.PlaybackResponse.DisplayName`, `hub.ReasonRouteChangingOutputs`, `hub.IsTransientConflict` and the transient-refusal message in `ClassifyError` (additive; next tag is a minor version)
+- Retry loop in `internal/cli/route/transfer.go` (100, 200, 400, 800 ms; at most five attempts)
+- `--help` description lines in `internal/cli/{inputs,outputs,groups}/enabled.go`; `displayName` rendering in `internal/render/play.go`
+
+**Superseded:**
+- Playback Result entity (no ID; from .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"): "renders exactly four" fields replaced in place by four fields plus `displayName` second when non-empty, on the user's confirmation. Not a `RETIRED:` line: entities carry no ID to retire.
+
+**Tasks Completed:** 27/27 tasks
+
 ### Decode Hub Route Refusals (409) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md
 **Implemented:** 2026-10-07

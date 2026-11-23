@@ -5,7 +5,7 @@ description: "Task list for 011-hub-0128-alignment"
 
 # Tasks: Align the CLI with Hub 0.1.25–0.1.28
 
-**Input**: Design documents from `specs/011-hub-0128-alignment/`
+**Input**: Design documents from `.specify/archive/011-hub-0128-alignment/`
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/cli.md](contracts/cli.md),
@@ -39,7 +39,7 @@ starts.
 
 **Purpose**: Confirm the baseline the feature builds on.
 
-- [X] T001 Confirm `api/openapi.json` reads `"version": "0.1.28"`, and that `go test -count=1 ./...` passes on branch `011-hub-0128-alignment` before any change. Record the result as the baseline in `specs/011-hub-0128-alignment/verification.md`, with the date, the command and the package counts.
+- [X] T001 Confirm `api/openapi.json` reads `"version": "0.1.28"`, and that `go test -count=1 ./...` passes on branch `011-hub-0128-alignment` before any change. Record the result as the baseline in `.specify/archive/011-hub-0128-alignment/verification.md`, with the date, the command and the package counts.
 
 ---
 
@@ -60,7 +60,7 @@ does to playback that is already running.
 
 ### Tests for User Story 1 ⚠️ write first, watch them fail
 
-- [X] T002 [P] [US1] In `tests/unit/cli_inputs_enabled_test.go`, add `TestInputsRunEnable_HelpDescribesPlayback` and `TestInputsRunDisable_HelpDescribesPlayback`. Each calls `inputs.RunEnable` or `inputs.RunDisable` with `[]string{"--help"}` and asserts exit 0, that line 1 is `usage: sonora <verb> inputs/<input-id> [flags]`, that line 2 is empty, and that line 3 is the verb's exact sentence from the `enable`/`disable` `inputs` rows of `specs/011-hub-0128-alignment/contracts/cli.md`. Also add `TestInputsRunDisable_UsageErrorOmitsDescription`: with no arguments, stderr contains the `usage: …` line and does not contain the description sentence.
+- [X] T002 [P] [US1] In `tests/unit/cli_inputs_enabled_test.go`, add `TestInputsRunEnable_HelpDescribesPlayback` and `TestInputsRunDisable_HelpDescribesPlayback`. Each calls `inputs.RunEnable` or `inputs.RunDisable` with `[]string{"--help"}` and asserts exit 0, that line 1 is `usage: sonora <verb> inputs/<input-id> [flags]`, that line 2 is empty, and that line 3 is the verb's exact sentence from the `enable`/`disable` `inputs` rows of `.specify/archive/011-hub-0128-alignment/contracts/cli.md`. Also add `TestInputsRunDisable_UsageErrorOmitsDescription`: with no arguments, stderr contains the `usage: …` line and does not contain the description sentence.
 - [X] T003 [P] [US1] Add the same two tests for outputs in `tests/unit/cli_outputs_enabled_test.go`: `TestOutputsRunEnable_HelpDescribesPlayback` and `TestOutputsRunDisable_HelpDescribesPlayback`, using the `outputs` rows, plus `TestOutputsRunDisable_UsageErrorOmitsDescription`.
 - [X] T004 [P] [US1] Add the same two tests for groups in `tests/unit/cli_groups_enabled_test.go`: `TestGroupsRunEnable_HelpDescribesPlayback` and `TestGroupsRunDisable_HelpDescribesPlayback`, using the `groups` rows, plus `TestGroupsRunDisable_UsageErrorOmitsDescription`.
 
@@ -156,7 +156,7 @@ number of transfer requests, as in the table in [contracts/cli.md](contracts/cli
 ### Implementation for User Story 3
 
 - [X] T020 [US3] In `hub/errors.go`:
-  - add `const ReasonRouteChangingOutputs = "ROUTE_CHANGING_OUTPUTS"`, with the godoc from `specs/011-hub-0128-alignment/contracts/hub-package.md`;
+  - add `const ReasonRouteChangingOutputs = "ROUTE_CHANGING_OUTPUTS"`, with the godoc from `.specify/archive/011-hub-0128-alignment/contracts/hub-package.md`;
   - add `func IsTransientConflict(err error) bool`, which is true only when `errors.As` finds an `*APIError` with `StatusCode == 409` and `Reason == ReasonRouteChangingOutputs`;
   - in `ClassifyError`'s `case 409`, return `ClassConflict, "the route is still adding an output; retry in a moment"` for that reason, before the `Detail`/`Title` fallback;
   - update the `APIError.Reason` doc comment to list all seven reasons, mark this one transient, and keep "treat an unknown one as a generic conflict";
@@ -172,11 +172,11 @@ number of transfer requests, as in the table in [contracts/cli.md](contracts/cli
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T023 Run `gofmt -l .` (it must print nothing), `go vet ./...` and `go test -count=1 ./...`, reading each command's own exit code. Fix anything that fails, including `tests/unit/hub_godoc_test.go` (every new exported identifier needs godoc) and `tests/unit/stray_refs_test.go`.
-- [X] T024 Work through every check in `specs/011-hub-0128-alignment/quickstart.md`:
+- [X] T024 Work through every check in `.specify/archive/011-hub-0128-alignment/quickstart.md`:
   - the six `--help` outputs, via `go run ./cmd/sonora …`, with no request to any hub;
   - a review of the README against the 0.1.28 descriptions in `api/openapi.json` (SC-001).
   Do not make audible requests to `multiroom.lan`.
-- [X] T025 Record the T023 and T024 results, with dates, commands and test counts, in `specs/011-hub-0128-alignment/verification.md`. Mark tasks `[X]` in this file as they are done.
+- [X] T025 Record the T023 and T024 results, with dates, commands and test counts, in `.specify/archive/011-hub-0128-alignment/verification.md`. Mark tasks `[X]` in this file as they are done.
 - [X] T026 Update `docs/backlog/`:
   - delete `enable-disable-stops-playback-docs.md`, `play-shows-resolved-name.md` and `transient-route-changing-outputs.md`;
   - remove their three rows from `docs/backlog/INDEX.md`.

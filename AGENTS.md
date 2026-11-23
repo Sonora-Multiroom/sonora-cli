@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `011-hub-0128-alignment` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `012-join-modes` through `014-radio-station-search`; small changes in `specs/tiny/`.
 **Archived tinyspecs** live in `.specify/archive/tiny/<date>-<name>/`, indexed by folder name; check there before concluding a small change has no spec.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
@@ -88,6 +88,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `008-route-command` — `sonora route inputs/<input-id> <outputs|groups>/<target-id>`: connects an existing input to one output or group; exit codes 11 (input not found) and 12 (target not found)
 - `009-tts-commands` — `sonora speak <text|-> <outputs|groups>/<id>`, `sonora get tts-cache`, `sonora clear tts-cache`: TTS announcements and cache, `--provider`/`--voice`/`--language`/`--timeout`, exit code 13 (TTS not available)
 - `010-public-hub-package` — public Go client package `hub/` (importable by other Sonora projects) and `api.Spec` (the embedded `api/openapi.json`); exit-code mapping and the CLI-only usage class moved to `internal/cli/exitcode`; no CLI behavior change
+- `011-hub-0128-alignment` — hub 0.1.25–0.1.28 alignment: `enable`/`disable` help and README describe the effect on running playback; `sonora play` shows the hub's `displayName`; `sonora transfer` retries the transient `ROUTE_CHANGING_OUTPUTS` 409 (`hub.IsTransientConflict`), then exits 14
 
 ## Active Technologies
 
@@ -104,6 +105,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/011-hub-0128-alignment: no new command or flag. `sonora enable|disable <inputs|outputs|groups>/<id> --help` prints a line on what the command does to running playback (hub 0.1.25), and the README says the same; `hub.PlaybackResponse` gains `DisplayName` and `sonora play` renders `displayName` after `inputId` when non-empty (hub 0.1.28); `hub` exports `ReasonRouteChangingOutputs` and `IsTransientConflict`, `ClassifyError` gives that 409 the message "the route is still adding an output; retry in a moment", and `sonora transfer` retries only that refusal (100, 200, 400, 800 ms), then exits `14`
 - .specify/archive/010-public-hub-package: the hub client is the public package `github.com/Sonora-Multiroom/sonora-cli/hub` (moved from the former internal client package), and `api.Spec` publishes `api/openapi.json` from the same file; `ClassUsage` and `ExitCode()` moved to `internal/cli/exitcode` (`exitcode.For`, `exitcode.Usage`); CLI commands, output and exit codes unchanged
 - .specify/archive/009-tts-commands: `sonora speak <text|-> <outputs|groups>/<id>` (`--provider`, `--voice`, `--language`, `--timeout`, `--json`, `--verbose`, `--hub-url`) announces text through the hub's TTS extension (`POST /api/tts/speak`), returning on hub acceptance; `sonora get tts-cache` (`GET /api/tts/cache/stats`) and `sonora clear tts-cache [--provider]` (`DELETE /api/tts/cache`); exit code `13` for TTS not available, with a single `listExtensions` lookup on a 404
 - .specify/archive/008-route-command: `sonora route inputs/<input-id> <outputs|groups>/<target-id>` routes an existing input to one output or group via one `POST /api/v2/routes` call, creating no input; input and target are checked first (`GET /api/v2/inputs/{id}`, then the target type's own endpoint); exit codes `11` (input not found) and `12` (target not found) added, route creation failed reuses `8`

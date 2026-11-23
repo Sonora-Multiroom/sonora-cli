@@ -2,7 +2,7 @@
 
 **Branch**: `011-hub-0128-alignment` | **Date**: 2026-10-22 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/011-hub-0128-alignment/spec.md`
+**Input**: Feature specification from `.specify/archive/011-hub-0128-alignment/spec.md`
 
 ## Summary
 
@@ -63,7 +63,7 @@ Post-design re-check: unchanged, all pass. No Complexity Tracking entries.
 ### Documentation (this feature)
 
 ```text
-specs/011-hub-0128-alignment/
+.specify/archive/011-hub-0128-alignment/
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions
 ├── data-model.md        # Phase 1: changed types and rendered records
