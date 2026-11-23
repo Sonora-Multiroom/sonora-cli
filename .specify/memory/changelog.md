@@ -20,6 +20,12 @@
 
 **Tasks Completed:** 27/27 tasks
 
+### Rename an Input (`rename`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md
+**Implemented:** 2026-10-22
+
+Adds `sonora rename inputs/<id> <name>` and `sonora rename inputs/<id> --reset` (`PUT /api/v2/inputs/{id}/display-name`, hub 0.1.27), printing the input record; `hub` gains `SetInputDisplayName` for sonora-mcp. (User Story 58, FR-155–FR-160, SC-055, AS-045.)
+
 ### Decode Hub Route Refusals (409) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md
 **Implemented:** 2026-10-07
