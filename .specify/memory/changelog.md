@@ -2,6 +2,22 @@
 
 ## Merged Features Log
 
+### List and Get Output Groups — archived 2026-11-23
+**Branch:** 005-groups-list-get
+**Spec:** [.specify/archive/005-groups-list-get/spec.md](../archive/005-groups-list-get/spec.md)
+
+**What was added:**
+- User Stories 17–21 (P1–P3): `sonora groups list` shows enabled output groups (identifier, display name, member outputs, mute and enabled state), `--include-disabled` shows disabled ones, `--json` for scripts
+- `sonora groups get <group-id>` shows one group, enabled or disabled, with a clear "group not found" exit `5`
+- FR-037–FR-046, SC-017–SC-021, AS-009 and the Output Group entity; shared outputs/inputs/routes requirements, outcomes and assumptions now cover groups as well (FR-006–FR-011, FR-013, SC-002–SC-004, AS-001–AS-006)
+
+**New Components:**
+- `internal/cli/groups/` (`RunList`, `RunGet`); `internal/hub/groups.go` (`ListGroups`, `GetGroup`); `internal/render/groups.go`
+- `tests/{unit,contract,integration}` groups tests
+
+**Tasks Completed:** 33/33 tasks
+
+
 ### List and Get Audio Routes — archived 2026-11-23
 **Branch:** 004-routes-list-get
 **Spec:** [.specify/archive/004-routes-list-get/spec.md](../archive/004-routes-list-get/spec.md)

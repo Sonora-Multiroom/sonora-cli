@@ -8,7 +8,7 @@ routes get <id>`. The underlying HTTP contracts (`listInputs`, `getInput`, `list
 unchanged and not duplicated here — see
 [001](../../../.specify/archive/001-list-outputs/contracts), [002](../../../.specify/archive/002-outputs-get/contracts),
 [003](../../../.specify/archive/003-inputs-list-get/contracts), [004](../../../.specify/archive/004-routes-list-get/contracts), and
-[005](../../005-groups-list-get/contracts) for those.
+[005](../../../.specify/archive/005-groups-list-get/contracts) for those.
 
 ## Invocation
 

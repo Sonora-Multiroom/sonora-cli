@@ -4,6 +4,7 @@
 > **Revision**: 2026-11-23 — Archived specs/002-outputs-get: added User Stories 4–6, an edge case, FR-014–FR-017, SC-006–SC-007 and AS-006; folded its equivalent requirements, edge cases, outcomes, assumptions and the Output entity into existing entries (FR-004–FR-013, SC-002–SC-005, AS-001–AS-004), widening FR-004, FR-010, FR-011 and SC-005 to cover the get command and the not-found case.
 > **Revision**: 2026-11-23 — Archived .specify/archive/003-inputs-list-get: added User Stories 7–11, FR-018–FR-027, SC-008–SC-011, AS-007 and the Input entity. Its requirements (003 FR-009, FR-010, FR-012–FR-015 and FR-017) were folded into FR-006–FR-011 and FR-013; its outcomes (003 SC-004–SC-006) into SC-002–SC-004; its edge cases into the existing edge cases; and its assumptions into AS-001–AS-006, widening those entries to cover the inputs commands as well as the outputs ones. No existing ID was renumbered. The feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-017 and SC-007.
 > **Revision**: 2026-11-23 — Archived .specify/archive/004-routes-list-get (moved from specs/ in the same run): added User Stories 12–16, FR-028–FR-036, SC-012–SC-016, AS-008 and the Route entity. Its FR-008, FR-009, FR-011–FR-014 and FR-016 were folded into FR-006–FR-011 and FR-013, its SC-004–SC-006 into SC-002–SC-004, and its assumptions into AS-001–AS-006, widening those entries to cover the routes commands as well; its invalid-status and playback-not-started edge cases are new. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-027, SC-011 and AS-007.
+> **Revision**: 2026-11-23 — Archived .specify/archive/005-groups-list-get (moved from specs/ in the same run): added User Stories 17–21, FR-037–FR-046, SC-017–SC-021, AS-009 and the Output Group entity. Its FR-009, FR-010, FR-012–FR-015 and FR-017 were folded into FR-006–FR-011 and FR-013, its SC-004–SC-006 into SC-002–SC-004, and its assumptions into AS-001–AS-006, widening those entries to cover the groups commands as well; its no-identifier, unreachable, timeout, hub-error and malformed-response edge cases were folded into the existing edge cases, and its zero-member-outputs edge case is new. No existing ID was renumbered; the feature's own FR and SC numbers collided with main-memory IDs, so its new items continue above FR-036 and SC-016.
 
 ## User Scenarios & Testing
 
@@ -421,27 +422,153 @@ contains the same fields available in the human-readable view.
 
 ---
 
+### User Story 17 - View currently enabled output groups (Priority: P1)
+
+A person operating the audio system wants to see which output groups currently exist —
+each a named collection of outputs that can be routed to as a single target — along with
+each group's member outputs and mute state, so they know what groups are available for
+routing.
+
+**Why this priority**: This is the baseline read operation for groups — without it, a
+user has no way to discover group identifiers or see which outputs belong to a group
+before issuing any command that routes audio to a group.
+
+**Independent Test**: Can be fully tested by running the list command against a hub with
+one or more enabled groups and verifying each group's identifier, display name, member
+output identifiers, and mute state are shown, and disabled groups are omitted.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has two enabled groups and one disabled group, **When** the user runs
+   the list command with no flags, **Then** only the two enabled groups are displayed,
+   each showing its identifier, display name, member output identifiers, and mute state.
+2. **Given** the hub has zero enabled groups, **When** the user runs the list command,
+   **Then** the user sees a clear indication that no groups are currently available rather
+   than an empty or ambiguous response.
+
+[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 1]
+
+---
+
+### User Story 18 - Include disabled groups (Priority: P2)
+
+A person managing the audio system wants to see groups that exist but are currently
+disabled, so they can distinguish "not available for new routes" from "does not exist"
+when troubleshooting.
+
+**Why this priority**: Secondary to the default view; needed for full visibility into the
+system but not required for the common case of routing to an available group.
+
+**Independent Test**: Can be fully tested by running the list command with the
+include-disabled option against a hub with at least one disabled group and verifying it
+appears in the results, distinguishable from enabled groups.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has one enabled and one disabled group, **When** the user runs the
+   list command with the option to include disabled groups, **Then** both groups are
+   displayed and each group's enabled/disabled state is visible in the result.
+
+[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 2]
+
+---
+
+### User Story 19 - Look up a specific group by identifier (Priority: P1)
+
+A person who already knows a group's identifier (e.g. from `groups list`) wants to see
+its full current state without scanning the full list.
+
+**Why this priority**: This is the sole purpose of the get command and the direct
+single-item counterpart to `groups list`; both are equally core to giving a user
+visibility into the groups available for routing.
+
+**Independent Test**: Can be fully tested by running the get command with the identifier
+of a group known to exist on the hub, whether enabled or disabled, and verifying the
+identifier, display name, member output identifiers, mute state, and enabled state are
+all shown correctly.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has a group with a known identifier, **When** the user runs the get
+   command with that identifier, **Then** the command displays that group's identifier,
+   display name, member output identifiers, mute state, and enabled state — regardless of
+   whether the group is currently enabled or disabled.
+
+[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 3]
+
+---
+
+### User Story 20 - Handle a nonexistent group identifier (Priority: P2)
+
+A person mistypes a group identifier, or refers to a group that has since been removed,
+and needs to know clearly that it doesn't exist rather than receiving a confusing error or
+empty output.
+
+**Why this priority**: Essential for usability once the primary lookup path works, but
+secondary to the happy path.
+
+**Independent Test**: Can be fully tested by running the get command with an identifier
+that does not exist on the hub and verifying the user sees a clear "not found" message and
+a distinct exit status.
+
+**Acceptance Scenarios**:
+
+1. **Given** no group with the given identifier exists on the hub, **When** the user runs
+   the get command with that identifier, **Then** the user sees a clear "group not found"
+   message rather than an empty or ambiguous result.
+
+[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 4]
+
+---
+
+### User Story 21 - Consume group data from a script (Priority: P3)
+
+An automation or script wants to retrieve the current groups, or a single group's state,
+in a strict, parseable format so it can act on the data programmatically (e.g. pick a
+group's member outputs before issuing a route command).
+
+**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
+but is not required for a human operator to get value from either command; it is an
+alternate presentation of the same data as User Stories 17 and 19.
+
+**Independent Test**: Can be fully tested by running each command with the
+machine-readable output option and verifying the result is strictly parseable and contains
+the same fields available in the human-readable view.
+
+**Acceptance Scenarios**:
+
+1. **Given** the hub has at least one group, **When** the user runs the list command
+   requesting machine-readable output, **Then** the result is valid, strictly parseable
+   structured data containing every group's full attribute set.
+2. **Given** the hub has a group with a known identifier, **When** the user runs the get
+   command with that identifier requesting machine-readable output, **Then** the result is
+   valid, strictly parseable structured data containing that group's full attribute set.
+
+[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 5]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
   The user must see a clear, actionable error rather than the command hanging indefinitely
-  or crashing. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub is unreachable"]
+  or crashing. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub is unreachable"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub is unreachable"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub is unreachable"]
 - What happens when the hub takes too long to respond? The command must fail with a clear
-  timeout error rather than waiting indefinitely. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub takes too long to respond?"]
+  timeout error rather than waiting indefinitely. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub takes too long to respond?"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub takes too long to respond?"]
 - What happens when the hub returns an error response (e.g. 5xx)? The user must see a
   clear message distinguishing "the hub reported a problem" from a plain network problem
   (and, for the get command, from a "not found" result).
-  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns an error response"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns an error response other than"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns an error response"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns an error response other than"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub returns an error response other than"]
 - What happens when the hub returns data that doesn't match the expected shape (e.g. a
   malformed or unexpected response)? The command must fail clearly rather than displaying
   garbled or silently incomplete output.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/002-outputs-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/004-routes-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"; .specify/archive/005-groups-list-get/spec.md -> "What happens when the hub returns data that doesn't match the expected shape"]
 - What happens when an output has a physically disconnected/unavailable device but is
   still enabled? Its availability state must be visibly distinguishable from an available
   output. [Source: .specify/archive/001-list-outputs/spec.md -> "What happens when an output has a physically disconnected/unavailable device"; .specify/archive/002-outputs-get/spec.md -> "What happens when the requested output exists but is enabled with unavailable hardware?"]
-- What happens when no identifier is provided to the outputs, inputs or routes get command? The user must see a
+- What happens when no identifier is provided to the outputs, inputs, routes or groups get command? The user must see a
   clear usage error explaining that an identifier is required, not a confusing failure.
-  [Source: .specify/archive/002-outputs-get/spec.md -> "What happens when no identifier is provided?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when no input identifier is provided to the get command?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when no route identifier is provided to the get command?"]
+  [Source: .specify/archive/002-outputs-get/spec.md -> "What happens when no identifier is provided?"; .specify/archive/003-inputs-list-get/spec.md -> "What happens when no input identifier is provided to the get command?"; .specify/archive/004-routes-list-get/spec.md -> "What happens when no route identifier is provided to the get command?"; .specify/archive/005-groups-list-get/spec.md -> "What happens when no group identifier is provided to the get command?"]
 - What happens when a static (YAML-configured) input is returned? It has no creation
   timestamp; this must be displayed clearly (e.g. "n/a") rather than as an error or blank
   field. [Source: .specify/archive/003-inputs-list-get/spec.md -> "What happens when a static (YAML-configured) input is returned?"]
@@ -449,6 +576,8 @@ contains the same fields available in the human-readable view.
   [Source: .specify/archive/004-routes-list-get/spec.md -> "What happens when an invalid status value is supplied to the list command's status filter?"]
 - What happens when a route's playback has not yet started? Its playback-started timestamp must be displayed clearly (e.g. `null`) rather than as an error or blank field, consistent with how `inputs get` shows a static input's missing creation timestamp.
   [Source: .specify/archive/004-routes-list-get/spec.md -> "What happens when a route's playback has not yet started?"]
+- What happens when a group has zero member outputs? Its member output list must be displayed clearly as empty (`outputIds: []`) rather than as an error or omitted field.
+  [Source: .specify/archive/005-groups-list-get/spec.md -> "What happens when a group has zero member outputs?"]
 
 ## Requirements
 
@@ -467,30 +596,30 @@ contains the same fields available in the human-readable view.
 - **FR-005**: An output that is enabled but whose hardware is currently unavailable MUST
   be visibly distinguishable from an available output in the default human-readable view.
   [Source: .specify/archive/001-list-outputs/spec.md -> FR-005; .specify/archive/002-outputs-get/spec.md -> FR-005]
-- **FR-006**: Each outputs, inputs and routes command's default output MUST be human-readable and legible without any
-  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006; .specify/archive/003-inputs-list-get/spec.md -> FR-009; .specify/archive/004-routes-list-get/spec.md -> FR-008]
-- **FR-007**: Each outputs, inputs and routes command MUST provide an explicit option to switch to strict,
+- **FR-006**: Each outputs, inputs, routes and groups command's default output MUST be human-readable and legible without any
+  additional flags or tools. [Source: .specify/archive/001-list-outputs/spec.md -> FR-006; .specify/archive/002-outputs-get/spec.md -> FR-006; .specify/archive/003-inputs-list-get/spec.md -> FR-009; .specify/archive/004-routes-list-get/spec.md -> FR-008; .specify/archive/005-groups-list-get/spec.md -> FR-009]
+- **FR-007**: Each outputs, inputs, routes and groups command MUST provide an explicit option to switch to strict,
   script-parseable output instead of the human-readable default.
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010; .specify/archive/004-routes-list-get/spec.md -> FR-009]
-- **FR-008**: Each outputs, inputs and routes command MUST fail with a clear, actionable error message — not a raw
-  technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009; .specify/archive/003-inputs-list-get/spec.md -> FR-012; .specify/archive/004-routes-list-get/spec.md -> FR-011]
-- **FR-009**: Each outputs, inputs and routes command MUST fail with a clear, actionable error message when the hub
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-007; .specify/archive/002-outputs-get/spec.md -> FR-007; .specify/archive/003-inputs-list-get/spec.md -> FR-010; .specify/archive/004-routes-list-get/spec.md -> FR-009; .specify/archive/005-groups-list-get/spec.md -> FR-010]
+- **FR-008**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message — not a raw
+  technical error or crash — when the hub is unreachable. [Source: .specify/archive/001-list-outputs/spec.md -> FR-008; .specify/archive/002-outputs-get/spec.md -> FR-009; .specify/archive/003-inputs-list-get/spec.md -> FR-012; .specify/archive/004-routes-list-get/spec.md -> FR-011; .specify/archive/005-groups-list-get/spec.md -> FR-012]
+- **FR-009**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message when the hub
   does not respond within a bounded amount of time; it MUST NOT wait indefinitely. Each
   command MUST make a single attempt and MUST NOT automatically retry on network or
-  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012]
-- **FR-010**: Each outputs, inputs and routes command MUST fail with a clear, actionable error message when the hub
+  timeout failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-009; .specify/archive/002-outputs-get/spec.md -> FR-010; .specify/archive/003-inputs-list-get/spec.md -> FR-013; .specify/archive/004-routes-list-get/spec.md -> FR-012; .specify/archive/005-groups-list-get/spec.md -> FR-013]
+- **FR-010**: Each outputs, inputs, routes and groups command MUST fail with a clear, actionable error message when the hub
   returns an error response, distinguishing that case from a connectivity failure and,
   for the get commands, from a "not found" result.
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011; .specify/archive/003-inputs-list-get/spec.md -> FR-014; .specify/archive/004-routes-list-get/spec.md -> FR-013]
-- **FR-011**: Each outputs, inputs and routes command MUST exit with a status that is programmatically distinguishable
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-010; .specify/archive/002-outputs-get/spec.md -> FR-011; .specify/archive/003-inputs-list-get/spec.md -> FR-014; .specify/archive/004-routes-list-get/spec.md -> FR-013; .specify/archive/005-groups-list-get/spec.md -> FR-014]
+- **FR-011**: Each outputs, inputs, routes and groups command MUST exit with a status that is programmatically distinguishable
   between success, a usage error, a hub-reported error, and a connectivity/network error
   and, for the get commands, "not found".
-  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015; .specify/archive/004-routes-list-get/spec.md -> FR-014]
+  [Source: .specify/archive/001-list-outputs/spec.md -> FR-011; .specify/archive/002-outputs-get/spec.md -> FR-012; .specify/archive/003-inputs-list-get/spec.md -> FR-015; .specify/archive/004-routes-list-get/spec.md -> FR-014; .specify/archive/005-groups-list-get/spec.md -> FR-015]
 - **FR-012**: The command MUST clearly communicate when there are zero outputs to show,
   distinct from a failure. [Source: .specify/archive/001-list-outputs/spec.md -> FR-012]
-- **FR-013**: Each outputs, inputs and routes command MUST reject any output, input or route data from the hub that does not match the
+- **FR-013**: Each outputs, inputs and routes command MUST reject any output, input, route or group data from the hub that does not match the
   expected structure with a clear error, rather than displaying partial or malformed
-  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017; .specify/archive/004-routes-list-get/spec.md -> FR-016]
+  results. [Source: .specify/archive/001-list-outputs/spec.md -> FR-013; .specify/archive/002-outputs-get/spec.md -> FR-013; .specify/archive/003-inputs-list-get/spec.md -> FR-017; .specify/archive/004-routes-list-get/spec.md -> FR-016; .specify/archive/005-groups-list-get/spec.md -> FR-017]
 - **FR-014**: The CLI MUST provide a command that retrieves a single audio output from
   the hub by its identifier. [Source: .specify/archive/002-outputs-get/spec.md -> FR-001]
 - **FR-015**: The get command MUST require exactly one output identifier as input and MUST
@@ -520,6 +649,16 @@ contains the same fields available in the human-readable view.
 - **FR-034**: For the route returned by the routes get command, the CLI MUST display: its identifier, its source input identifier, its target identifier, its target type, its current status, its creation timestamp, its playback-started timestamp (or an explicit indication that playback has not started), whether it is transferable, whether it supports pause/resume, and whether it is currently paused — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-007]
 - **FR-035**: The routes get command MUST fail with a clear, actionable "route not found" message, distinguishable from other failure types, when no route with the given identifier exists on the hub. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-010]
 - **FR-036**: The routes list command MUST clearly communicate when there are zero routes to show, distinct from a failure. [Source: .specify/archive/004-routes-list-get/spec.md -> FR-015]
+- **FR-037**: The CLI MUST provide a command that lists the hub's audio output groups. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-001]
+- **FR-038**: By default, the groups list command MUST show only enabled groups. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-002]
+- **FR-039**: The groups list command MUST provide an option for the user to additionally include disabled groups in the results. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-003]
+- **FR-040**: For each group returned by the groups list command, the CLI MUST display: its identifier, its display name, its member output identifiers, its mute state, and its enabled state — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-004]
+- **FR-041**: The CLI MUST provide a command that retrieves a single audio output group from the hub by its identifier. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-005]
+- **FR-042**: The groups get command MUST require exactly one group identifier as input and MUST fail with a clear usage error if it is omitted. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-006]
+- **FR-043**: The groups get command MUST return the requested group regardless of its enabled/disabled state. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-007]
+- **FR-044**: For the group returned by the groups get command, the CLI MUST display: its identifier, its display name, its member output identifiers, its mute state, and its enabled state — in both the default human-readable view and the machine-readable (--json) view. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-008]
+- **FR-045**: The groups get command MUST fail with a clear, actionable "group not found" message, distinguishable from other failure types, when no group with the given identifier exists on the hub. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-011]
+- **FR-046**: The groups list command MUST clearly communicate when there are zero groups to show, distinct from a failure. [Source: .specify/archive/005-groups-list-get/spec.md -> FR-016]
 
 ### Key Entities
 
@@ -574,6 +713,18 @@ contains the same fields available in the human-readable view.
 
   [Source: .specify/archive/004-routes-list-get/spec.md -> "Route"; .specify/archive/004-routes-list-get/data-model.md -> "Route"]
 
+- **Output Group**: A named collection of audio outputs managed by the hub, which can be used as a single routing target. Attributes relevant to this feature: unique identifier, human-readable display name, member output identifiers (a group may have none; see Edge Cases), whether all member outputs are currently muted, and whether the group is enabled for new route creation. The groups list command shows enabled groups by default; the groups get command returns one decoded object regardless of enabled state. Both commands render the same five fields. Field mapping to `GroupResponse` in `api/openapi.json` (required fields; wrong JSON type, or an empty `groupId` or `displayName`, is malformed per FR-013; an empty `outputIds` array is valid and displayed as `[]`):
+
+  | Field | Type | openapi.json field |
+  |-------|------|--------------------|
+  | `GroupID` | string | `groupId` |
+  | `DisplayName` | string | `displayName` |
+  | `OutputIDs` | string list (may be empty, never `nil` on decode) | `outputIds` |
+  | `Muted` | bool | `muted` |
+  | `Enabled` | bool | `enabled` |
+
+  [Source: .specify/archive/005-groups-list-get/spec.md -> "Output Group"; .specify/archive/005-groups-list-get/data-model.md -> "Group"]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -581,12 +732,12 @@ contains the same fields available in the human-readable view.
 - **SC-001**: A user can view the full list of currently available outputs in under 1
   second under normal network conditions. [Source: .specify/archive/001-list-outputs/spec.md -> SC-001]
 - **SC-002**: When the hub is unreachable or unresponsive, the user receives a clear
-  failure message within 5 seconds (not an indefinite hang) in 100% of such cases, for the outputs, inputs and routes commands.
-  [Source: .specify/archive/001-list-outputs/spec.md -> SC-002; .specify/archive/002-outputs-get/spec.md -> SC-003; .specify/archive/003-inputs-list-get/spec.md -> SC-004; .specify/archive/004-routes-list-get/spec.md -> SC-004]
-- **SC-003**: 100% of machine-readable output produced by the outputs, inputs or routes commands can be parsed by a
-  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-005; .specify/archive/004-routes-list-get/spec.md -> SC-005]
-- **SC-004**: A user can always tell, without ambiguity, whether "no outputs, inputs or routes were found"
-  or "the command failed" occurred. [Source: .specify/archive/001-list-outputs/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-006; .specify/archive/004-routes-list-get/spec.md -> SC-006]
+  failure message within 5 seconds (not an indefinite hang) in 100% of such cases, for the outputs, inputs, routes and groups commands.
+  [Source: .specify/archive/001-list-outputs/spec.md -> SC-002; .specify/archive/002-outputs-get/spec.md -> SC-003; .specify/archive/003-inputs-list-get/spec.md -> SC-004; .specify/archive/004-routes-list-get/spec.md -> SC-004; .specify/archive/005-groups-list-get/spec.md -> SC-004]
+- **SC-003**: 100% of machine-readable output produced by the outputs, inputs, routes or groups commands can be parsed by a
+  standard structured-data parser without error. [Source: .specify/archive/001-list-outputs/spec.md -> SC-003; .specify/archive/002-outputs-get/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-005; .specify/archive/004-routes-list-get/spec.md -> SC-005; .specify/archive/005-groups-list-get/spec.md -> SC-005]
+- **SC-004**: A user can always tell, without ambiguity, whether "no outputs, inputs, routes or groups were found"
+  or "the command failed" occurred. [Source: .specify/archive/001-list-outputs/spec.md -> SC-004; .specify/archive/003-inputs-list-get/spec.md -> SC-006; .specify/archive/004-routes-list-get/spec.md -> SC-006; .specify/archive/005-groups-list-get/spec.md -> SC-006]
 - **SC-005**: A user can identify a specific output's current volume, mute state, and
   availability from the command's output alone (a single invocation), without needing to
   run any other command or cross-reference a list.
@@ -605,26 +756,33 @@ contains the same fields available in the human-readable view.
 - **SC-014**: When the requested route does not exist, the user receives a clear "route not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-003]
 - **SC-015**: A user can identify a specific route's source input, target, and current status from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-007]
 - **SC-016**: A user can narrow a route listing to a single status, input, or target without needing to filter the output themselves after the fact. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-008]
+- **SC-017**: A user can view the full list of currently enabled groups in under 1 second under normal network conditions. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-001]
+- **SC-018**: A user can retrieve a specific group's full state in under 1 second under normal network conditions. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-002]
+- **SC-019**: When the requested group does not exist, the user receives a clear "group not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-003]
+- **SC-020**: A user can identify a specific group's member outputs and mute state from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-007]
+- **SC-021**: A user can view groups that exist but are currently disabled without needing to run a separate, differently-named command. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-008]
 
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
   established once (e.g. a default matching the API's documented default server, overridable
   by the user); this feature consumes that mechanism but does not define it.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/004-routes-list-get/spec.md -> "The hub's network location (host/port) is available"]
+  [Source: .specify/archive/001-list-outputs/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/002-outputs-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/003-inputs-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/004-routes-list-get/spec.md -> "The hub's network location (host/port) is available"; .specify/archive/005-groups-list-get/spec.md -> "The hub's network location (host/port) is available"]
 - **AS-002**: The hub API requires no authentication for this read-only endpoint, consistent with the
-  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"]
+  current API specification. [Source: .specify/archive/001-list-outputs/spec.md -> "The hub API requires no authentication"; .specify/archive/002-outputs-get/spec.md -> "The hub API requires no authentication"; .specify/archive/003-inputs-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/004-routes-list-get/spec.md -> "The hub API requires no authentication"; .specify/archive/005-groups-list-get/spec.md -> "The hub API requires no authentication"]
 - **AS-003**: "Human-readable" default output presents the same set of fields as the machine-readable
   output, formatted for readability rather than strict parsing.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/004-routes-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
-- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/003-inputs-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/004-routes-list-get/spec.md -> "The default request timeout is 5 seconds"]
-- **AS-005**: Outputs, inputs and routes are unordered by the hub API; the commands may present them in the order received
+  [Source: .specify/archive/001-list-outputs/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/002-outputs-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/003-inputs-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/004-routes-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"; .specify/archive/005-groups-list-get/spec.md -> "\"Human-readable\" default output presents the same set of fields"]
+- **AS-004**: The default request timeout is 5 seconds. [Source: .specify/archive/001-list-outputs/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/002-outputs-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/003-inputs-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/004-routes-list-get/spec.md -> "The default request timeout is 5 seconds"; .specify/archive/005-groups-list-get/spec.md -> "The default request timeout is 5 seconds"]
+- **AS-005**: Outputs, inputs, routes and groups are unordered by the hub API; the commands may present them in the order received
   without imposing additional sorting guarantees.
-  [Source: .specify/archive/001-list-outputs/spec.md -> "Outputs are unordered by the hub API"; .specify/archive/003-inputs-list-get/spec.md -> "Inputs are unordered by the hub API"; .specify/archive/004-routes-list-get/spec.md -> "Routes are unordered by the hub API"]
-- **AS-006**: The output, input and route identifier is an opaque, case-sensitive string as returned by the hub; the
+  [Source: .specify/archive/001-list-outputs/spec.md -> "Outputs are unordered by the hub API"; .specify/archive/003-inputs-list-get/spec.md -> "Inputs are unordered by the hub API"; .specify/archive/004-routes-list-get/spec.md -> "Routes are unordered by the hub API"; .specify/archive/005-groups-list-get/spec.md -> "Groups are unordered by the hub API"]
+- **AS-006**: The output, input, route and group identifier is an opaque, case-sensitive string as returned by the hub; the
   get commands perform no client-side normalization or fuzzy matching.
-  [Source: .specify/archive/002-outputs-get/spec.md -> "The output identifier is an opaque, case-sensitive string"; .specify/archive/003-inputs-list-get/spec.md -> "The input identifier is an opaque, case-sensitive string"; .specify/archive/004-routes-list-get/spec.md -> "The route identifier is an opaque, case-sensitive string"]
+  [Source: .specify/archive/002-outputs-get/spec.md -> "The output identifier is an opaque, case-sensitive string"; .specify/archive/003-inputs-list-get/spec.md -> "The input identifier is an opaque, case-sensitive string"; .specify/archive/004-routes-list-get/spec.md -> "The route identifier is an opaque, case-sensitive string"; .specify/archive/005-groups-list-get/spec.md -> "The group identifier is an opaque, case-sensitive string"]
 - **AS-007**: Inputs have no volume, mute, or hardware-availability concept in the hub API; the inputs commands display the attributes the API defines for inputs (source URI, source type, auto-remove, pauseable, creation timestamp) rather than an outputs-shaped display.
   [Source: .specify/archive/003-inputs-list-get/spec.md -> "Unlike outputs, inputs have no volume, mute, or hardware-availability concept"]
 - **AS-008**: The routes commands are read-only: creating, stopping, transferring, and pausing or resuming routes are out of scope for this feature, mirroring how the outputs and inputs read commands preceded their mutation commands.
   [Source: .specify/archive/004-routes-list-get/spec.md -> "Creating, stopping, transferring, and pausing/resuming routes are out of scope for this feature"]
+- **AS-009**: The groups commands are read-only: creating, deleting, and modifying groups (membership, volume, mute, enabled state) are out of scope for this feature, mirroring AS-008.
+  [Source: .specify/archive/005-groups-list-get/spec.md -> "Creating, deleting, and modifying groups (membership, volume, mute, enabled state) are out of scope for this feature"]

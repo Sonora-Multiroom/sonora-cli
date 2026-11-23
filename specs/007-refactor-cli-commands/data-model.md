@@ -8,7 +8,7 @@ and `Route` (and their list/get query parameters) are unchanged from
 [002-outputs-get](../../.specify/archive/002-outputs-get/data-model.md),
 [003-inputs-list-get](../../.specify/archive/003-inputs-list-get/data-model.md),
 [004-routes-list-get](../../.specify/archive/004-routes-list-get/data-model.md), and
-[005-groups-list-get](../005-groups-list-get/data-model.md). What's new is purely CLI-surface:
+[005-groups-list-get](../../.specify/archive/005-groups-list-get/data-model.md). What's new is purely CLI-surface:
 how a command line resolves into a call to that unchanged logic.
 
 ## ResourceKind
