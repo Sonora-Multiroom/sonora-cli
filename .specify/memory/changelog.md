@@ -2,6 +2,12 @@
 
 ## Merged Features Log
 
+### List TTS Voices (`list tts-voices`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md
+**Implemented:** 2026-09-27
+
+Adds `sonora list tts-voices --provider <name> [--language] [--engine]` (`GET /api/tts/providers/{providerName}/voices`) so users can find valid `speak --voice` values; `get tts-voices` is a usage error. (User Story 50, FR-118–FR-121, SC-042, AS-031.)
+
 ### Text-to-Speech Announcements (`speak`, `get tts-cache`, `clear tts-cache`) — archived 2026-11-23
 **Branch:** 009-tts-commands
 **Spec:** [.specify/archive/009-tts-commands/spec.md](../archive/009-tts-commands/spec.md)

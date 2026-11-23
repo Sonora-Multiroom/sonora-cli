@@ -23,6 +23,7 @@
 > **Revision**: 2026-11-23 — tinyspec stop-routes-command (.specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md): added User Story 43 and FR-098–FR-099. Adds bulk stop: `sonora stop routes`, `sonora stop outputs/<id>` and `sonora stop groups/<id>`; `stop` is no longer a routes-only alias. No ID was renumbered. AS-019 was extended in place with a note that stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098); its original text is unchanged.
 > **Revision**: 2026-11-23 — Archived .specify/archive/009-tts-commands (moved from specs/ in the same run): added User Stories 44–49, FR-100–FR-117, SC-034–SC-041, AS-023–AS-030, the Announcement Request, Announcement Acceptance, TTS Cache Statistics and TTS Error entities, and sixteen edge cases for the `speak`, `get tts-cache` and `clear tts-cache` commands. Its FR-002 was folded into FR-067 and its FR-014 into FR-009, widening those entries to cover the speak and TTS cache commands (target path rule; no automatic retry); the shared AS-002 and AS-022 were widened to cover the TTS operations (no authentication; no confirmation prompt); and its malformed-body and unreachable-hub cases were folded into the existing edge cases. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-099, SC-033 and AS-022.
 > **Revision**: 2026-11-23 — the TTS "Unknown target output or group" edge case now states exit `12`, matching FR-113 and the spec's clarification; it had said the playback target's class, which is `5`.
+> **Revision**: 2026-11-23 — tinyspec list-tts-voices-command (.specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md): added User Story 50, three edge cases, FR-118–FR-121, the TTS Voice entity, SC-042 and AS-031. Adds `sonora list tts-voices --provider <name> [--language] [--engine]` (`GET /api/tts/providers/{providerName}/voices`); `tts-voices` is a collection keyword under `list`, and `get tts-voices` is a usage error. The hub lists voices only for `google-cloud` and `google-gemini` entries.
 
 ## User Scenarios & Testing
 
@@ -1129,6 +1130,24 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 
 [Source: .specify/archive/009-tts-commands/spec.md -> User Story 6]
 
+### User Story 50 - Discover a provider's voices (Priority: P3)
+
+An operator wants to see which voices a TTS provider offers, so that the `--voice` value passed to `speak` is one the hub accepts.
+
+**Why this priority**: A discovery aid for `speak --voice`; announcements work without it.
+
+**Independent Test**: Run `sonora list tts-voices --provider <name>` against a hub whose provider is `google-cloud` or `google-gemini`, and verify that every voice is printed in the hub's order with all five fields (absent ones as null), in YAML by default and JSON with `--json`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with the TTS extension loaded and a `google-cloud` provider, **When** the user runs `sonora list tts-voices --provider <name>`, **Then** the command prints each voice in the hub's order with its short name, full name, engine, language and gender.
+2. **Given** the same hub, **When** the user adds `--language` or `--engine`, **Then** the request carries that filter as a query parameter; without them the URL has no query string.
+3. **Given** a `google-gemini` provider, **When** the user lists its voices, **Then** each voice's `engine` is the provider entry's model and its `language` is shown as null.
+4. **Given** a provider whose type does not list voices, or an unknown provider, **When** the user lists its voices, **Then** the command shows the hub's message, exits with the code FR-113 gives, and prints nothing to standard output.
+5. **Given** `--provider` is missing or blank, or a positional argument is given, **When** the user runs the command, **Then** it fails with a usage error before contacting the hub.
+
+[Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> What; Requirements]
+
 ---
 
 ### Edge Cases
@@ -1195,6 +1214,10 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 - **`--provider`, `--voice` or `--language` given an empty or whitespace-only value**: usage error before any request is sent, on every command that takes the flag. [Source: .specify/archive/009-tts-commands/spec.md -> "`--provider`, `--voice` or `--language` given an empty or whitespace-only value"]
 - **Hub configured with a provider timeout longer than 10 seconds**: the default 15-second bound (FR-114) is not enough, and the user sees a CLI network timeout instead of the hub's own error. `--timeout` (FR-115) lets the user raise the bound for that invocation; other TTS commands keep their standard 5-second bound, unaffected. [Source: .specify/archive/009-tts-commands/spec.md -> "Hub configured with a provider timeout longer than 10 seconds"]
 - **`--timeout` given a zero, negative, or unparsable value**: usage error before any request is sent. [Source: .specify/archive/009-tts-commands/spec.md -> "`--timeout` given a zero, negative, or unparsable value"]
+
+- **`list tts-voices` against a provider type that lists no voices, an unknown provider, a bad filter, or `--engine` on a Gemini entry**: the hub answers 400; the CLI shows the hub's message through the TTS failure path, exits with the class FR-113 gives its code, and prints nothing to standard output. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 4]
+- **A voice with absent fields** (for example a Gemini voice's `language`, or a missing `gender`): every field is still printed, an absent one as `null`, never as an empty string; an empty voice list prints an explicit empty list. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 5]
+- **`list tts-voices` with a missing or blank `--provider`, a blank `--language` or `--engine`, or a positional argument; or `get tts-voices` or `list tts-voices/<anything>`**: usage error before any request is sent; the last two point to `sonora list tts-voices`. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 2, 3]
 
 ## Requirements
 
@@ -1353,6 +1376,10 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 - **FR-115**: The speak command MUST accept an optional `--timeout <duration>` flag that overrides FR-114's default bound for that invocation. The value MUST be a positive duration; a zero, negative, or unparsable value MUST be a usage error raised before contacting the hub. Other TTS commands are unaffected by this flag. [Source: .specify/archive/009-tts-commands/spec.md -> FR-013a]
 - **FR-116**: The new commands, the `tts-cache` keyword, and the `clear` verb MUST appear in `sonora help`, the README command table, and the CLI command landscape document. The README MUST also list the CLI's exit codes, including the new code 13. [Source: .specify/archive/009-tts-commands/spec.md -> FR-015]
 - **FR-117**: All request and response handling MUST follow the TTS operations as published in the hub's API description (`api/openapi.json`); where that description is less precise than the extension's own contract (e.g. error codes, which it leaves as free text), the CLI MUST accept anything the extension's contract allows. [Source: .specify/archive/009-tts-commands/spec.md -> FR-016]
+- **FR-118**: The CLI MUST provide `sonora list tts-voices --provider <name> [--language <code>] [--engine <name>]`, which lists the voices a TTS provider offers by calling `GET /api/tts/providers/{providerName}/voices` (operationId `listVoices`), with the provider name path-escaped. `--language` and `--engine` are sent as query parameters only when given, and are passed through verbatim: the hub matches them case-insensitively and accepts aliases. Voices are shown in the hub's order. `tts-voices` is a collection keyword special-cased under `list`, like `tts-cache`; `get tts-voices`, and `list tts-voices/<anything>`, are usage errors that point to `sonora list tts-voices`. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> What; Requirements 1, 3]
+- **FR-119**: A missing or blank `--provider`, a blank `--language` or `--engine`, or any positional argument MUST be a usage error raised before any request is sent. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 2]
+- **FR-120**: Every voice MUST show all five fields (`shortName`, `fullName`, `engine`, `language`, `gender`) in YAML and in JSON. An absent field MUST be shown as `null`, never as an empty string, and an empty result MUST print an explicit empty list. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 5]
+- **FR-121**: A hub 400 or 503 MUST surface the hub's message through the TTS failure path, with the exit codes FR-113 gives; a 404 MUST get FR-110's diagnosis; nothing MUST go to standard output on any failure. The help text MUST say that for a `google-cloud` voice the value to pass to `speak --voice` is its `fullName`, because `speak` has no `--engine` flag. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 4; What]
 
 ### Key Entities
 
@@ -1451,6 +1478,8 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 - **TTS Cache Statistics**: The TTS cache's total entries, total size in bytes, maximum size in bytes, and a provider-name to entry-count breakdown (which may be empty). [Source: .specify/archive/009-tts-commands/spec.md -> "TTS cache statistics"]
 - **TTS Error**: A machine-readable code plus a human-readable message, returned by the extension alongside a 400 (caller-fixable) or 503 (provider-side) status. The CLI keeps its own error shape separate from the core API's problem details. [Source: .specify/archive/009-tts-commands/spec.md -> "TTS error"]
 
+- **TTS Voice**: One voice a provider offers: `shortName`, `fullName`, `engine`, `language` and `gender`. The hub leaves out fields it does not have, so each is shown as `null` when absent; a Gemini voice has no `language`, and its `engine` is the provider entry's model. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Context]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -1508,6 +1537,7 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 - **SC-039**: Against a hub where the TTS extension is not active, 100% of TTS commands report "TTS not available" rather than a misleading not-found error. Whenever the hub's extension inventory is reachable, they also name the reason (not installed, disabled, rejected with its reason, inert, or version mismatch). [Source: .specify/archive/009-tts-commands/spec.md -> SC-005]
 - **SC-040**: A successful TTS command makes exactly one request to the hub. [Source: .specify/archive/009-tts-commands/spec.md -> SC-005a]
 - **SC-041**: Existing commands' behaviour and startup time are unchanged by this feature. [Source: .specify/archive/009-tts-commands/spec.md -> SC-006]
+- **SC-042**: A `list tts-voices` call makes exactly one request to the hub, and its output parses as YAML or JSON with every voice field present, whatever the hub omitted. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 1, 5]
 
 ## Assumptions
 
