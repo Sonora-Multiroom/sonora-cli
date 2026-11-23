@@ -2,6 +2,12 @@
 
 ## Merged Features Log
 
+### Decode Hub Route Refusals (409) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-10-07-decode-route-refusals-409/decode-route-refusals-409.md
+**Implemented:** 2026-10-07
+
+A hub 409 on route creation, transfer or play (disabled target, route limit, input already on the output) now prints the hub's detail and exits `14` (conflict) instead of `3`; the public client exposes `APIError.Reason`/`OutputID`, `ClassConflict`, and `Route.JoinMode`/`Outputs`. (FR-137–FR-138; amends FR-079, FR-085, FR-090.)
+
 ### Public Hub Client Package (`hub/`, `api.Spec`) — archived 2026-11-23
 **Branch:** 010-public-hub-package
 **Spec:** [.specify/archive/010-public-hub-package/spec.md](../archive/010-public-hub-package/spec.md)
