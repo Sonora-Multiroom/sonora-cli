@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-27
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "Phase 2 of
 sonora-mcp/docs/future/go-rewrite-shared-hub-client.md — promote the Sonora Multiroom CLI's

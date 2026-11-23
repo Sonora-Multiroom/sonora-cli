@@ -5,7 +5,7 @@ description: "Task list for 010-public-hub-package"
 
 # Tasks: Public Hub Client Package
 
-**Input**: Design documents from `/specs/010-public-hub-package/`
+**Input**: Design documents from `/.specify/archive/010-public-hub-package/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/public-packages.md,
 quickstart.md
@@ -343,7 +343,7 @@ with no second copy (research §7).
 
 **Independent Test**: quickstart §5 (post-tag, `GOWORK=off`) and §6.
 
-- [X] T044 [US4] Write release notes in `specs/010-public-hub-package/release-notes.md`
+- [X] T044 [US4] Write release notes in `.specify/archive/010-public-hub-package/release-notes.md`
       for `v0.1.0`: module path is now `github.com/Sonora-Multiroom/sonora-cli`; new public
       packages `hub` and `api` (link contracts/public-packages.md); not in the public API:
       `ErrorClass.ExitCode()`, `ClassUsage`; `TTSUnavailableError` messages are

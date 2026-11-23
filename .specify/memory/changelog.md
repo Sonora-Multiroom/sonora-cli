@@ -2,6 +2,23 @@
 
 ## Merged Features Log
 
+### Public Hub Client Package (`hub/`, `api.Spec`) — archived 2026-11-23
+**Branch:** 010-public-hub-package
+**Spec:** [.specify/archive/010-public-hub-package/spec.md](../archive/010-public-hub-package/spec.md)
+
+**What was added:**
+- User Stories 51–54 (P1–P2): importing the hub client from another project by its public path at a released tag; existing CLI users noticing no change; consumers verifying against the same published spec; maintainers releasing the shared client safely
+- FR-122–FR-136, SC-043–SC-049, AS-032–AS-037, the Public Hub Client, Error Class, Exit-Code Mapping, Published Hub Spec and Release Tag entities, and six edge cases; no existing entry folded or retired
+
+**New Components:**
+- `hub/` (public Multiroom Audio Hub client, moved from `internal/hub` with `git mv`): protocol concerns only, self-contained godoc, standard library only
+- `api/` (`api.Spec`, `go:embed` of `api/openapi.json`, one copy of the spec)
+- `internal/cli/exitcode/` (`Usage`, `For`): exit-code mapping moved out of `hub`
+- Module path `github.com/Sonora-Multiroom/sonora-cli`, with the `-X` version injection sites in `Makefile`, `.goreleaser.yaml` and the local `build.sh`
+- Guard tests: exit-code table, `api.Spec`, godoc rules, CLI-neutral messages, stray old-path references, version injection
+
+**Tasks Completed:** 47/50 tasks. The three open checkboxes (T045–T047) are the PR, release-tag and post-tag steps; `main` carries the merge commit `b87cf4d`.
+
 ### List TTS Voices (`list tts-voices`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md
 **Implemented:** 2026-09-27

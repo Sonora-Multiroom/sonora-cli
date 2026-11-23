@@ -2,7 +2,7 @@
 
 **Branch**: `010-public-hub-package` | **Date**: 2026-09-27 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/010-public-hub-package/spec.md`
+**Input**: Feature specification from `/.specify/archive/010-public-hub-package/spec.md`
 
 ## Summary
 
@@ -67,7 +67,7 @@ required out by VII.
 ### Documentation (this feature)
 
 ```text
-specs/010-public-hub-package/
+.specify/archive/010-public-hub-package/
 ├── plan.md
 ├── research.md
 ├── data-model.md

@@ -24,6 +24,7 @@
 > **Revision**: 2026-11-23 — Archived .specify/archive/009-tts-commands (moved from specs/ in the same run): added User Stories 44–49, FR-100–FR-117, SC-034–SC-041, AS-023–AS-030, the Announcement Request, Announcement Acceptance, TTS Cache Statistics and TTS Error entities, and sixteen edge cases for the `speak`, `get tts-cache` and `clear tts-cache` commands. Its FR-002 was folded into FR-067 and its FR-014 into FR-009, widening those entries to cover the speak and TTS cache commands (target path rule; no automatic retry); the shared AS-002 and AS-022 were widened to cover the TTS operations (no authentication; no confirmation prompt); and its malformed-body and unreachable-hub cases were folded into the existing edge cases. No existing ID was renumbered; the feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-099, SC-033 and AS-022.
 > **Revision**: 2026-11-23 — the TTS "Unknown target output or group" edge case now states exit `12`, matching FR-113 and the spec's clarification; it had said the playback target's class, which is `5`.
 > **Revision**: 2026-11-23 — tinyspec list-tts-voices-command (.specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md): added User Story 50, three edge cases, FR-118–FR-121, the TTS Voice entity, SC-042 and AS-031. Adds `sonora list tts-voices --provider <name> [--language] [--engine]` (`GET /api/tts/providers/{providerName}/voices`); `tts-voices` is a collection keyword under `list`, and `get tts-voices` is a usage error. The hub lists voices only for `google-cloud` and `google-gemini` entries.
+> **Revision**: 2026-11-23 — Archived .specify/archive/010-public-hub-package (moved from specs/ in the same run): added User Stories 51–54, FR-122–FR-136, SC-043–SC-049, AS-032–AS-037, six edge cases, and the Public Hub Client, Error Class, Exit-Code Mapping, Published Hub Spec and Release Tag entities. The feature publishes the Multiroom Audio Hub client as the public `hub/` package (moved from `internal/hub`), publishes the spec as `api.Spec`, and moves exit-code mapping into `internal/cli/exitcode`; the CLI's behaviour is unchanged. No existing entry was folded or retired. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-121, SC-042 and AS-031, and its user stories above User Story 50.
 
 ## User Scenarios & Testing
 
@@ -1150,6 +1151,77 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 
 ---
 
+### User Story 51 - Import the hub client from another project (Priority: P1)
+
+A developer of another Sonora project (sonora-mcp) adds this module as a dependency by its public import path, pinned to a released tag, and calls hub operations (list outputs, set volume, create a route, speak, …) through the shared client, getting the same timeouts, typed errors and error classification the CLI uses.
+
+**Why this priority**: This is the whole point of the feature. Without an importable, released client, sonora-mcp cannot drop its own client.
+
+**Independent Test**: In a scratch module outside this repository, require this module at the released tag, call one read operation and one write operation against a fake hub, and classify a failure — with no access to anything under this repo's internal packages.
+
+**Acceptance Scenarios**:
+
+1. **Given** a released tag of this module, **When** an external project requires the module by its public path and imports the hub client package, **Then** it resolves and builds with no replace directives, workspace files or private-module settings.
+2. **Given** an external project using the client, **When** a hub call fails (hub unreachable, timeout, 404, 4xx/5xx, malformed response), **Then** the project can obtain the error class and friendly message the client's classifier produces — the same classification the CLI starts from — without depending on any CLI-specific concept such as exit codes. (A caller may refine a generic not-found class with its own context, as the CLI's route commands do.)
+3. **Given** the client package, **When** a developer reads its package documentation, **Then** every exported identifier is documented in terms that make sense without access to this repo's specs, research notes or constitution.
+4. **Given** the client package's dependency list, **When** it is imported, **Then** it adds no third-party dependencies to the consumer beyond the standard library.
+
+[Source: .specify/archive/010-public-hub-package/spec.md -> User Story 1]
+
+---
+
+### User Story 52 - Existing CLI users notice no change (Priority: P1)
+
+A person using `sonora` on Windows or Linux upgrades to the build that contains this refactor and keeps using every command exactly as before.
+
+**Why this priority**: The refactor is only acceptable if it is invisible to CLI users; a behavior regression would break live audio control and scripts that rely on exit codes.
+
+**Independent Test**: Run the full existing unit and contract test suite unchanged in intent (only import paths adjusted) on Windows and Linux, and compare `sonora --help`, command output and exit codes for representative commands before and after.
+
+**Acceptance Scenarios**:
+
+1. **Given** the refactored build, **When** any existing command is run, **Then** its output (YAML and `--json`), error messages and exit codes are identical to the previous build.
+2. **Given** a build produced by the project's build scripts with a version supplied, **When** `sonora --version` is run, **Then** it prints the supplied version, not the default placeholder.
+3. **Given** a hub error of each class, **When** a command hits it, **Then** the CLI exits with the same code as before, even though the error-class-to-exit-code mapping now lives inside the CLI rather than in the shared client.
+
+[Source: .specify/archive/010-public-hub-package/spec.md -> User Story 2]
+
+---
+
+### User Story 53 - Consumers verify against the same hub spec (Priority: P2)
+
+A developer of a consuming project runs a conformance test against the exact Multiroom Audio Hub API specification that the imported client version was built and tested against, without keeping their own copy of `openapi.json`.
+
+**Why this priority**: Removes the last duplicated artifact between repos, but the client is usable without it.
+
+**Independent Test**: From an external module, import the published spec and confirm it is byte-identical to `api/openapi.json` at the same tag.
+
+**Acceptance Scenarios**:
+
+1. **Given** a released tag, **When** a consumer imports the published spec, **Then** it receives the full contents of `api/openapi.json` from that tag.
+2. **Given** `api/openapi.json` is updated in this repo, **When** the module is rebuilt, **Then** the published spec reflects the update with no separate copy to keep in sync.
+
+[Source: .specify/archive/010-public-hub-package/spec.md -> User Story 3]
+
+---
+
+### User Story 54 - Maintainers release the shared client safely (Priority: P2)
+
+A maintainer tags a release of this module that contains the public client so consumers can pin it, following rules that keep already-published versions immutable.
+
+**Why this priority**: Consumers can only depend on a tag; a mistaken or moved tag in a public module is permanent damage.
+
+**Independent Test**: Tag a release, fetch it from a clean environment through the public Go module proxy, and build a consumer against it.
+
+**Acceptance Scenarios**:
+
+1. **Given** the refactor is merged, **When** a new tag is published, **Then** consumers can resolve that tag through the public module proxy.
+2. **Given** a published tag has a problem, **When** the maintainer fixes it, **Then** a new tag is published and the existing tag is never moved, deleted or re-created.
+
+[Source: .specify/archive/010-public-hub-package/spec.md -> User Story 4]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1218,6 +1290,12 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 - **`list tts-voices` against a provider type that lists no voices, an unknown provider, a bad filter, or `--engine` on a Gemini entry**: the hub answers 400; the CLI shows the hub's message through the TTS failure path, exits with the class FR-113 gives its code, and prints nothing to standard output. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 4]
 - **A voice with absent fields** (for example a Gemini voice's `language`, or a missing `gender`): every field is still printed, an absent one as `null`, never as an empty string; an empty voice list prints an explicit empty list. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 5]
 - **`list tts-voices` with a missing or blank `--provider`, a blank `--language` or `--engine`, or a positional argument; or `get tts-voices` or `list tts-voices/<anything>`**: usage error before any request is sent; the last two point to `sonora list tts-voices`. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 2, 3]
+- **A build or release script still injects the version under the old module path**: the build succeeds silently but the version stays at the default — this MUST be caught by a test or release check (User Story 52, scenario 2). [Source: .specify/archive/010-public-hub-package/spec.md -> "A build or release script still injects the version under the old module path"]
+- **A stray reference to the old module path or the old internal client location remains in code, tests, scripts or docs**: an automated test MUST fail on it. [Source: .specify/archive/010-public-hub-package/spec.md -> "A stray reference to the old module path"]
+- **A CLI-only concept (exit codes, flags, rendering, config discovery) is still reachable from the public client**: this is a boundary violation and MUST be removed before release. [Source: .specify/archive/010-public-hub-package/spec.md -> "A CLI-only concept"]
+- **A consumer tries to import CLI internals (config discovery, renderers)**: this MUST remain impossible; only the client package and published spec are public. [Source: .specify/archive/010-public-hub-package/spec.md -> "A consumer tries to import CLI internals"]
+- **The error-classification messages must stay free of CLI-specific wording**: they must not mention flags, exit codes, environment variables, config files or "this CLI", so they read correctly when surfaced by a non-CLI consumer such as an AI assistant. Today the TTS "hub address" and "version mismatch" messages break this rule; the CLI must add that wording itself instead (FR-136). [Source: .specify/archive/010-public-hub-package/spec.md -> "The error-classification messages must stay free of CLI-specific wording"]
+- **Contract tests move with the client**: they MUST keep running in this repo as the conformance gate, not be dropped during the move. [Source: .specify/archive/010-public-hub-package/spec.md -> "Contract tests move with the client"]
 
 ## Requirements
 
@@ -1380,6 +1458,21 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 - **FR-119**: A missing or blank `--provider`, a blank `--language` or `--engine`, or any positional argument MUST be a usage error raised before any request is sent. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 2]
 - **FR-120**: Every voice MUST show all five fields (`shortName`, `fullName`, `engine`, `language`, `gender`) in YAML and in JSON. An absent field MUST be shown as `null`, never as an empty string, and an empty result MUST print an explicit empty list. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 5]
 - **FR-121**: A hub 400 or 503 MUST surface the hub's message through the TTS failure path, with the exit codes FR-113 gives; a 404 MUST get FR-110's diagnosis; nothing MUST go to standard output on any failure. The help text MUST say that for a `google-cloud` voice the value to pass to `speak --voice` is its `fullName`, because `speak` has no `--engine` flag. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 4; What]
+- **FR-122**: The module MUST be addressable by its public repository import path (`github.com/Sonora-Multiroom/sonora-cli`), and every internal reference to the old module path MUST be updated, including build-time version injection in `Makefile` and `.goreleaser.yaml` (`release.sh` and `scripts/` must be checked too). The maintainer's local, untracked `build.sh` helper is updated too but is not part of the repository. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-001]
+- **FR-123**: The Multiroom Audio Hub API client MUST be moved from its internal location to a public package at the module root (`hub/`), preserving its file history. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-002]
+- **FR-124**: The public client MUST contain only hub protocol concerns: request/response types, HTTP calls, timeouts, error types, error classification and friendly error messages. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-003]
+- **FR-125**: The mapping from error class to CLI exit code MUST move out of the public client into a CLI-internal package, together with any error class that only the CLI uses (the usage-error class); all CLI call sites MUST use the new mapping and produce the same exit codes as before. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-004]
+- **FR-126**: Error classification and its friendly messages MUST remain in the public client so non-CLI consumers can present the same classification. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-005]
+- **FR-127**: Helpers the client itself uses to build error messages (e.g. single-line normalization) MUST remain available from the public client. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-006]
+- **FR-128**: Every exported identifier of the public client MUST have documentation that is self-contained — no references to this repo's constitution principles, `research.md`, `data-model.md` or other spec artifacts. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-007]
+- **FR-129**: The public client MUST keep a standard-library-only dependency footprint. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-008]
+- **FR-130**: Existing contract and unit tests for the client MUST remain in this repo and continue to run as the conformance gate against `api/openapi.json`. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-009]
+- **FR-131**: The CLI MUST have no observable behavior change: same commands, flags, output (YAML and JSON), error messages and exit codes. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-010]
+- **FR-132**: There MUST be an automated check that a build produced with a supplied version reports that version from `sonora --version`. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-011]
+- **FR-133**: The hub API specification (`api/openapi.json`) SHOULD be published from the module as importable content, sourced from the single existing file (no second copy). [Source: .specify/archive/010-public-hub-package/spec.md -> FR-012]
+- **FR-134**: Hub URL configuration discovery and output rendering MUST stay internal to the CLI and MUST NOT be made public by this feature. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-013]
+- **FR-135**: After merge, a release tag containing the public client (and published spec) MUST be created; published tags MUST never be moved or re-created. [Source: .specify/archive/010-public-hub-package/spec.md -> FR-014]
+- **FR-136**: Messages produced by the public client (`ClassifyError` and the `Error()` methods of its error types) MUST NOT mention CLI flags, environment variables, config files, exit codes or "the CLI". Where the CLI shows such hints today, the CLI MUST add them itself so its output stays identical (FR-131). [Source: .specify/archive/010-public-hub-package/spec.md -> FR-015]
 
 ### Key Entities
 
@@ -1479,6 +1572,11 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 - **TTS Error**: A machine-readable code plus a human-readable message, returned by the extension alongside a 400 (caller-fixable) or 503 (provider-side) status. The CLI keeps its own error shape separate from the core API's problem details. [Source: .specify/archive/009-tts-commands/spec.md -> "TTS error"]
 
 - **TTS Voice**: One voice a provider offers: `shortName`, `fullName`, `engine`, `language` and `gender`. The hub leaves out fields it does not have, so each is shown as `null` when absent; a Gemini voice has no `language`, and its `engine` is the provider entry's model. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Context]
+- **Public Hub Client**: The importable Multiroom Audio Hub API client — operations, request/response types, error types and error classes. Its exported surface is a semver-governed contract. [Source: .specify/archive/010-public-hub-package/spec.md -> "Public hub client"]
+- **Error Class**: The category of a hub failure (e.g. network, timeout, not found, API error) with a friendly message; shared by all consumers. [Source: .specify/archive/010-public-hub-package/spec.md -> "Error class"]
+- **Exit-Code Mapping**: CLI-only translation of an error class into a process exit code. [Source: .specify/archive/010-public-hub-package/spec.md -> "Exit-code mapping"]
+- **Published Hub Spec**: The contents of `api/openapi.json`, importable at the same version as the client. [Source: .specify/archive/010-public-hub-package/spec.md -> "Published hub spec"]
+- **Release Tag**: An immutable module version consumers pin to. [Source: .specify/archive/010-public-hub-package/spec.md -> "Release tag"]
 
 ## Success Criteria
 
@@ -1538,6 +1636,13 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 - **SC-040**: A successful TTS command makes exactly one request to the hub. [Source: .specify/archive/009-tts-commands/spec.md -> SC-005a]
 - **SC-041**: Existing commands' behaviour and startup time are unchanged by this feature. [Source: .specify/archive/009-tts-commands/spec.md -> SC-006]
 - **SC-042**: A `list tts-voices` call makes exactly one request to the hub, and its output parses as YAML or JSON with every voice field present, whatever the hub omitted. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Requirements 1, 5]
+- **SC-043**: A project outside this repository can depend on a released tag and complete one read call, one write call and one error classification against a fake hub, with zero workarounds (no replace directives, workspace files or private-module settings). [Source: .specify/archive/010-public-hub-package/spec.md -> SC-001]
+- **SC-044**: 100% of existing tests pass on both Windows and Linux after the refactor, with no test weakened. Tests that assert exit codes through the client move to the CLI-internal mapping with the same assertions; tests of hub message text change only where FR-136 removes CLI wording, and the CLI tests that check that wording stay unchanged. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-002]
+- **SC-045**: For every existing command, output and exit code are identical before and after the refactor across the success path and each error class. Evidence: the existing unit, integration and contract suites pass unchanged in intent (they cover every command and error class), supplemented by a manual before/after comparison of representative commands. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-003]
+- **SC-046**: 0 references to the old module path or the old internal client location remain in code, tests, build/release scripts or current docs (README, CONTRIBUTING, AGENTS.md). Historical records — earlier feature specs under `specs/`, `docs/reviews/`, and the constitution's Sync Impact Report in `.specify/` — are excluded. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-004]
+- **SC-047**: 100% of the public client's exported identifiers have documentation, and 0 of those docs reference internal spec artifacts or constitution principles. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-005]
+- **SC-048**: The public client pulls in 0 third-party dependencies. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-006]
+- **SC-049**: A build with a supplied version reports that exact version in 100% of release builds. [Source: .specify/archive/010-public-hub-package/spec.md -> SC-007]
 
 ## Assumptions
 
@@ -1587,3 +1692,9 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 - **AS-028**: The `speak` verb takes the text as its first positional argument and the target as its second, mirroring `play <uri> <target>`. The text may be `-` to read it from standard input (FR-102). [Source: .specify/archive/009-tts-commands/spec.md -> "The `speak` verb takes the text as its first positional argument"]
 - **AS-029**: A user-facing command for the extension inventory (e.g. `get extensions`) and the legacy `/api/**` (non-`v2`) operations present in `api/openapi.json` are out of scope. This feature uses `listExtensions` only internally, for FR-110's diagnosis. [Source: .specify/archive/009-tts-commands/spec.md -> "A user-facing command for the extension inventory"]
 - **AS-030**: Queue inspection, cancelling a queued announcement, and waiting for playback to finish are out of scope — the hub exposes no operation for them. [Source: .specify/archive/009-tts-commands/spec.md -> "Queue inspection, cancelling a queued announcement"]
+- **AS-032**: **Dependency**: The sonora-cli constitution is amended first (Phase 1 of the source plan, 1.1.3 → 1.2.0) to add the "Public Hub Client Package" rules and to name `hub/` in Principle II as the single place the spec becomes Go types. That amendment is done via `/speckit-constitution`, not by this feature, and must land before or with this feature's merge. [Source: .specify/archive/010-public-hub-package/spec.md -> "The sonora-cli constitution is amended first"]
+- **AS-033**: The repository at `github.com/Sonora-Multiroom/sonora-cli` is public, so consumers need no private-module configuration. [Source: .specify/archive/010-public-hub-package/spec.md -> "The repository at"]
+- **AS-034**: While the module is `v0.x`, breaking changes to the public client are allowed but must be called out in release notes; the first release with the public client is `v0.1.0` unless an existing `v0.x` tag sequence dictates the next patch/minor number. [Source: .specify/archive/010-public-hub-package/spec.md -> "While the module is `v0.x`"]
+- **AS-035**: Publishing the spec (FR-133 / User Story 53) is recommended by the source plan; it is in scope but may be dropped at planning time without blocking User Stories 51 and 52. [Source: .specify/archive/010-public-hub-package/spec.md -> "Publishing the spec"]
+- **AS-036**: Counts from the source plan were verified against the repo on 2026-09-27 and bound the scope of mechanical changes: 111 files import the module path and 77 import the internal client; 30 CLI files use the exit-code mapping (the source plan said 34). [Source: .specify/archive/010-public-hub-package/spec.md -> "Counts from the source plan"]
+- **AS-037**: Out of scope: the sonora-mcp rewrite, new hub operations, new CLI commands, making config discovery public, and splitting the client into its own repository (option 2b). [Source: .specify/archive/010-public-hub-package/spec.md -> "Out of scope: the sonora-mcp rewrite"]
