@@ -9,6 +9,18 @@
 > **Revision**: 2026-11-23 — tinyspec help-command (.specify/archive/tiny/2026-08-26-help-command/help-command.md): added User Story 26 and FR-057–FR-058 for the usage help. `help`, `-h`, `--help` and bare invocation print the usage text to stdout and exit `0`; the zero-argument invocation, previously a usage error (exit `2`), is now help. FR-058 keeps the missing-verb and unknown-command usage errors unchanged.
 > **Revision**: 2026-11-23 — Archived .specify/archive/007-refactor-cli-commands (moved from specs/ in the same run): added User Stories 27–29, FR-059–FR-070, SC-026–SC-029, AS-014–AS-017, six edge cases and the Resource Kind and Resource Path entities. The feature replaces the noun-verb read commands and `play`'s `--group`/`--output`/`--name` with verb-first `get`/`list <resource>[/<id>]` and `play <uri> <outputs|groups>/<id> --display-name`. On the user's confirmation, FR-015, FR-023, FR-033, FR-042 (get with no identifier is a usage error), FR-049, FR-050, FR-051, FR-052 and AS-012 were removed and their IDs retired (see changelog.md); their replacements are FR-060 (for FR-015, FR-023, FR-033, FR-042) and FR-067 (for FR-050, FR-052); FR-049, FR-051 and AS-012 have none. No incoming item folded into an existing entry. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-058, SC-025 and AS-013.
 > **Revision**: 2026-11-23 — Archived .specify/archive/008-route-command (moved from specs/ in the same run): added User Stories 30–31, FR-071–FR-079, SC-030–SC-033, AS-018–AS-021, the Routing Request and Routing Result entities and six route edge cases. Its FR-006, FR-007 and FR-009 were folded into FR-006, FR-007 and FR-009, its FR-010 into FR-011 and its FR-011 into FR-013, and its FR-003 into FR-067, widening those entries to cover the route command; its SC-004 into SC-003 and its assumptions AS-001–AS-004 into the existing entries. No existing ID was renumbered. The feature's own FR, SC and AS numbers collided with main-memory IDs, so its new items continue above FR-070, SC-029 and AS-017; retired AS-012 is not reused.
+> **Revision**: 2026-11-23 — tinyspec inputs-enable-disable-command (.specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md): added User Story 32 and FR-080–FR-082. Adds `sonora enable inputs/<id>` and `sonora disable inputs/<id>` (`PUT /api/v2/inputs/{id}/enabled`), printing the updated input record. No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec route-delete-command (.specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md): added User Story 33 and FR-083–FR-084. Adds `sonora delete routes/<id>` and its exact alias `sonora stop routes/<id>` (`DELETE /api/v2/routes/{id}`), stopping playback and removing the route. No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec route-transfer-command (.specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md): added User Story 34 and FR-085–FR-087. Adds `sonora transfer routes/<id> <outputs|groups>/<target-id>` (`POST /api/v2/routes/{id}/transfer`), moving a playing route to a new target and printing the new route. No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec groups-enable-disable-command (.specify/archive/tiny/2026-08-29-groups-enable-disable-command/groups-enable-disable-command.md): added User Story 35 and FR-088. Extends `enable`/`disable` to `groups/<id>` (`PUT /api/v2/groups/{id}/enabled`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec groups-set-volume-command (.specify/archive/tiny/2026-08-29-groups-set-volume-command/groups-set-volume-command.md): added User Story 36 and FR-089. Adds `sonora set groups/<group-id> volume <0-100>` (`PUT /api/v2/groups/{id}/volume`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec inputs-create-delete-command (.specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md): added User Story 37 and FR-090–FR-091. Adds `sonora create inputs/<id> <uri> --display-name <name>` (`POST /api/v2/inputs`) and extends `delete` to `inputs/<id>` (`DELETE /api/v2/inputs/{id}`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec master-mute-command (.specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md): added User Story 38 and FR-092–FR-093. Adds the system-wide master mute: `sonora get master-mute`, `sonora mute all` and `sonora unmute all` (`GET`/`PUT /api/v2/master-mute`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec outputs-enable-disable-command (.specify/archive/tiny/2026-08-29-outputs-enable-disable-command/outputs-enable-disable-command.md): added User Story 39 and FR-094. Extends `enable`/`disable` to `outputs/<id>` (`PUT /api/v2/outputs/{id}/enabled`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec outputs-groups-mute-command (.specify/archive/tiny/2026-08-29-outputs-groups-mute-command/outputs-groups-mute-command.md): added User Story 40 and FR-095. Adds `sonora mute` / `sonora unmute` for `outputs/<id>` and `groups/<id>` (`PUT /api/v2/{outputs|groups}/{id}/mute`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec outputs-set-volume-command (.specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md): added User Story 41 and FR-096. Adds the `set` verb and `sonora set outputs/<output-id> volume <0-100>` (`PUT /api/v2/outputs/{id}/volume`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec route-pause-resume-command (.specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md): added User Story 42 and FR-097. Adds `sonora pause routes/<id>` and `sonora resume routes/<id>` (`PUT /api/v2/routes/{id}/pause`). No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-23 — tinyspec stop-routes-command (.specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md): added User Story 43 and FR-098–FR-099. Adds bulk stop: `sonora stop routes`, `sonora stop outputs/<id>` and `sonora stop groups/<id>`; `stop` is no longer a routes-only alias. No ID was renumbered. AS-019 was extended in place with a note that stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098); its original text is unchanged.
 
 ## User Scenarios & Testing
 
@@ -793,6 +805,220 @@ target reflecting the group.
 
 ---
 
+### User Story 32 - Enable or disable an input (Priority: P2)
+
+A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input-id>` to allow or block new playback from an input, and sees the input's updated record.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed record.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing input, **When** the user runs `sonora enable inputs/<input-id>`, **Then** the hub receives `{"enabled": true}`, the updated input is printed and the exit status is `0`.
+2. **Given** an existing input, **When** the user runs `sonora disable inputs/<input-id>`, **Then** the hub receives `{"enabled": false}` and the updated input is printed.
+3. **Given** an unknown input identifier, **When** the user runs either verb, **Then** an "input not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md]
+
+---
+
+### User Story 33 - Stop a single route (Priority: P1)
+
+A person runs `sonora delete routes/<route-id>`, or its alias `sonora stop routes/<route-id>`, to stop playback and remove the route. (`stop` also has bulk forms; see User Story 43.)
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run both verbs against a mock hub and check that the request, the output and the exit codes are identical.
+
+**Acceptance Scenarios**:
+
+1. **Given** a playing route, **When** the user runs `sonora delete routes/<route-id>`, **Then** the hub receives `DELETE /api/v2/routes/<route-id>`, the route identifier, status `stopped` and a message are printed, and the exit status is `0`.
+2. **Given** the same route, **When** the user runs `sonora stop routes/<route-id>` instead, **Then** the request, output and exit status are the same.
+3. **Given** an unknown route identifier, **When** the user runs either verb, **Then** a "route not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md]
+
+---
+
+### User Story 34 - Move a playing route to another target (Priority: P2)
+
+A person runs `sonora transfer routes/<route-id> <outputs|groups>/<target-id>` to move what is playing to another output or group without interruption. The hub replaces the route, so the command prints the new route's identifier.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run the command for an output and for a group against a mock hub and check the request body and the printed identifier.
+
+**Acceptance Scenarios**:
+
+1. **Given** a playing route and an existing output, **When** the user runs `sonora transfer routes/<route-id> outputs/<id>`, **Then** the hub receives the target identifier and type, the new route's identifier, status and message are printed, and the exit status is `0`.
+2. **Given** a target that does not exist, **When** the user runs the command, **Then** an "output/group not found" message goes to standard error with exit status `12`, before any transfer request.
+3. **Given** an unknown route identifier, **When** the user runs the command, **Then** a "route not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md]
+
+---
+
+### User Story 35 - Enable or disable an output group (Priority: P2)
+
+A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group-id>` to allow or block new playback to a group, and sees the group's updated record.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed group.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing group, **When** the user runs `sonora enable groups/<group-id>`, **Then** the hub receives `{"enabled": true}` and the updated group is printed with exit status `0`.
+2. **Given** an unknown group identifier, **When** the user runs either verb, **Then** a "group not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-29-groups-enable-disable-command/groups-enable-disable-command.md]
+
+---
+
+### User Story 36 - Set a group's volume (Priority: P2)
+
+A person runs `sonora set groups/<group-id> volume <0-100>` to change the volume of an output group and sees the volume the hub applied.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run the command with a valid and an invalid value against a mock hub and check the request and the exit status.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing group, **When** the user runs `sonora set groups/<group-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the group identifier, volume and update time are printed, and the exit status is `0`.
+2. **Given** a value outside 0–100 or not an integer, **When** the user runs the command, **Then** a usage error is printed with exit status `2` and no request is sent.
+3. **Given** an unknown group identifier, **When** the user runs the command, **Then** a "group not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-29-groups-set-volume-command/groups-set-volume-command.md]
+
+---
+
+### User Story 37 - Create and delete an input (Priority: P2)
+
+A person runs `sonora create inputs/<input-id> <uri> --display-name <name>` to define a stored input, and `sonora delete inputs/<input-id>` to remove one.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: create and then delete an input against a mock hub and check both requests and outputs.
+
+**Acceptance Scenarios**:
+
+1. **Given** a free input identifier, **When** the user runs `sonora create inputs/<id> <uri> --display-name <name>`, **Then** the hub receives the identifier, URI, display name, `autoRemove` false and `enabled` true, the created input is printed, and the exit status is `0`.
+2. **Given** `--disabled` or `--auto-remove`, **When** the user runs the command, **Then** `enabled` is false or `autoRemove` is true in the request.
+3. **Given** an existing input, **When** the user runs `sonora delete inputs/<id>`, **Then** the input identifier, a status and a message are printed with exit status `0`.
+
+[Source: .specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md]
+
+---
+
+### User Story 38 - Check and set the master mute (Priority: P2)
+
+A person runs `sonora get master-mute` to see whether the whole system is muted, and `sonora mute all` or `sonora unmute all` to change it.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run the three commands against a mock hub and check the requests and the printed state.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub, **When** the user runs `sonora get master-mute`, **Then** `muted: true` or `muted: false` is printed with exit status `0`.
+2. **Given** a hub, **When** the user runs `sonora mute all`, **Then** the hub receives `{"muted": true}` and the updated state is printed.
+3. **Given** `sonora get master-mute/<id>` or `sonora list master-mute`, **Then** a usage error is printed with exit status `2`.
+
+[Source: .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md]
+
+---
+
+### User Story 39 - Enable or disable an output (Priority: P2)
+
+A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<output-id>` to allow or block new playback to a speaker, and sees the output's updated record.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed output.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing output, **When** the user runs `sonora disable outputs/<output-id>`, **Then** the hub receives `{"enabled": false}` and the updated output is printed with exit status `0`.
+2. **Given** an unknown output identifier, **When** the user runs either verb, **Then** an "output not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-29-outputs-enable-disable-command/outputs-enable-disable-command.md]
+
+---
+
+### User Story 40 - Mute or unmute an output or group (Priority: P2)
+
+A person runs `sonora mute outputs/<id>`, `sonora unmute outputs/<id>`, or the same for `groups/<id>`, to silence or restore one speaker or group without changing its volume.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run each verb for an output and a group against a mock hub and check the request body and the printed record.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing output, **When** the user runs `sonora mute outputs/<id>`, **Then** the hub receives `{"muted": true}` and the updated output is printed with exit status `0`.
+2. **Given** an existing group, **When** the user runs `sonora unmute groups/<id>`, **Then** the hub receives `{"muted": false}` and the updated group is printed.
+3. **Given** `inputs/<id>` or `routes/<id>`, **When** the user runs `mute`, **Then** a usage error is printed with exit status `2`.
+
+[Source: .specify/archive/tiny/2026-08-29-outputs-groups-mute-command/outputs-groups-mute-command.md]
+
+---
+
+### User Story 41 - Set an output's volume (Priority: P2)
+
+A person runs `sonora set outputs/<output-id> volume <0-100>` to change one speaker's volume and sees the volume the hub applied.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run the command with a valid and an invalid value against a mock hub and check the request and the exit status.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing output, **When** the user runs `sonora set outputs/<output-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the output identifier, volume and update time are printed, and the exit status is `0`.
+2. **Given** a value outside 0–100, a non-integer value, a misspelled attribute word or a non-`volume` attribute, **When** the user runs the command, **Then** a usage error is printed with exit status `2` and no request is sent.
+3. **Given** an unknown output identifier, **When** the user runs the command, **Then** an "output not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md]
+
+---
+
+### User Story 42 - Pause and resume a route (Priority: P2)
+
+A person runs `sonora pause routes/<route-id>` to hold a playing route and `sonora resume routes/<route-id>` to continue it.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run both verbs against a mock hub and check the request body and the printed record.
+
+**Acceptance Scenarios**:
+
+1. **Given** a playing route, **When** the user runs `sonora pause routes/<route-id>`, **Then** the hub receives `{"paused": true}`, the route identifier, paused flag, status and a message are printed, and the exit status is `0`.
+2. **Given** an already-paused route, **When** the user runs `sonora pause routes/<route-id>` again, **Then** the command still succeeds, because the hub answers 200 with the current state.
+3. **Given** an unknown route identifier, **When** the user runs either verb, **Then** a "route not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
+
+---
+
+### User Story 43 - Stop many routes at once (Priority: P2)
+
+A person runs `sonora stop routes` to stop everything playing, or `sonora stop outputs/<id>` / `sonora stop groups/<id>` to stop what is playing on one speaker or group, and sees which routes were stopped.
+
+**Why this priority**: Controls the hub from the CLI; every read command works without it.
+
+**Independent Test**: Can be fully tested by: run the three forms against a mock hub, including a case where nothing was playing, and check the requests and the printed list.
+
+**Acceptance Scenarios**:
+
+1. **Given** playing routes, **When** the user runs `sonora stop routes`, **Then** the hub receives `DELETE /api/v2/routes`, the number of stopped routes and each stopped route (identifier, target type, target identifier, stop reason) are printed, and the exit status is `0`.
+2. **Given** nothing is playing, **When** the user runs `sonora stop routes`, **Then** a count of zero is printed with exit status `0`.
+3. **Given** an unknown output or group identifier, **When** the user runs `sonora stop outputs/<id>`, **Then** a "not found" message goes to standard error with exit status `5`.
+
+[Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -946,6 +1172,26 @@ target reflecting the group.
 - **FR-077**: On success the route command MUST display the resulting route's identifier and status exactly as the hub returned them, with a human-readable confirmation message, in both the default human-readable view and the `--json` view. [Source: .specify/archive/008-route-command/spec.md -> FR-005]
 - **FR-078**: The route command MUST fail with a clear, actionable error, distinguishable from every other failure type, for each of: a usage error, "input not found", "target not found", and "route creation failed". [Source: .specify/archive/008-route-command/spec.md -> FR-008]
 - **FR-079**: The route command's exit codes MUST be programmatically distinguishable across success (`0`), usage error (`2`), hub-reported error (`3`), connectivity error (`4`), validation error from a hub `400` (`6`), route creation failed (`8`), input not found (`11`) and target not found (`12`). [Source: .specify/archive/008-route-command/spec.md -> FR-010; .specify/archive/008-route-command/data-model.md -> "Exit Code Table"]
+- **FR-080**: The CLI MUST provide top-level `enable` and `disable` commands that take a resource path and set that resource's enabled state with one request, `PUT /api/v2/<resource>/{id}/enabled` carrying `{"enabled": true}` or `{"enabled": false}`. On success (200) the command prints the updated resource record, with the same fields and YAML/`--json` shapes as the matching `get` command, and exits `0`. This requirement covers `inputs/<input-id>`; FR-088 and FR-094 extend it to groups and outputs. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md]
+- **FR-081**: A 404 from an enable or disable request MUST be reported as "<resource> not found: <id>" (for inputs, "input not found") on standard error with the not-found exit code (`5`). A 400 MUST be reported with the hub's error detail, or a generic "the request was rejected as invalid" message when the hub gives none, with the validation exit code (`6`). Any other non-2xx, network or malformed-body failure keeps the generic classification (FR-009). Nothing is written to standard output on any failure. [Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md]
+- **FR-082**: `enable` and `disable` MUST fail with a usage error (exit `2`) when the identifier is missing, when extra arguments are given, or when the resource path names a kind that does not support enabling, without contacting the hub. [Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md]
+- **FR-083**: The CLI MUST provide `sonora delete routes/<route-id>` and `sonora stop routes/<route-id>`, which send `DELETE /api/v2/routes/{id}`; on success (204) they print the route identifier, status `stopped` and a message (YAML, or JSON with `--json`) and exit `0`. `stop routes/<route-id>` is an exact alias: same handler, output and exit codes. `stop` also has bulk forms (FR-098). Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md]
+- **FR-084**: A 404 from a route delete MUST be reported as "route not found: <id>" with exit `5`; a 422 MUST be reported with the hub's error detail, or a generic "route stop failed" message, with the route-failed exit code (`8`); other failures keep the generic classification. A missing route identifier, extra arguments, or a resource path that `delete` does not support MUST be a usage error (exit `2`) with no request. `delete` accepts `routes` here; FR-091 adds `inputs`, and FR-098 widens `stop`. [Source: .specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md]
+- **FR-085**: The CLI MUST provide `sonora transfer routes/<route-id> <outputs|groups>/<target-id>`, which sends `POST /api/v2/routes/{id}/transfer` with `{targetId, targetType}`. On success (200) it prints the new route's identifier, status and confirmation message, in the fields of FR-077 (YAML, or JSON with `--json`), and exits `0`. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md]
+- **FR-086**: The first argument MUST be a `routes/<id>` path (alias `rt`) and the second an `outputs/<id>` or `groups/<id>` path (aliases `out`, `gr`); any other kind, or a missing identifier in either, MUST be a usage error (exit `2`). Before the transfer request the target MUST be checked with the per-type existence request of FR-075; a missing target fails with exit `12`. [Source: .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md]
+- **FR-087**: A 404 from the transfer request MUST be reported as "route not found: <id>" with exit `5`; a 400 with the hub's error detail, or "route is not transferable", and exit `6`; a 422 with the hub's error detail, or "route transfer failed", and exit `8`. Other failures keep the generic classification, and nothing is written to standard output on a failure. [Source: .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md]
+- **FR-088**: `enable` and `disable` MUST also accept `groups/<group-id>` (alias `gr`), sending `PUT /api/v2/groups/{id}/enabled` as in FR-080 and printing the updated group record. A 404 is reported as "group not found: <id>" (exit `5`); the 400, other-failure and usage-error rules of FR-081 and FR-082 apply. The behaviour of `enable`/`disable` for the other supported kinds is unchanged. [Source: .specify/archive/tiny/2026-08-29-groups-enable-disable-command/groups-enable-disable-command.md]
+- **FR-089**: The CLI MUST provide `sonora set groups/<group-id> volume <n>`, which sends `PUT /api/v2/groups/{id}/volume` with `{"volume": n}` and on success (200) prints the group identifier, volume and update time (YAML, or JSON with `--json`) and exits `0`. `<n>` MUST be an integer from 0 to 100; anything else, including a negative integer (read as a value rather than a flag), is a usage error (exit `2`) with no request. A 404 is reported as "group not found: <id>" (exit `5`) and a 400 with the hub's detail (exit `6`). A missing id, a missing or misspelled `volume` word, a missing value or extra arguments is a usage error. `set` accepts `groups` and `outputs` (FR-096); `inputs` and `routes` stay usage errors. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-groups-set-volume-command/groups-set-volume-command.md]
+- **FR-090**: The CLI MUST provide `sonora create inputs/<input-id> <uri> --display-name <name> [--auto-remove] [--disabled]`, which sends `POST /api/v2/inputs` with the identifier, URI, display name, `autoRemove` (default false) and `enabled` (false only with `--disabled`). On success (201) it prints the created input record and exits `0`. `--display-name` is required; a missing display name, identifier or URI, extra arguments, or a resource path that is not `inputs/<id>` is a usage error (exit `2`). A 409 (duplicate identifier) is reported with the hub's detail and the hub-error exit code (`3`); a 400 with the hub's detail and exit `6`. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md]
+- **FR-091**: `delete` MUST also accept `inputs/<input-id>`, sending `DELETE /api/v2/inputs/{id}`; on success (204) it prints the input identifier, a status and a message (the shape of FR-083) and exits `0`. A 404 is reported as "input not found: <id>" (exit `5`); a 400, for example a static input that cannot be deleted, with the hub's detail (exit `6`). `delete routes/<id>` is unchanged. `delete` given `outputs` or `groups` stays a usage error. [Source: .specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md]
+- **FR-092**: The CLI MUST provide `sonora get master-mute`, which sends `GET /api/v2/master-mute` and on success prints the muted state (YAML, or JSON with `--json`) and exits `0`. Master mute has no identifier and no collection: `get master-mute/<anything>`, `list master-mute` and any extra argument are usage errors (exit `2`). Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md]
+- **FR-093**: The CLI MUST provide `sonora mute all` and `sonora unmute all`, which send `PUT /api/v2/master-mute` with `{"muted": true}` or `{"muted": false}` and print the updated state. The hub documents no 404 or 400 for either operation, so a non-2xx status or malformed body is a generic hub error (exit `3`) and a network failure is exit `4`; nothing is written to standard output on a failure. `master-mute` and `all` are literal keywords, not resource kinds, and take no further argument. [Source: .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md]
+- **FR-094**: `enable` and `disable` MUST also accept `outputs/<output-id>` (alias `out`), sending `PUT /api/v2/outputs/{id}/enabled` as in FR-080 and printing the updated output record. A 404 is reported as "output not found: <id>" (exit `5`); the 400, other-failure and usage-error rules of FR-081 and FR-082 apply. `enable`/`disable` given a kind that is not `inputs`, `outputs` or `groups` is a usage error. [Source: .specify/archive/tiny/2026-08-29-outputs-enable-disable-command/outputs-enable-disable-command.md]
+- **FR-095**: The CLI MUST provide `sonora mute` and `sonora unmute` for `outputs/<output-id>` and `groups/<group-id>`, sending `PUT /api/v2/{outputs|groups}/{id}/mute` with `{"muted": true}` or `{"muted": false}`. On success (200) they print the updated output or group record (YAML, or JSON with `--json`) and exit `0`. A 404 is reported as "output not found" or "group not found" (exit `5`) and a 400 with the hub's detail (exit `6`); a missing identifier or extra arguments is a usage error (exit `2`). `mute`/`unmute` given any kind other than `outputs` and `groups` (for example `inputs` or `routes`), other than the literal `all` of FR-093, is a usage error. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-outputs-groups-mute-command/outputs-groups-mute-command.md]
+- **FR-096**: The CLI MUST provide a top-level `set` verb of the form `set <resource>/<id> <attribute> <value>`, of which `volume` is the only attribute. `sonora set outputs/<output-id> volume <n>` sends `PUT /api/v2/outputs/{id}/volume` with `{"volume": n}` and prints the output identifier, volume and update time; the value range, error mapping ("output not found", exit `5`; 400, exit `6`) and usage errors are those of FR-089. `set` given a kind other than `outputs` or `groups`, or an attribute other than `volume`, is a usage error. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md]
+- **FR-097**: The CLI MUST provide `sonora pause routes/<route-id>` and `sonora resume routes/<route-id>`, which send `PUT /api/v2/routes/{id}/pause` with `{"paused": true}` or `{"paused": false}`. On success (200) they print the route identifier, paused flag, status and a message (YAML, or JSON with `--json`) and exit `0`. Pausing a paused route or resuming an active one is a success, since the hub is idempotent; the CLI reads no state first. A 404 is reported as "route not found: <id>" (exit `5`); a 400 (route not active, input not pausable, other validation) with the hub's detail (exit `6`). Only `routes/<id>` (alias `rt`) is accepted; any other kind or a missing identifier is a usage error with no request. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
+- **FR-098**: The CLI MUST provide three bulk stop forms: bare `sonora stop routes` (`DELETE /api/v2/routes`, every route), `sonora stop outputs/<output-id>` (`DELETE /api/v2/outputs/{id}/routes`) and `sonora stop groups/<group-id>` (`DELETE /api/v2/groups/{id}/routes`). On success (200) each prints the stopped count and the stopped routes, each with its identifier, target type, target identifier and nullable stop reason (YAML, or JSON with `--json`), and exits `0`, including when none was stopped. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
+- **FR-099**: A 404 for an output or group MUST be reported as "output not found" or "group not found" (exit `5`); the system-wide form has no documented 404. `sonora stop routes/<route-id>` is unchanged: it is still the alias of FR-083. Extra arguments, `stop outputs` or `stop groups` without an identifier, and `stop inputs/<id>` are usage errors (exit `2`), so `stop` is no longer limited to routes. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 
 ### Key Entities
 
@@ -1035,6 +1281,10 @@ target reflecting the group.
 - **Routing Request**: A one-shot instruction to connect an existing input (`inputs/<input-id>`) to a target output or output group (`outputs/<target-id>` or `groups/<target-id>`). The command checks that the input and the target exist, then sends the request as one `POST /api/v2/routes` call. [Source: .specify/archive/008-route-command/spec.md -> "Routing Request"; .specify/archive/008-route-command/data-model.md -> "CreateRouteRequest"]
 - **Routing Result**: The outcome of a routing request: the identifier and status of the route the hub created, and the confirmation message the CLI builds around them. [Source: .specify/archive/008-route-command/data-model.md -> "RoutingResult"]
 
+- **Master Mute State**: Whether the whole system is muted: a single boolean, `muted`. There is one of it, with no identifier and no collection. [Source: .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md]
+
+- **Bulk Stop Result**: The outcome of a bulk stop: the number of routes stopped and, for each, its route identifier, target type, target identifier and an optional stop reason. The list is empty when nothing was playing. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -1120,6 +1370,7 @@ target reflecting the group.
 - **AS-017**: The hub API and its response shapes are unchanged by the refactor; it is a CLI-surface-only change.
   [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "The underlying hub API and response shapes are unchanged"]
 - **AS-018**: The route command accepts no starting volume or display-name option. Those apply only to the ephemeral input `play` creates; an existing input's name and settings are managed elsewhere. [Source: .specify/archive/008-route-command/spec.md -> "This command does not accept a starting volume or a display-name option"]
-- **AS-019**: Stopping, pausing, transferring, or otherwise managing the route the route command creates is out of scope; the command covers only creating the route, mirroring AS-010. [Source: .specify/archive/008-route-command/spec.md -> "Stopping, pausing, or otherwise managing the resulting route"]
+- **AS-019**: Stopping, pausing, transferring, or otherwise managing the route the route command creates is out of scope; the command covers only creating the route, mirroring AS-010. The route command's own scope is unchanged; stopping, pausing and transferring are separate commands (FR-083, FR-085, FR-097, FR-098). [Source: .specify/archive/008-route-command/spec.md -> "Stopping, pausing, or otherwise managing the resulting route"; .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 - **AS-020**: Whether an input can be routed to more than one target at once, or whether routing an already-routed input to the same target succeeds, is decided by the hub; the CLI applies no client-side restriction and surfaces the outcome the hub reports. [Source: .specify/archive/008-route-command/spec.md -> "Whether a given input can be routed to more than one target at once"]
 - **AS-021**: Output and group identifiers may collide; the target's path prefix decides which one is meant, so the route command needs no disambiguation flag. [Source: .specify/archive/008-route-command/spec.md -> "Output identifiers and group identifiers may occasionally collide"]
+- **AS-022**: Each mutating command (`enable`, `disable`, `delete`, `stop`, `create`, `transfer`, `set`, `mute`, `unmute`, `pause`, `resume`) sends one request and reports the hub's result. It does not ask for confirmation and does not read the current state first, so repeating a command is whatever the hub makes of it. [Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md; .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]

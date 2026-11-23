@@ -51,6 +51,7 @@ Contains specs for features currently in development that have not yet been arch
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
 **Not yet archived:** `009-tts-commands` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Archived tinyspecs** live in `.specify/archive/tiny/<date>-<name>/`, indexed by folder name; check there before concluding a small change has no spec.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
 Distilled, up-to-date specs summarising the current understanding of each feature or domain.

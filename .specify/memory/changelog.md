@@ -2,6 +2,78 @@
 
 ## Merged Features Log
 
+### Bulk Stop Routes (`stop routes`, `stop outputs/<id>`, `stop groups/<id>`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md
+**Implemented:** 2026-09-09
+
+Adds bulk stop: `sonora stop routes`, `sonora stop outputs/<id>` and `sonora stop groups/<id>`; `stop` is no longer a routes-only alias. (User Story 43, FR-098–FR-099.)
+
+### Pause and Resume a Route (`pause`, `resume`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md
+**Implemented:** 2026-08-29
+
+Adds `sonora pause routes/<id>` and `sonora resume routes/<id>` (`PUT /api/v2/routes/{id}/pause`). (User Story 42, FR-097.)
+
+### Set Output Volume (`set outputs/<id> volume`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md
+**Implemented:** 2026-08-29
+
+Adds the `set` verb and `sonora set outputs/<output-id> volume <0-100>` (`PUT /api/v2/outputs/{id}/volume`). (User Story 41, FR-096.)
+
+### Mute and Unmute Outputs and Groups (`mute`, `unmute`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-outputs-groups-mute-command/outputs-groups-mute-command.md
+**Implemented:** 2026-08-29
+
+Adds `sonora mute` / `sonora unmute` for `outputs/<id>` and `groups/<id>` (`PUT /api/v2/{outputs|groups}/{id}/mute`). (User Story 40, FR-095.)
+
+### Enable and Disable Outputs — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-outputs-enable-disable-command/outputs-enable-disable-command.md
+**Implemented:** 2026-08-29
+
+Extends `enable`/`disable` to `outputs/<id>` (`PUT /api/v2/outputs/{id}/enabled`). (User Story 39, FR-094.)
+
+### Master Mute (`get master-mute`, `mute all`, `unmute all`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md
+**Implemented:** 2026-08-29
+
+Adds the system-wide master mute: `sonora get master-mute`, `sonora mute all` and `sonora unmute all` (`GET`/`PUT /api/v2/master-mute`). (User Story 38, FR-092–FR-093.)
+
+### Create and Delete Inputs — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md
+**Implemented:** 2026-08-29
+
+Adds `sonora create inputs/<id> <uri> --display-name <name>` (`POST /api/v2/inputs`) and extends `delete` to `inputs/<id>` (`DELETE /api/v2/inputs/{id}`). (User Story 37, FR-090–FR-091.)
+
+### Set Group Volume (`set groups/<id> volume`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-groups-set-volume-command/groups-set-volume-command.md
+**Implemented:** 2026-08-29
+
+Adds `sonora set groups/<group-id> volume <0-100>` (`PUT /api/v2/groups/{id}/volume`). (User Story 36, FR-089.)
+
+### Enable and Disable Output Groups — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-29-groups-enable-disable-command/groups-enable-disable-command.md
+**Implemented:** 2026-08-29
+
+Extends `enable`/`disable` to `groups/<id>` (`PUT /api/v2/groups/{id}/enabled`). (User Story 35, FR-088.)
+
+### Transfer a Route (`transfer`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md
+**Implemented:** 2026-08-28
+
+Adds `sonora transfer routes/<id> <outputs|groups>/<target-id>` (`POST /api/v2/routes/{id}/transfer`), moving a playing route to a new target and printing the new route. (User Story 34, FR-085–FR-087.)
+
+### Delete or Stop a Route (`delete routes`, `stop routes/<id>`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md
+**Implemented:** 2026-08-28
+
+Adds `sonora delete routes/<id>` and its exact alias `sonora stop routes/<id>` (`DELETE /api/v2/routes/{id}`), stopping playback and removing the route. (User Story 33, FR-083–FR-084.)
+
+### Enable and Disable Inputs (`enable`, `disable`) — archived 2026-11-23
+**Tinyspec:** .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md
+**Implemented:** 2026-08-28
+
+Adds `sonora enable inputs/<id>` and `sonora disable inputs/<id>` (`PUT /api/v2/inputs/{id}/enabled`), printing the updated input record. (User Story 32, FR-080–FR-082.)
+
 ### Route an Existing Input (`route`) — archived 2026-11-23
 **Branch:** 008-route-command
 **Spec:** [.specify/archive/008-route-command/spec.md](../archive/008-route-command/spec.md)
