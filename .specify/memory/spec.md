@@ -17,543 +17,38 @@
 
 ## User Scenarios & Testing
 
-### User Story 1 - View currently active outputs (Priority: P1)
-
-A person operating the audio system wants to see which speakers/zones are currently
-available and controllable, along with their volume and mute state, so they know what
-they can act on next (e.g. before adjusting volume or routing audio somewhere).
-
-**Why this priority**: This is the baseline read operation. Without it, a user has no way
-to discover output identifiers or current state before issuing any other command — it is
-the entry point to every other interaction with outputs.
-
-**Independent Test**: Can be fully tested by running the list command against a hub with
-one or more enabled outputs and verifying each enabled output's identifier, display name,
-volume, mute state, and availability are shown, and disabled outputs are omitted.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has two enabled outputs and one disabled output, **When** the user
-   runs the list command with no flags, **Then** only the two enabled outputs are
-   displayed, each showing its identifier, display name, volume, mute state, and
-   availability.
-2. **Given** the hub has zero enabled outputs, **When** the user runs the list command,
-   **Then** the user sees a clear indication that no outputs are available rather than an
-   empty or ambiguous response.
-
-[Source: .specify/archive/001-list-outputs/spec.md -> User Story 1]
-
----
-
-### User Story 2 - Include disabled outputs (Priority: P2)
-
-A person managing the audio system (e.g. diagnosing why a speaker isn't selectable) wants
-to see outputs that exist but are currently disabled, so they can distinguish "not
-available for routing" from "doesn't exist."
-
-**Why this priority**: Secondary to the default view, but necessary for troubleshooting
-and administration; it reuses the same read path with one additional option.
-
-**Independent Test**: Can be fully tested by running the list command with the
-include-disabled option against a hub with at least one disabled output and verifying it
-appears in the results, distinguishable from enabled outputs.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has one enabled and one disabled output, **When** the user runs the
-   list command with the option to include disabled outputs, **Then** both outputs are
-   displayed and each output's enabled/disabled state is visible in the result.
-
-[Source: .specify/archive/001-list-outputs/spec.md -> User Story 2]
-
----
-
-### User Story 3 - Consume output list from a script (Priority: P3)
-
-An automation or script wants to retrieve the current outputs in a strict, parseable
-format so it can act on the data programmatically (e.g. feed it into another tool).
-
-**Why this priority**: Enables automation use cases but is not required for a human
-operator to get value from the command; it is an alternate presentation of the same data
-as User Story 1.
-
-**Independent Test**: Can be fully tested by running the list command with the
-machine-readable output option and verifying the result is strictly parseable and contains
-the same fields available in the human-readable view.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has at least one enabled output, **When** the user runs the list
-   command requesting machine-readable output, **Then** the result is valid, strictly
-   parseable structured data containing every output's identifier, display name, volume,
-   mute state, availability, and enabled state.
-
-[Source: .specify/archive/001-list-outputs/spec.md -> User Story 3]
-
----
-
-### User Story 4 - Look up a specific output by identifier (Priority: P1)
-
-A person operating the audio system already knows (e.g. from `outputs list`) the
-identifier of a specific output and wants to see its full current state — display name,
-volume, mute state, availability, and enabled state — without scanning the full list.
-
-**Why this priority**: This is the sole purpose of the command; without it the feature
-delivers no value. It is the direct single-item counterpart to `outputs list`.
-
-**Independent Test**: Can be fully tested by running the get command with the identifier
-of an output known to exist on the hub and verifying the identifier, display name,
-volume, mute state, availability, and enabled state are all shown correctly.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has an enabled output with a known identifier, **When** the user runs
-   the get command with that identifier, **Then** the command displays that output's
-   identifier, display name, volume, mute state, availability, and enabled state.
-2. **Given** the hub has a disabled output with a known identifier, **When** the user runs
-   the get command with that identifier, **Then** the command still displays the output
-   (unlike the list command's default filtering) with its disabled state clearly shown.
-
-[Source: .specify/archive/002-outputs-get/spec.md -> User Story 1]
-
----
-
-### User Story 5 - Handle a nonexistent output identifier (Priority: P2)
-
-A person mistypes an output identifier, or refers to one that has since been removed,
-and needs to know clearly that it doesn't exist rather than receiving a confusing error
-or empty output.
-
-**Why this priority**: Essential for usability once the primary lookup path works, but
-secondary to the happy path — the command must be usable correctly before edge cases
-matter.
-
-**Independent Test**: Can be fully tested by running the get command with an identifier
-that does not exist on the hub and verifying the user sees a clear "not found" message
-and a distinct exit status.
-
-**Acceptance Scenarios**:
-
-1. **Given** no output with the given identifier exists on the hub, **When** the user
-   runs the get command with that identifier, **Then** the user sees a clear "output not
-   found" message rather than an empty or ambiguous result.
-
-[Source: .specify/archive/002-outputs-get/spec.md -> User Story 2]
-
----
-
-### User Story 6 - Consume a single output's state from a script (Priority: P3)
-
-An automation or script wants to retrieve one output's current state in a strict,
-parseable format so it can act on the data programmatically (e.g. check volume before
-deciding whether to adjust it).
-
-**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
-but is not required for a human operator to get value from the command; it is an
-alternate presentation of the same data as User Story 4.
-
-**Independent Test**: Can be fully tested by running the get command with the
-machine-readable output option against a known output identifier and verifying the
-result is strictly parseable and contains the same fields available in the
-human-readable view.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has an output with a known identifier, **When** the user runs the
-   get command with that identifier requesting machine-readable output, **Then** the
-   result is valid, strictly parseable structured data containing the output's
-   identifier, display name, volume, mute state, availability, and enabled state.
-
-[Source: .specify/archive/002-outputs-get/spec.md -> User Story 3]
-
----
-
-### User Story 7 - View currently active inputs (Priority: P1)
-
-A person operating the audio system wants to see which audio inputs (e.g. streaming
-sources, ephemeral playback sessions) are currently registered and usable, so they know
-what they can route to an output next.
-
-**Why this priority**: This is the baseline read operation for inputs — without it, a
-user has no way to discover input identifiers before issuing any other command involving
-an input (e.g. creating a route).
-
-**Independent Test**: Can be fully tested by running the list command against a hub with
-one or more enabled inputs and verifying each enabled input's identifier, display name,
-source URI, enabled state, and source type are shown, and disabled inputs are omitted.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has two enabled inputs and one disabled input, **When** the user runs
-   the list command with no flags, **Then** only the two enabled inputs are displayed,
-   each showing its identifier, display name, source URI, source type, and enabled state.
-2. **Given** the hub has zero enabled inputs, **When** the user runs the list command,
-   **Then** the user sees a clear indication that no inputs are available rather than an
-   empty or ambiguous response.
-
-[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 1]
-
----
-
-### User Story 8 - Look up a specific input by identifier (Priority: P1)
-
-A person who already knows an input's identifier (e.g. from `inputs list`) wants to see
-its full current state without scanning the full list.
-
-**Why this priority**: This is the sole purpose of the get command and the direct
-single-item counterpart to `inputs list`; both are equally core to enabling later
-route-management commands.
-
-**Independent Test**: Can be fully tested by running the get command with the identifier
-of an input known to exist on the hub and verifying the identifier, display name, source
-URI, enabled state, source type, and other attributes are all shown correctly.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has an enabled input with a known identifier, **When** the user runs
-   the get command with that identifier, **Then** the command displays that input's
-   identifier, display name, source URI, enabled state, source type, and remaining
-   attributes.
-2. **Given** the hub has a disabled input with a known identifier, **When** the user runs
-   the get command with that identifier, **Then** the command still displays the input
-   (unlike the list command's default filtering) with its disabled state clearly shown.
-
-[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 2]
-
----
-
-### User Story 9 - Include disabled inputs in the list (Priority: P2)
-
-A person managing the audio system wants to see inputs that exist but are currently
-disabled, so they can distinguish "not currently usable" from "doesn't exist."
-
-**Why this priority**: Secondary to the default view, but necessary for troubleshooting
-and administration; it reuses the same read path with one additional option.
-
-**Independent Test**: Can be fully tested by running the list command with the
-include-disabled option against a hub with at least one disabled input and verifying it
-appears in the results, distinguishable from enabled inputs.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has one enabled and one disabled input, **When** the user runs the
-   list command with the option to include disabled inputs, **Then** both inputs are
-   displayed and each input's enabled/disabled state is visible in the result.
-
-[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 3]
-
----
-
-### User Story 10 - Handle a nonexistent input identifier (Priority: P2)
-
-A person mistypes an input identifier, or refers to an ephemeral input that has since
-been removed, and needs to know clearly that it doesn't exist rather than receiving a
-confusing error or empty output.
-
-**Why this priority**: Essential for usability once the primary lookup path works, but
-secondary to the happy path.
-
-**Independent Test**: Can be fully tested by running the get command with an identifier
-that does not exist on the hub and verifying the user sees a clear "not found" message
-and a distinct exit status.
-
-**Acceptance Scenarios**:
-
-1. **Given** no input with the given identifier exists on the hub, **When** the user runs
-   the get command with that identifier, **Then** the user sees a clear "input not found"
-   message rather than an empty or ambiguous result.
-
-[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 4]
-
----
-
-### User Story 11 - Consume input data from a script (Priority: P3)
-
-An automation or script wants to retrieve the current inputs, or a single input's state,
-in a strict, parseable format so it can act on the data programmatically.
-
-**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
-but is not required for a human operator to get value from either command; it is an
-alternate presentation of the same data as User Stories 7 and 8.
-
-**Independent Test**: Can be fully tested by running each command with the
-machine-readable output option and verifying the result is strictly parseable and
-contains the same fields available in the human-readable view.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has at least one enabled input, **When** the user runs the list
-   command requesting machine-readable output, **Then** the result is valid, strictly
-   parseable structured data containing every input's identifier, display name, source
-   URI, enabled state, source type, and remaining attributes.
-2. **Given** the hub has an input with a known identifier, **When** the user runs the get
-   command with that identifier requesting machine-readable output, **Then** the result is
-   valid, strictly parseable structured data containing that input's full attribute set.
-
-[Source: .specify/archive/003-inputs-list-get/spec.md -> User Story 5]
-
----
-
-### User Story 12 - View currently active routes (Priority: P1)
-
-A person operating the audio system wants to see which audio routes currently exist —
-each connecting a specific input to a specific output or output group — along with each
-route's status, so they know what audio is currently flowing where.
-
-**Why this priority**: This is the baseline read operation for routes — without it, a
-user has no way to discover route identifiers or see the current routing state before
-issuing any other command involving a route (e.g. transferring or stopping one).
-
-**Independent Test**: Can be fully tested by running the list command against a hub with
-one or more routes and verifying each route's identifier, source input identifier, target
-identifier, target type, and status are shown.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has two active routes, **When** the user runs the list command with
-   no flags, **Then** both routes are displayed, each showing its identifier, source
-   input identifier, target identifier, target type, and status.
-2. **Given** the hub has zero routes, **When** the user runs the list command, **Then**
-   the user sees a clear indication that no routes are currently active rather than an
-   empty or ambiguous response.
-
-[Source: .specify/archive/004-routes-list-get/spec.md -> User Story 1]
-
----
-
-### User Story 13 - Look up a specific route by identifier (Priority: P1)
-
-A person who already knows a route's identifier (e.g. from `routes list`) wants to see
-its full current state without scanning the full list.
-
-**Why this priority**: This is the sole purpose of the get command and the direct
-single-item counterpart to `routes list`; both are equally core to giving a user visibility
-into the routing state of the system.
-
-**Independent Test**: Can be fully tested by running the get command with the identifier
-of a route known to exist on the hub and verifying the identifier, source input
-identifier, target identifier, target type, status, and remaining attributes are all
-shown correctly.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has a route with a known identifier, **When** the user runs the get
-   command with that identifier, **Then** the command displays that route's identifier,
-   source input identifier, target identifier, target type, status, creation timestamp,
-   playback-started timestamp (or an explicit indication that playback has not started),
-   whether it can be transferred, whether it supports pause/resume, and whether it is
-   currently paused.
-
-[Source: .specify/archive/004-routes-list-get/spec.md -> User Story 2]
-
----
-
-### User Story 14 - Narrow the route list by status, input, or target (Priority: P2)
-
-A person managing the audio system wants to see only the routes relevant to a specific
-input, a specific output/group, or a specific lifecycle status (e.g. only `FAILED`
-routes), so they can focus on the subset they care about without scanning the full list.
-
-**Why this priority**: Secondary to the default view, but valuable for troubleshooting
-and for scripts that only care about one input or target; it reuses the same read path
-with additional optional filters.
-
-**Independent Test**: Can be fully tested by running the list command with each filter
-option in turn against a hub with routes in different states, sourced from different
-inputs, and pointed at different targets, and verifying only the matching routes are
-returned.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has routes with different statuses, **When** the user runs the list
-   command filtered to a specific status, **Then** only routes with that status are
-   displayed.
-2. **Given** the hub has routes from different source inputs, **When** the user runs the
-   list command filtered to a specific input identifier, **Then** only routes originating
-   from that input are displayed.
-3. **Given** the hub has routes to different targets, **When** the user runs the list
-   command filtered to a specific target identifier, **Then** only routes to that target
-   are displayed.
-4. **Given** the user supplies more than one filter at once, **When** the user runs the
-   list command, **Then** only routes matching all supplied filters are displayed.
-
-[Source: .specify/archive/004-routes-list-get/spec.md -> User Story 3]
-
----
-
-### User Story 15 - Handle a nonexistent route identifier (Priority: P2)
-
-A person mistypes a route identifier, or refers to a route that has since stopped and
-been removed, and needs to know clearly that it doesn't exist rather than receiving a
-confusing error or empty output.
-
-**Why this priority**: Essential for usability once the primary lookup path works, but
-secondary to the happy path.
-
-**Independent Test**: Can be fully tested by running the get command with an identifier
-that does not exist on the hub and verifying the user sees a clear "not found" message
-and a distinct exit status.
-
-**Acceptance Scenarios**:
-
-1. **Given** no route with the given identifier exists on the hub, **When** the user runs
-   the get command with that identifier, **Then** the user sees a clear "route not found"
-   message rather than an empty or ambiguous result.
-
-[Source: .specify/archive/004-routes-list-get/spec.md -> User Story 4]
-
----
-
-### User Story 16 - Consume route data from a script (Priority: P3)
-
-An automation or script wants to retrieve the current routes, or a single route's state,
-in a strict, parseable format so it can act on the data programmatically (e.g. detect
-`FAILED` routes and alert on them).
-
-**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
-but is not required for a human operator to get value from either command; it is an
-alternate presentation of the same data as User Stories 12 and 13.
-
-**Independent Test**: Can be fully tested by running each command with the
-machine-readable output option and verifying the result is strictly parseable and
-contains the same fields available in the human-readable view.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has at least one route, **When** the user runs the list command
-   requesting machine-readable output, **Then** the result is valid, strictly parseable
-   structured data containing every route's full attribute set.
-2. **Given** the hub has a route with a known identifier, **When** the user runs the get
-   command with that identifier requesting machine-readable output, **Then** the result is
-   valid, strictly parseable structured data containing that route's full attribute set.
-
-[Source: .specify/archive/004-routes-list-get/spec.md -> User Story 5]
-
----
-
-### User Story 17 - View currently enabled output groups (Priority: P1)
-
-A person operating the audio system wants to see which output groups currently exist —
-each a named collection of outputs that can be routed to as a single target — along with
-each group's member outputs and mute state, so they know what groups are available for
-routing.
-
-**Why this priority**: This is the baseline read operation for groups — without it, a
-user has no way to discover group identifiers or see which outputs belong to a group
-before issuing any command that routes audio to a group.
-
-**Independent Test**: Can be fully tested by running the list command against a hub with
-one or more enabled groups and verifying each group's identifier, display name, member
-output identifiers, and mute state are shown, and disabled groups are omitted.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has two enabled groups and one disabled group, **When** the user runs
-   the list command with no flags, **Then** only the two enabled groups are displayed,
-   each showing its identifier, display name, member output identifiers, and mute state.
-2. **Given** the hub has zero enabled groups, **When** the user runs the list command,
-   **Then** the user sees a clear indication that no groups are currently available rather
-   than an empty or ambiguous response.
-
-[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 1]
-
----
-
-### User Story 18 - Include disabled groups (Priority: P2)
-
-A person managing the audio system wants to see groups that exist but are currently
-disabled, so they can distinguish "not available for new routes" from "does not exist"
-when troubleshooting.
-
-**Why this priority**: Secondary to the default view; needed for full visibility into the
-system but not required for the common case of routing to an available group.
-
-**Independent Test**: Can be fully tested by running the list command with the
-include-disabled option against a hub with at least one disabled group and verifying it
-appears in the results, distinguishable from enabled groups.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has one enabled and one disabled group, **When** the user runs the
-   list command with the option to include disabled groups, **Then** both groups are
-   displayed and each group's enabled/disabled state is visible in the result.
-
-[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 2]
-
----
-
-### User Story 19 - Look up a specific group by identifier (Priority: P1)
-
-A person who already knows a group's identifier (e.g. from `groups list`) wants to see
-its full current state without scanning the full list.
-
-**Why this priority**: This is the sole purpose of the get command and the direct
-single-item counterpart to `groups list`; both are equally core to giving a user
-visibility into the groups available for routing.
-
-**Independent Test**: Can be fully tested by running the get command with the identifier
-of a group known to exist on the hub, whether enabled or disabled, and verifying the
-identifier, display name, member output identifiers, mute state, and enabled state are
-all shown correctly.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has a group with a known identifier, **When** the user runs the get
-   command with that identifier, **Then** the command displays that group's identifier,
-   display name, member output identifiers, mute state, and enabled state — regardless of
-   whether the group is currently enabled or disabled.
-
-[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 3]
-
----
-
-### User Story 20 - Handle a nonexistent group identifier (Priority: P2)
-
-A person mistypes a group identifier, or refers to a group that has since been removed,
-and needs to know clearly that it doesn't exist rather than receiving a confusing error or
-empty output.
-
-**Why this priority**: Essential for usability once the primary lookup path works, but
-secondary to the happy path.
-
-**Independent Test**: Can be fully tested by running the get command with an identifier
-that does not exist on the hub and verifying the user sees a clear "not found" message and
-a distinct exit status.
-
-**Acceptance Scenarios**:
-
-1. **Given** no group with the given identifier exists on the hub, **When** the user runs
-   the get command with that identifier, **Then** the user sees a clear "group not found"
-   message rather than an empty or ambiguous result.
-
-[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 4]
-
----
-
-### User Story 21 - Consume group data from a script (Priority: P3)
-
-An automation or script wants to retrieve the current groups, or a single group's state,
-in a strict, parseable format so it can act on the data programmatically (e.g. pick a
-group's member outputs before issuing a route command).
-
-**Why this priority**: Enables automation use cases consistent with the rest of the CLI,
-but is not required for a human operator to get value from either command; it is an
-alternate presentation of the same data as User Stories 17 and 19.
-
-**Independent Test**: Can be fully tested by running each command with the
-machine-readable output option and verifying the result is strictly parseable and contains
-the same fields available in the human-readable view.
-
-**Acceptance Scenarios**:
-
-1. **Given** the hub has at least one group, **When** the user runs the list command
-   requesting machine-readable output, **Then** the result is valid, strictly parseable
-   structured data containing every group's full attribute set.
-2. **Given** the hub has a group with a known identifier, **When** the user runs the get
-   command with that identifier requesting machine-readable output, **Then** the result is
-   valid, strictly parseable structured data containing that group's full attribute set.
-
-[Source: .specify/archive/005-groups-list-get/spec.md -> User Story 5]
+### User Stories 1–21 - Read outputs, inputs, routes and groups (Priority: P1–P3)
+
+A person operating the audio system, or a script acting for them, reads the hub's
+state with the same five operations on each of four resources. The grammar is the
+verb-first one of User Story 27 (`sonora list <resource>`, `sonora get <resource>/<id>`);
+the stories below were written against the retired noun-verb form (`outputs list`).
+
+**Operations** (the same for every resource):
+
+| Operation | Priority | Acceptance |
+|---|---|---|
+| List | P1 | **Given** enabled and disabled records exist, **When** the user lists, **Then** only the enabled ones are shown, each with the fields in the table below. With none, the user sees a clear "no \<resource\>" indication, never an empty or ambiguous response. |
+| Include disabled | P2 | **When** the user lists with the include-disabled option, **Then** disabled records appear too and each record's enabled state is visible. (Outputs, inputs and groups; routes have no enabled state.) |
+| Get one | P1 | **Given** a known identifier, **When** the user gets it, **Then** the record's full state is shown whether it is enabled or disabled (unlike the list's default filtering). |
+| Not found | P2 | **Given** an unknown identifier, **When** the user gets it, **Then** a clear "\<resource\> not found" message appears, distinguishable from an empty result or a crash. |
+| Machine-readable | P3 | **When** the user lists or gets with `--json`, **Then** the result is strictly parseable and carries the full attribute set of the human view. |
+
+**Per resource**:
+
+| Resource | User Stories | Fields shown | Extra |
+|---|---|---|---|
+| Outputs | 1–6 | identifier, display name, volume, mute state, availability, enabled state | A disconnected but enabled output is visibly distinguishable (see the edge cases). Source: 001-list-outputs, 002-outputs-get. |
+| Inputs | 7–11 | identifier, display name, source URI, source type, enabled state, remaining attributes | Source: 003-inputs-list-get. |
+| Routes | 12–16 | identifier, source input, target identifier, target type, status; get adds creation and playback-started timestamps (or an explicit "not started"), whether it can be transferred, whether it supports pause/resume and whether it is paused | List narrows by `--status`, `--input-id` and `--target-id`; several filters combine as AND (User Story 14). Source: 004-routes-list-get. |
+| Groups | 17–21 | identifier, display name, member output identifiers, mute state, enabled state | Get shows a group whether enabled or disabled. Source: 005-groups-list-get. |
+
+The story numbers are kept so the changelog and the archive still match: Outputs 1 list, 2 include
+disabled, 3 `--json`, 4 get, 5 not found, 6 get `--json`; Inputs 7 list, 8 get, 9 include disabled,
+10 not found, 11 `--json`; Routes 12 list, 13 get, 14 filters, 15 not found, 16 `--json`; Groups
+17 list, 18 include disabled, 19 get, 20 not found, 21 `--json`.
+
+[Source: .specify/archive/{001-list-outputs: User Story 1–3; 002-outputs-get: User Story 1–3; 003-inputs-list-get: User Story 1–5; 004-routes-list-get: User Story 1–5; 005-groups-list-get: User Story 1–5}/spec.md]
 
 ---
 
@@ -562,16 +57,6 @@ the same fields available in the human-readable view.
 A person operating the audio system wants to play an audio source (a stream URL, a
 YouTube/SoundCloud link, etc.) directly to one speaker without first creating an input and
 a route as two separate steps.
-
-**Why this priority**: This is the core value of the feature — instant playback in one
-command — and is called out in the API description as core functionality. Without it,
-users must fall back to separate input-creation and route-creation steps that don't yet
-exist as CLI commands.
-
-**Independent Test**: Can be fully tested by running the play command with a valid URI and
-the identifier of a single existing output, then verifying the command immediately reports
-a created input identifier and the route's identifier and status exactly as returned by
-the hub, without waiting for the route to reach a further state.
 
 **Acceptance Scenarios**:
 
@@ -592,14 +77,6 @@ the hub, without waiting for the route to reach a further state.
 A person wants to play one audio source to a group of outputs at once (e.g. "whole
 house") rather than a single speaker.
 
-**Why this priority**: Groups are a first-class routing target already supported by
-`groups list`/`groups get`; playback should work the same way against a group as against a
-single output, but this is secondary to the single-output happy path.
-
-**Independent Test**: Can be fully tested by running the play command with a valid URI and
-the identifier of an existing output group, and verifying the same success output as User
-Story 1, with the route's target reflecting the group.
-
 **Acceptance Scenarios**:
 
 1. **Given** a reachable audio URI and the identifier of an existing output group,
@@ -615,13 +92,6 @@ Story 1, with the route's target reflecting the group.
 
 A person wants playback to start at a specific volume rather than whatever level the
 target output or group was last left at.
-
-**Why this priority**: A convenience on top of the core playback flow; playback is fully
-usable without it since the target's existing volume applies by default.
-
-**Independent Test**: Can be fully tested by running the play command with a volume option
-set to a valid level and verifying the response confirms the requested volume was applied
-before playback started.
 
 **Acceptance Scenarios**:
 
@@ -642,12 +112,6 @@ A person wants the ephemeral input created for this playback to have a recogniza
 (e.g. "Kitchen Radio") instead of an auto-generated identifier, so it's easy to recognize
 later in `inputs list`.
 
-**Why this priority**: Cosmetic convenience; playback functions correctly with an
-auto-generated name if this is omitted.
-
-**Independent Test**: Can be fully tested by running the play command with a display name
-option and verifying the created input's name matches what was supplied.
-
 **Acceptance Scenarios**:
 
 1. **Given** a valid playback request with a display name option, **When** the user runs
@@ -663,11 +127,6 @@ A person who has forgotten the command syntax runs `sonora help`, `sonora -h`, `
 or plain `sonora` and sees the command table, the global flags and example invocations, instead
 of a usage error.
 
-**Why this priority**: Discoverability aid; every command works without it.
-
-**Independent Test**: Can be fully tested by running each help form and checking that the output
-names the noun/verb commands, the `play` command, the global flags and an example, and exits `0`.
-
 **Acceptance Scenarios**:
 
 1. **Given** no arguments, **When** the user runs `sonora`, **Then** the usage text is printed to
@@ -682,10 +141,6 @@ names the noun/verb commands, the `play` command, the global flags and an exampl
 ### User Story 27 - Read commands follow the verb-first, path-style shape (Priority: P1)
 
 An operator who has learned the new `sonora route inputs/<id> outputs/<id>` command (from the separately specified `route` feature) expects every other resource — inputs, outputs, groups, and routes — to read the same way: verb first, resource path second. Reading those resources previously used the `sonora <resource> <verb>` shape (`sonora inputs list`, `sonora outputs get <id>`), which was inconsistent with `route` and with the documented command landscape.
-
-**Why this priority**: This is the actual inconsistency prompting the refactor — the CLI spoke two different command grammars depending on which resource you were touching. Unifying the already-shipped read commands onto one grammar is the highest-value, lowest-risk piece of the refactor, since these commands don't mutate anything.
-
-**Independent Test**: Can be fully tested by running `sonora get inputs`, `sonora get outputs`, `sonora get groups`, and `sonora get routes` (each with and without a trailing `/<id>`), and verifying each returns exactly the same data as the pre-refactor `sonora <resource> list` / `sonora <resource> get <id>` commands.
 
 **Acceptance Scenarios**:
 
@@ -703,10 +158,6 @@ An operator who has learned the new `sonora route inputs/<id> outputs/<id>` comm
 
 An operator who frequently types commands wants to use the short aliases (`in`, `out`, `gr`, `rt`) documented alongside the full resource names, so `sonora get out/<id>` works exactly like `sonora get outputs/<id>`.
 
-**Why this priority**: Aliases are a documented part of the same landscape and a natural companion to User Story 27, but they're a convenience layer on top of the core grammar change, not a prerequisite for it.
-
-**Independent Test**: Can be fully tested by running the collection and single-item forms of `get`/`list` for each resource using its alias instead of its full name, and verifying identical results to using the full name.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing input, output, group, or route, **When** the user substitutes the resource's short alias (`in`, `out`, `gr`, `rt` respectively) for its full name in any `get`/`list` command, **Then** the command behaves identically to using the full resource name.
@@ -719,10 +170,6 @@ An operator who frequently types commands wants to use the short aliases (`in`, 
 ### User Story 29 - `play`'s target and flags match the new landscape (Priority: P3)
 
 An operator using `sonora play <uri> <target-id> --output` expects `play` to address its target the same way `route` does — a path like `outputs/<id>` or `groups/<id>` — instead of a bare id plus a separate `--group`/`--output` flag, and expects the display-name flag to be named consistently with the rest of the CLI.
-
-**Why this priority**: `play` is the one already-implemented command that mutates state, so its change carries the most user-facing risk (existing scripts calling it will break). It's sequenced last so the lower-risk read-command grammar lands and stabilizes first.
-
-**Independent Test**: Can be fully tested by running `sonora play <uri> outputs/<id>` and `sonora play <uri> groups/<id>` (including with `--display-name` and `--output-volume`), and verifying the same playback result as the pre-refactor `sonora play <uri> <id> --output` / `sonora play <uri> <id> --group`.
 
 **Acceptance Scenarios**:
 
@@ -740,16 +187,6 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 A person operating the audio system has an input that already exists (e.g. a line-in, a
 previously created stream, or one created by an earlier `play`) and wants to send it to one
 speaker, without creating a new input or a duplicate playback session.
-
-**Why this priority**: This is the core value of the feature — connecting something that's
-already playing (or already defined) to a destination in one command. Without it, the only
-way to get audio to a target is `play`, which always mints a brand-new input even when a
-perfectly good one already exists.
-
-**Independent Test**: Can be fully tested by running the route command with the path of an
-existing, enabled input and the path of a single existing output, then verifying the command
-reports the resulting route's identifier and status exactly as returned by the hub, without
-creating any new input.
 
 **Acceptance Scenarios**:
 
@@ -773,14 +210,6 @@ creating any new input.
 A person wants to send an existing input to a group of outputs at once (e.g. "whole house")
 rather than a single speaker.
 
-**Why this priority**: Groups are a first-class routing target already supported elsewhere
-in the CLI; routing should work the same way against a group as against a single output, but
-this is secondary to the single-output happy path.
-
-**Independent Test**: Can be fully tested by running `sonora route inputs/<input-id>
-groups/<group-id>` and verifying the same success output as User Story 30, with the route's
-target reflecting the group.
-
 **Acceptance Scenarios**:
 
 1. **Given** the path of an existing input and the path of an existing output group,
@@ -802,10 +231,6 @@ target reflecting the group.
 
 A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input-id>` to allow or block new playback from an input, and sees the input's updated record. Since hub 0.1.25, disabling an input also stops every route playing it (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed record.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing input, **When** the user runs `sonora enable inputs/<input-id>`, **Then** the hub receives `{"enabled": true}`, the updated input is printed and the exit status is `0`.
@@ -819,10 +244,6 @@ A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input
 ### User Story 33 - Stop a single route (Priority: P1)
 
 A person runs `sonora delete routes/<route-id>`, or its alias `sonora stop routes/<route-id>`, to stop playback and remove the route. (`stop` also has bulk forms; see User Story 43.)
-
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run both verbs against a mock hub and check that the request, the output and the exit codes are identical.
 
 **Acceptance Scenarios**:
 
@@ -838,10 +259,6 @@ A person runs `sonora delete routes/<route-id>`, or its alias `sonora stop route
 
 A person runs `sonora transfer routes/<route-id> <outputs|groups>/<target-id>` to move what is playing to another output or group without interruption. The hub replaces the route, so the command prints the new route's identifier.
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run the command for an output and for a group against a mock hub and check the request body and the printed identifier.
-
 **Acceptance Scenarios**:
 
 1. **Given** a playing route and an existing output, **When** the user runs `sonora transfer routes/<route-id> outputs/<id>`, **Then** the hub receives the target identifier and type, the new route's identifier, status and message are printed, and the exit status is `0`.
@@ -856,10 +273,6 @@ A person runs `sonora transfer routes/<route-id> <outputs|groups>/<target-id>` t
 
 A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group-id>` to allow or block new playback to a group, and sees the group's updated record. Since hub 0.1.25, disabling a group also stops the routes addressed to it, while routes addressed to a member keep playing (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed group.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing group, **When** the user runs `sonora enable groups/<group-id>`, **Then** the hub receives `{"enabled": true}` and the updated group is printed with exit status `0`.
@@ -872,10 +285,6 @@ A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group
 ### User Story 36 - Set a group's volume (Priority: P2)
 
 A person runs `sonora set groups/<group-id> volume <0-100>` to change the volume of an output group and sees the volume the hub applied.
-
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run the command with a valid and an invalid value against a mock hub and check the request and the exit status.
 
 **Acceptance Scenarios**:
 
@@ -891,10 +300,6 @@ A person runs `sonora set groups/<group-id> volume <0-100>` to change the volume
 
 A person runs `sonora create inputs/<input-id> <uri> --display-name <name>` to define a stored input, and `sonora delete inputs/<input-id>` to remove one.
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: create and then delete an input against a mock hub and check both requests and outputs.
-
 **Acceptance Scenarios**:
 
 1. **Given** a free input identifier, **When** the user runs `sonora create inputs/<id> <uri> --display-name <name>`, **Then** the hub receives the identifier, URI, display name, `autoRemove` false and `enabled` true, the created input is printed, and the exit status is `0`.
@@ -908,10 +313,6 @@ A person runs `sonora create inputs/<input-id> <uri> --display-name <name>` to d
 ### User Story 38 - Check and set the master mute (Priority: P2)
 
 A person runs `sonora get master-mute` to see whether the whole system is muted, and `sonora mute all` or `sonora unmute all` to change it.
-
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run the three commands against a mock hub and check the requests and the printed state.
 
 **Acceptance Scenarios**:
 
@@ -927,10 +328,6 @@ A person runs `sonora get master-mute` to see whether the whole system is muted,
 
 A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<output-id>` to allow or block new playback to a speaker, and sees the output's updated record. Since hub 0.1.25, disabling an output also takes it out of every route playing on it, and enabling it puts it back into the live group routes of its enabled groups (FR-139). [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run each verb against a mock hub and check the request body and the printed output.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing output, **When** the user runs `sonora disable outputs/<output-id>`, **Then** the hub receives `{"enabled": false}` and the updated output is printed with exit status `0`.
@@ -943,10 +340,6 @@ A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<ou
 ### User Story 40 - Mute or unmute an output or group (Priority: P2)
 
 A person runs `sonora mute outputs/<id>`, `sonora unmute outputs/<id>`, or the same for `groups/<id>`, to silence or restore one speaker or group without changing its volume.
-
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run each verb for an output and a group against a mock hub and check the request body and the printed record.
 
 **Acceptance Scenarios**:
 
@@ -962,10 +355,6 @@ A person runs `sonora mute outputs/<id>`, `sonora unmute outputs/<id>`, or the s
 
 A person runs `sonora set outputs/<output-id> volume <0-100>` to change one speaker's volume and sees the volume the hub applied.
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run the command with a valid and an invalid value against a mock hub and check the request and the exit status.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing output, **When** the user runs `sonora set outputs/<output-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the output identifier, volume and update time are printed, and the exit status is `0`.
@@ -979,10 +368,6 @@ A person runs `sonora set outputs/<output-id> volume <0-100>` to change one spea
 ### User Story 42 - Pause and resume a route (Priority: P2)
 
 A person runs `sonora pause routes/<route-id>` to hold a playing route and `sonora resume routes/<route-id>` to continue it.
-
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run both verbs against a mock hub and check the request body and the printed record.
 
 **Acceptance Scenarios**:
 
@@ -998,10 +383,6 @@ A person runs `sonora pause routes/<route-id>` to hold a playing route and `sono
 
 A person runs `sonora stop routes` to stop everything playing, or `sonora stop outputs/<id>` / `sonora stop groups/<id>` to stop what is playing on one speaker or group, and sees which routes were stopped.
 
-**Why this priority**: Controls the hub from the CLI; every read command works without it.
-
-**Independent Test**: Can be fully tested by: run the three forms against a mock hub, including a case where nothing was playing, and check the requests and the printed list.
-
 **Acceptance Scenarios**:
 
 1. **Given** playing routes, **When** the user runs `sonora stop routes`, **Then** the hub receives `DELETE /api/v2/routes`, the number of stopped routes and each stopped route (identifier, target type, target identifier, stop reason) are printed, and the exit status is `0`.
@@ -1015,10 +396,6 @@ A person runs `sonora stop routes` to stop everything playing, or `sonora stop o
 ### User Story 44 - Announce text on a single output (Priority: P1)
 
 A person (or a script driven by a home automation) wants a spoken announcement — "Dinner is ready" — to play on one speaker, with a single command.
-
-**Why this priority**: This is the whole point of the TTS extension and the smallest slice that delivers value. Everything else in this feature is secondary to getting text spoken in a room.
-
-**Independent Test**: Run the speak command with a short text and the identifier of an existing output on a hub that has the TTS extension loaded; verify the command succeeds, prints the announcement identifier, whether the audio came from cache, and the target's queue depth, and that the announcement is heard on that output.
 
 **Acceptance Scenarios**:
 
@@ -1036,10 +413,6 @@ A person (or a script driven by a home automation) wants a spoken announcement �
 
 A person wants one announcement — "Motion detected in garden" — to play on every speaker in a group at once.
 
-**Why this priority**: Whole-house announcements are the next most valuable use case, and reuse the same command with a different target kind.
-
-**Independent Test**: Run the speak command targeting an existing group and verify the same success output as User Story 44, with the announcement heard across the group's outputs.
-
 **Acceptance Scenarios**:
 
 1. **Given** an existing group `all-rooms`, **When** the user runs `sonora speak "Motion detected in garden" groups/all-rooms`, **Then** the command succeeds with the same output fields as for a single output.
@@ -1053,10 +426,6 @@ A person wants one announcement — "Motion detected in garden" — to play on e
 ### User Story 46 - Choose provider, voice, or language per announcement (Priority: P3)
 
 An operator has several TTS providers configured on the hub (e.g. a cloud one as default and a local one for offline use) and wants a particular announcement to use a specific provider, voice, or language.
-
-**Why this priority**: Useful but optional — every announcement works with the hub's configured defaults.
-
-**Independent Test**: Run the speak command with each override option and confirm the hub received the chosen value; run it with an unknown provider name and confirm a clear "provider not found" failure.
 
 **Acceptance Scenarios**:
 
@@ -1072,10 +441,6 @@ An operator has several TTS providers configured on the hub (e.g. a cloud one as
 
 An operator wants to see how much disk the TTS cache uses, against its configured limit, and how the entries split across providers.
 
-**Why this priority**: Observability for the extension; not needed to make announcements.
-
-**Independent Test**: Run the cache-statistics command against a hub with the TTS extension loaded and verify it prints total entries, total size, maximum size, and per-provider entry counts, in YAML by default and JSON with `--json`.
-
 **Acceptance Scenarios**:
 
 1. **Given** a hub with the TTS extension loaded, **When** the user runs `sonora get tts-cache`, **Then** the command prints the total number of cached entries, their total size, the configured maximum size, and the entry count per provider.
@@ -1088,10 +453,6 @@ An operator wants to see how much disk the TTS cache uses, against its configure
 ### User Story 48 - Clear the TTS cache (Priority: P4)
 
 An operator wants to force fresh synthesis — for example after changing a provider's voice settings — by clearing the cache entirely or only for one provider.
-
-**Why this priority**: An administrative action needed rarely.
-
-**Independent Test**: Run the cache-clear command with and without a provider option and verify that the hub reports success and that the statistics command afterwards reflects the cleared entries.
 
 **Acceptance Scenarios**:
 
@@ -1108,10 +469,6 @@ An operator wants to force fresh synthesis — for example after changing a prov
 
 An operator whose hub's TTS provider is configured with a longer synthesis timeout than the hub's 10-second default wants `speak` to wait long enough to receive the hub's own timeout error, instead of the CLI giving up first and misreporting a network failure.
 
-**Why this priority**: Only relevant when a hub deviates from the assumed 10-second default; the fixed 15-second bound (FR-114) already covers the common case.
-
-**Independent Test**: Run `speak` against a fake hub that takes longer than 15 seconds to respond, with `--timeout` set high enough to cover it, and confirm the command waits and reports the hub's actual response rather than a CLI-side timeout.
-
 **Acceptance Scenarios**:
 
 1. **Given** a hub whose provider takes longer than 15 seconds, **When** the user runs `speak` with `--timeout 30s`, **Then** the command waits up to 30 seconds and reports the hub's own response (success or provider error) rather than a CLI network timeout.
@@ -1123,10 +480,6 @@ An operator whose hub's TTS provider is configured with a longer synthesis timeo
 ### User Story 50 - Discover a provider's voices (Priority: P3)
 
 An operator wants to see which voices a TTS provider offers, so that the `--voice` value passed to `speak` is one the hub accepts.
-
-**Why this priority**: A discovery aid for `speak --voice`; announcements work without it.
-
-**Independent Test**: Run `sonora list tts-voices --provider <name>` against a hub whose provider is `google-cloud` or `google-gemini`, and verify that every voice is printed in the hub's order with all five fields (absent ones as null), in YAML by default and JSON with `--json`.
 
 **Acceptance Scenarios**:
 
@@ -1144,10 +497,6 @@ An operator wants to see which voices a TTS provider offers, so that the `--voic
 
 A developer of another Sonora project (sonora-mcp) adds this module as a dependency by its public import path, pinned to a released tag, and calls hub operations (list outputs, set volume, create a route, speak, …) through the shared client, getting the same timeouts, typed errors and error classification the CLI uses.
 
-**Why this priority**: This is the whole point of the feature. Without an importable, released client, sonora-mcp cannot drop its own client.
-
-**Independent Test**: In a scratch module outside this repository, require this module at the released tag, call one read operation and one write operation against a fake hub, and classify a failure — with no access to anything under this repo's internal packages.
-
 **Acceptance Scenarios**:
 
 1. **Given** a released tag of this module, **When** an external project requires the module by its public path and imports the hub client package, **Then** it resolves and builds with no replace directives, workspace files or private-module settings.
@@ -1163,10 +512,6 @@ A developer of another Sonora project (sonora-mcp) adds this module as a depende
 
 A person using `sonora` on Windows or Linux upgrades to the build that contains this refactor and keeps using every command exactly as before.
 
-**Why this priority**: The refactor is only acceptable if it is invisible to CLI users; a behavior regression would break live audio control and scripts that rely on exit codes.
-
-**Independent Test**: Run the full existing unit and contract test suite unchanged in intent (only import paths adjusted) on Windows and Linux, and compare `sonora --help`, command output and exit codes for representative commands before and after.
-
 **Acceptance Scenarios**:
 
 1. **Given** the refactored build, **When** any existing command is run, **Then** its output (YAML and `--json`), error messages and exit codes are identical to the previous build.
@@ -1181,10 +526,6 @@ A person using `sonora` on Windows or Linux upgrades to the build that contains 
 
 A developer of a consuming project runs a conformance test against the exact Multiroom Audio Hub API specification that the imported client version was built and tested against, without keeping their own copy of `openapi.json`.
 
-**Why this priority**: Removes the last duplicated artifact between repos, but the client is usable without it.
-
-**Independent Test**: From an external module, import the published spec and confirm it is byte-identical to `api/openapi.json` at the same tag.
-
 **Acceptance Scenarios**:
 
 1. **Given** a released tag, **When** a consumer imports the published spec, **Then** it receives the full contents of `api/openapi.json` from that tag.
@@ -1198,10 +539,6 @@ A developer of a consuming project runs a conformance test against the exact Mul
 
 A maintainer tags a release of this module that contains the public client so consumers can pin it, following rules that keep already-published versions immutable.
 
-**Why this priority**: Consumers can only depend on a tag; a mistaken or moved tag in a public module is permanent damage.
-
-**Independent Test**: Tag a release, fetch it from a clean environment through the public Go module proxy, and build a consumer against it.
-
 **Acceptance Scenarios**:
 
 1. **Given** the refactor is merged, **When** a new tag is published, **Then** consumers can resolve that tag through the public module proxy.
@@ -1214,10 +551,6 @@ A maintainer tags a release of this module that contains the public client so co
 ### User Story 55 - Know that a disable stops playback before running it (Priority: P1)
 
 A user wants to stop new routes from using the kitchen radio input and reads the help for `sonora disable` (or the README) first. The documentation tells them that disabling an input stops every route playing it right now, so they know the music will stop.
-
-**Why this priority**: The current documentation is wrong in a way that has an audible consequence: a user following it stops music they meant to keep. It is also the smallest change.
-
-**Independent Test**: Read `sonora enable --help`, `sonora disable --help` and the README's enable/disable section, and compare each statement with the hub 0.1.28 contract descriptions of `setInputEnabled`, `setOutputEnabled` and `setGroupEnabled`.
 
 **Acceptance Scenarios**:
 
@@ -1236,10 +569,6 @@ A user plays a SoundCloud link without giving a name. The CLI's output shows the
 
 A developer of sonora-mcp, using this module's hub client, reads the same name from the play result.
 
-**Why this priority**: The hub client no longer mirrors the play response field for field, which this project treats as a defect, and both the CLI and sonora-mcp lose information the hub provides. Nothing fails, so it ranks below the misleading documentation.
-
-**Independent Test**: Run `sonora play` against a fake hub that returns a display name, and against one that omits it, and check the YAML and JSON output and the hub client's result in each case.
-
 **Acceptance Scenarios**:
 
 1. **Given** a hub that answers a play request with a display name, **When** the user runs `sonora play <uri> outputs/<id>`, **Then** the output shows that display name alongside the input ID, route ID, status and message, in YAML and in JSON.
@@ -1254,10 +583,6 @@ A developer of sonora-mcp, using this module's hub client, reads the same name f
 ### User Story 57 - A transfer right after enabling an output just works (Priority: P3)
 
 A user re-enables the office speaker, which rejoins the living-room group route, and immediately moves that route to another group with `sonora transfer`. The hub briefly refuses the transfer because the route is still adding the office speaker. The CLI waits a moment and tries again, and the transfer succeeds without the user noticing. If the hub keeps refusing, the CLI says the route was still adding an output and to try again shortly, instead of telling the user to change the hub's state.
-
-**Why this priority**: It only happens in a narrow window (a transfer within a fraction of a second of an enable), most likely from scripts. When it happens today, the user gets wrong advice, but a manual retry works.
-
-**Independent Test**: Run `sonora transfer` against a fake hub that refuses the first N transfer requests with reason `ROUTE_CHANGING_OUTPUTS` and then accepts, for N within and beyond the retry allowance, and check output, stderr and exit code.
 
 **Acceptance Scenarios**:
 
@@ -1275,10 +600,6 @@ A user re-enables the office speaker, which rejoins the living-room group route,
 ### User Story 58 - Rename an input or restore its original name (Priority: P2)
 
 A person runs `sonora rename inputs/<input-id> <name>` to give an input a new display name, or `sonora rename inputs/<input-id> --reset` to restore the name it had before, and sees the input's updated record. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
-
-**Why this priority**: Display names are how inputs are told apart in listings; the command is small and independent of playback.
-
-**Independent Test**: Run each form against a mock hub and check the request body, the printed record, the exit status and the usage errors.
 
 **Acceptance Scenarios**:
 
@@ -1305,13 +626,6 @@ request says otherwise.
 
 A sonora-mcp developer sets the same join mode through the hub client's route, play and create-input
 requests.
-
-**Why this priority**: It unlocks something the CLI cannot do at all today, and it is the reason the hub
-added join modes. Each request change is one optional field.
-
-**Independent Test**: Run each command against a fake hub, with and without the flag, and check the
-request body the hub receives and the command's output and exit code. Run each command with an
-invalid mode and check that no request is sent.
 
 **Acceptance Scenarios**:
 
@@ -1348,15 +662,6 @@ the right route.
 
 A sonora-mcp developer gets the same list from the hub client.
 
-**Why this priority**: It is the only way to see the effect of User Story 59 and to find group routes
-on an output. It needs a new hub client operation and new output, and it depends on the hub's version,
-so it is more work than the request flags.
-
-**Independent Test**: Run `sonora get outputs/<id> --include-routes` against a fake hub that returns a
-list of routes, an empty list, an unknown duck state, a 404 for the output, and a 404 or 405 for the
-routes only (an older hub). Check the YAML, JSON and exit code in each case. Run it without the flag and check
-that only one request is sent.
-
 **Acceptance Scenarios**:
 
 1. **Given** an output with a direct route and a group route playing, **When** the user runs
@@ -1392,12 +697,6 @@ The user runs `sonora get routes/<id>` and sees, in the default YAML, how the ro
 and which outputs it plays on right now. A group route may play on fewer members than its group has.
 `sonora get inputs/<id>` shows the input's default join mode, or that it has none.
 
-**Why this priority**: The data is already in the hub client and in the JSON output; only the YAML
-output lacks it. It is useful, but not needed to use the other two stories.
-
-**Independent Test**: Run `get routes/<id>` and `get inputs/<id>` against a fake hub that returns the
-fields and one that omits them, and compare the YAML and JSON output.
-
 **Acceptance Scenarios**:
 
 1. **Given** a route with join mode `MIX` playing on two outputs, **When** the user runs
@@ -1421,10 +720,6 @@ fields and one that omits them, and compare the YAML and JSON output.
 
 A person plays a URI with `--output-volume`, `--route-volume` and `--ducking-level`, changes a playing route's volume with `sonora set routes/<route-id> volume <0-100>`, and sees a route's levels in `sonora get routes/<route-id>`. `--volume` is removed from `sonora play`.
 
-**Why this priority**: The hub can now set a route's volume and an announcement's ducking level separately from the output's volume; without these flags that capability is unreachable from the CLI.
-
-**Independent Test**: Run each flag and the set command against a fake hub and check the request bodies, the printed route, the exit status and the usage errors.
-
 **Acceptance Scenarios**:
 
 1. **Given** an output, **When** the user runs `sonora play <uri> outputs/<id> --output-volume 30 --route-volume 15 --join-mode DUCK_OTHERS --ducking-level -20`, **Then** the hub receives `outputVolume` 30, `routeVolume` 15 and `duckingLevelDb` -20, and the exit status is `0`.
@@ -1442,10 +737,6 @@ A person plays a URI with `--output-volume`, `--route-volume` and `--ducking-lev
 
 A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--ducking-level`, so that an announcement ducks or mixes over what is playing at its own level rather than the output's.
 
-**Why this priority**: An announcement over music needs a level of its own; the flags reach the hub's new fields without changing anything else about `speak`.
-
-**Independent Test**: Run `speak` with each flag against a fake hub and check the request body, the exit status and the usage errors.
-
 **Acceptance Scenarios**:
 
 1. **Given** an output, **When** the user runs `sonora speak "Dinner is ready" outputs/kitchen --playback-mode duck-others --route-volume 80 --ducking-level -20`, **Then** the hub receives `playbackMode`, `routeVolume` and `duckingLevelDb`, and the command exits `0`.
@@ -1461,10 +752,6 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 
 An operator runs one command and sees the hub's product, version, API version, start time and uptime. A script uses it to confirm the target is a Sonora Multiroom hub, to check it supports a feature, or to notice that the hub restarted since the last look.
 
-**Why this priority**: it is read-only, needs no TTS extension and is the first thing anyone checks when something is wrong.
-
-**Independent Test**: run it against a hub 0.1.33 and compare the output with the hub's response.
-
 **Acceptance Scenarios**:
 
 1. **Given** a hub 0.1.33, **When** the operator asks for hub info, **Then** product, version, API version, start time and uptime are shown.
@@ -1479,10 +766,6 @@ An operator runs one command and sees the hub's product, version, API version, s
 ### User Story 65 - Warm the TTS cache before it is needed (Priority: P2)
 
 An operator or script has phrases it will announce often (a doorbell, "dinner is ready"). It asks the hub to synthesize them ahead of time, so the first real announcement starts at once and costs no provider call.
-
-**Why this priority**: saves time and provider cost, but only for installations with the TTS extension.
-
-**Independent Test**: warm a phrase with the free local provider, then speak the same phrase and voice and see `cacheHit: true`.
 
 **Acceptance Scenarios**:
 
@@ -1503,10 +786,6 @@ An operator or script has phrases it will announce often (a doorbell, "dinner is
 
 A developer of sonora-mcp (or any Go program) calls the public `hub` package to get hub info and to warm a phrase, and gets typed results and the package's usual error classification.
 
-**Why this priority**: sonora-mcp can only expose these once the client has them. A hub client fix goes into this repository first.
-
-**Independent Test**: the contract tests call each function against a test server and check the request and the decoded result.
-
 **Acceptance Scenarios**:
 
 1. **Given** a server answering with the hub info shape, **When** the function is called, **Then** a typed record with each field is returned, and marshalling it gives the hub's property names.
@@ -1520,10 +799,6 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 ### User Story 67 - Play a chime before a route, and see the hub's chimes (Priority: P2)
 
 A person, or a script, wants a short sound to play before an announcement or a stream starts on a speaker, and wants to see which chimes the hub has and which one each output, group or input uses.
-
-**Why this priority**: an additive playback option for every command that starts a route; the existing commands do not change without it.
-
-**Independent Test**: contract tests against a test server for each hub call; unit and integration tests for the flags and renderers; a read-only check of `list chimes` and `get chimes/<id>` against a hub that has chimes, with nothing started.
 
 **Acceptance Scenarios**:
 
@@ -1544,10 +819,6 @@ A person, or a script, wants a short sound to play before an announcement or a s
 
 An operator wants to play a station they know by name ("Kiss FM"). They search by name, read the matching stations with their codec, bitrate and country, pick one, and pass its playable address to `sonora play` without visiting any website.
 
-**Why this priority**: this is the gap the feature closes; without it radio playback needs a browser.
-
-**Independent Test**: search for a known station name on a hub with the radio extension, then play the address from the result on a test output.
-
 **Acceptance Scenarios**:
 
 1. **Given** a hub with the radio extension, **When** the operator searches with a name, **Then** the matching stations are listed with every field the hub returns, including name, codec, bitrate, country, UUID and playable address.
@@ -1567,10 +838,6 @@ An operator wants to play a station they know by name ("Kiss FM"). They search b
 
 An operator has a UUID (from a search, a script or a saved list) and wants to see the station's details before playing it: name, homepage, tags, codec, bitrate, whether the catalogue's last check succeeded.
 
-**Why this priority**: it confirms what a UUID is, but search already gives most of this.
-
-**Independent Test**: look up a UUID from a search result and compare with the hub's answer.
-
 **Acceptance Scenarios**:
 
 1. **Given** a known UUID, **When** the operator looks it up, **Then** every station field is shown, including a station the catalogue marks as broken.
@@ -1584,10 +851,6 @@ An operator has a UUID (from a search, a script or a saved list) and wants to se
 ### User Story 70 - Browse countries, languages and tags (Priority: P2)
 
 Tag and language filters match only a whole value, so an operator needs the lists to know what to filter by. They list countries or languages (most stations first), or page through tags, optionally narrowed by a name fragment.
-
-**Why this priority**: it makes the tag and language filters usable, but name search works without it.
-
-**Independent Test**: list tags filtered by a fragment and use one of the results as a search filter.
 
 **Acceptance Scenarios**:
 
@@ -1603,10 +866,6 @@ Tag and language filters match only a whole value, so an operator needs the list
 
 A developer of sonora-mcp (or any Go program) calls the public `hub` package to search stations, fetch one, and list countries, languages and tags, and gets typed results and the package's usual error classification.
 
-**Why this priority**: sonora-mcp can add radio tools only once the client has them; a hub client change goes into this repository first.
-
-**Independent Test**: the contract tests call each function against a test server and check the request sent and the result decoded.
-
 **Acceptance Scenarios**:
 
 1. **Given** a search with some optional filters set, **When** the function is called, **Then** only the filters that were set are sent, each once.
@@ -1621,10 +880,6 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 ### User Story 72 - Keep an input across hub restarts (Priority: P2)
 
 An operator wants an input they play often, a stream or a file, to still be there after the hub restarts. They create it as kept, or keep an input that already exists, and can see from the input record which inputs the hub keeps and whether each one can play.
-
-**Why this priority**: without it an input cannot outlive a restart, and the CLI cannot tell a kept input from a runtime one.
-
-**Independent Test**: the contract tests run `create` and `keep` against a test hub and check the request sent and the input printed.
 
 **Acceptance Scenarios**:
 
@@ -1873,7 +1128,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **FR-097**: The CLI MUST provide `sonora pause routes/<route-id>` and `sonora resume routes/<route-id>`, which send `PUT /api/v2/routes/{id}/pause` with `{"paused": true}` or `{"paused": false}`. On success (200) they print the route identifier, paused flag, status and a message (YAML, or JSON with `--json`) and exit `0`. Pausing a paused route or resuming an active one is a success, since the hub is idempotent; the CLI reads no state first. A 404 is reported as "route not found: <id>" (exit `5`); a 400 (route not active, input not pausable, other validation) with the hub's detail (exit `6`). Only `routes/<id>` (alias `rt`) is accepted; any other kind or a missing identifier is a usage error with no request. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
 - **FR-098**: The CLI MUST provide three bulk stop forms: bare `sonora stop routes` (`DELETE /api/v2/routes`, every route), `sonora stop outputs/<output-id>` (`DELETE /api/v2/outputs/{id}/routes`) and `sonora stop groups/<group-id>` (`DELETE /api/v2/groups/{id}/routes`). On success (200) each prints the stopped count and the stopped routes, each with its identifier, target type, target identifier and nullable stop reason (YAML, or JSON with `--json`), and exits `0`, including when none was stopped. Like every command below, it uses the global flags, output separation and exit-code scheme of FR-006, FR-007, FR-009, FR-011 and FR-013. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
 - **FR-099**: A 404 for an output or group MUST be reported as "output not found" or "group not found" (exit `5`); the system-wide form has no documented 404. `sonora stop routes/<route-id>` is unchanged: it is still the alias of FR-083. Extra arguments, `stop outputs` or `stop groups` without an identifier, and `stop inputs/<id>` are usage errors (exit `2`), so `stop` is no longer limited to routes. [Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
-
 - **FR-100**: The CLI MUST provide a `speak` command of the form `sonora speak <text> <outputs|groups>/<id>` that requests a TTS announcement of the given text on the given output or output group. [Source: .specify/archive/009-tts-commands/spec.md -> FR-001]
 - **FR-101**: The command MUST reject empty or whitespace-only text with a usage error before contacting the hub. It MUST NOT impose its own maximum text length; that limit belongs to the hub. [Source: .specify/archive/009-tts-commands/spec.md -> FR-003]
 - **FR-102**: When the text argument is exactly `-`, the command MUST read the text from standard input until end of input and trim trailing newlines (CR/LF). The text is sent as-is otherwise: inner line breaks are kept. FR-101's empty or whitespace-only check applies to the text read. If standard input cannot be read, that is a usage error raised before contacting the hub. [Source: .specify/archive/009-tts-commands/spec.md -> FR-003a]
@@ -1955,7 +1209,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 
 - **FR-153**: Every behaviour changed by the hub 0.1.25–0.1.28 alignment MUST be covered by tests written before the change, against a fake hub whose responses follow `api/openapi.json` at 0.1.28. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-015]
 - **FR-154**: The hub 0.1.25–0.1.28 alignment MUST NOT add a third-party dependency, command or flag, nor anything on the CLI's startup path. Join modes (CLI-012) MUST NOT add a third-party dependency or anything on the CLI's startup path, and `--include-routes` MUST send a second request only when the flag is given. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-016] [Source: .specify/archive/012-join-modes/spec.md -> FR-018]
-
 - **FR-155**: The CLI MUST provide `sonora rename inputs/<input-id> <name>` and `sonora rename inputs/<input-id> --reset`, each making one request, `PUT /api/v2/inputs/{inputId}/display-name` (operationId `setInputDisplayName`), with `{"displayName": "<name>"}` or `{"displayName": null}` for `--reset`. A multi-word name is one quoted argument. On success (200) the command prints the returned input record as `get inputs/<input-id>` does (YAML, or JSON with `--json`) and exits `0`. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **FR-156**: A 404 from a rename request MUST be reported as "input not found: <id>" on standard error with exit `5`. A 400 MUST be reported with the hub's detail (or the generic invalid-request message when the hub gives none) with exit `6`. Any other non-2xx, network or malformed-body failure keeps the generic classification (FR-009). Nothing is written to standard output on any failure. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **FR-157**: `rename` MUST fail with a usage error (exit `2`), without contacting the hub, when a name and `--reset` are both given, when neither is given, when the `<input-id>` is missing, when extra positional arguments are given, or when the resource is not `inputs` (for example `outputs/<id>`). [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
@@ -1966,78 +1219,49 @@ An operator wants an input they play often, a stream or a file, to still be ther
 **Choosing the join mode (CLI-012, API 0.1.21)**
 
 - **FR-161**: The hub client's route request, play request and create-input request MUST each have an optional join-mode field (a default join mode for the create-input request). The field is left out of the request body when it is unset, and sent as given when it is set. [Source: .specify/archive/012-join-modes/spec.md -> FR-001]
-
 - **FR-162**: `sonora play` and `sonora route` MUST accept `--join-mode <mode>`, and `sonora create inputs/<id>` MUST accept `--default-join-mode <mode>`. The mode is `REPLACE`, `MIX` or `DUCK_OTHERS`, matched without regard to case and sent upper-cased. [Source: .specify/archive/012-join-modes/spec.md -> FR-002]
-
 - **FR-163**: An unknown or empty mode MUST be a usage error (exit 2). The command MUST send no request, and MUST print an error that lists the valid modes. [Source: .specify/archive/012-join-modes/spec.md -> FR-003]
-
 - **FR-164**: Without the flag, each command MUST send the same request it sends today, with no join-mode field, so that the hub's defaults apply. [Source: .specify/archive/012-join-modes/spec.md -> FR-004]
-
 - **FR-165**: The `--help` of each of the three commands MUST list the flag and its modes, and say what happens without it: a route uses the input's default join mode, falling back to `REPLACE`; a play uses `REPLACE`; an input without a default leaves its routes on `REPLACE`. [Source: .specify/archive/012-join-modes/spec.md -> FR-005]
 
 
 **Showing an output's routes (CLI-012, API 0.1.21)**
 
 - **FR-166**: The hub client MUST offer an operation that returns the routes playing on one output, in the hub's order, with every field of the contract's route-on-output record. A 404 from it MUST be the client's usual not-found error, naming the output. [Source: .specify/archive/012-join-modes/spec.md -> FR-006]
-
 - **FR-167**: The hub client MUST let a consumer tell whether a route on an output is lowered. Any duck state other than `LOWERED` counts as not lowered. [Source: .specify/archive/012-join-modes/spec.md -> FR-007]
-
 - **FR-168**: `sonora get outputs/<id>` MUST accept `--include-routes`, with the help text "also list the routes playing on this output, in join order". With it, the output MUST be the output's record followed by a `routes` list in the hub's order. In YAML each entry MUST hold `routeId`, `inputId`, `targetId`, `targetType`, `status`, `joinMode`, `duckState`, `main` and `paused`, in that order; in JSON each entry MUST hold every field of the contract's route-on-output record. An output with no routes MUST show an empty list. [Source: .specify/archive/012-join-modes/spec.md -> FR-008]
-
 - **FR-169**: `--include-routes` on any other `get` form (a list such as `get outputs`, or a resource other than `outputs/<id>`) MUST be a usage error (exit 2). The command MUST send no request, and the error MUST say the flag applies only to `get outputs/<id>`. [Source: .specify/archive/012-join-modes/spec.md -> FR-008a]
-
 - **FR-170**: Without `--include-routes`, `sonora get outputs/<id>` MUST send exactly one request, and its output MUST be unchanged. [Source: .specify/archive/012-join-modes/spec.md -> FR-009]
-
 - **FR-171**: When the output request succeeds and the routes request answers 404 or 405 (a hub with the stop-routes operation on the same path but not the list answers 405), the CLI MUST report that the hub does not support listing an output's routes and needs 0.1.21 or later. It MUST exit with the unexpected-response exit code (3), and MUST NOT report the output as not found. [Source: .specify/archive/012-join-modes/spec.md -> FR-010]
-
 - **FR-172**: With `--include-routes`, any failure MUST leave stdout empty. The CLI never prints the output's record without its routes. [Source: .specify/archive/012-join-modes/spec.md -> FR-011]
 
 
 **Showing join modes on routes and inputs (CLI-012, API 0.1.21)**
 
 - **FR-173**: The YAML of `sonora get routes/<id>` MUST show the route's join mode and the list of outputs it plays on, after its current fields. When the hub returns neither field (a hub older than 0.1.21), both MUST be left out. [Source: .specify/archive/012-join-modes/spec.md -> FR-012]
-
 - **FR-174**: The YAML of every command that prints one input record (`get`, `create`, `rename`, `enable` and `disable inputs/<id>`) MUST show the input's default join mode, as null when the input has none. Their JSON already shows it. [Source: .specify/archive/012-join-modes/spec.md -> FR-013]
-
 - **FR-175**: The JSON of `get routes/<id>` and `get inputs/<id>` MUST keep its current shape and contain the same join-mode fields as the YAML. [Source: .specify/archive/012-join-modes/spec.md -> FR-014]
-
 - **FR-176**: `sonora list routes` and `sonora list inputs` output MUST NOT change. [Source: .specify/archive/012-join-modes/spec.md -> FR-015]
 
 
 **General (CLI-012)**
 
 - **FR-177**: The README MUST describe the three join modes in a short paragraph and document `--join-mode`, `--default-join-mode` and `--include-routes`. [Source: .specify/archive/012-join-modes/spec.md -> FR-016]
-
 - **FR-178**: Every new behaviour MUST be covered by tests written before the code, against a fake hub whose answers follow `api/openapi.json` at 0.1.28. That includes contract tests for the new hub client operation: a list, an empty list, a 404, and an unknown duck state. It also includes contract tests showing that each new request field is sent only when it is set. [Source: .specify/archive/012-join-modes/spec.md -> FR-017]
-
 - **FR-179**: The public `hub` package MUST send `outputVolume` on a play request, never `volume`, and MUST send `routeVolume` and `duckingLevelDb` on play and route requests, and `defaultRouteVolume` and `defaultDuckingLevelDb` on input creation, only when each is set; an unset field MUST be omitted, not sent as null. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
-
 - **FR-180**: The public `hub` package MUST decode `routeVolume` and `duckingLevelDb` on routes and on routes-per-output records, and `defaultRouteVolume` and `defaultDuckingLevelDb` on inputs, as optional values: null or absent (a pre-0.1.29 hub) MUST decode as unset, and a set value MUST decode as sent, including negative and fractional levels. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
-
 - **FR-181**: The public `hub` package MUST provide `SetRouteVolume`, which sends `PUT /api/v2/routes/{routeId}/volume` with `{"volume": N}`. A 200 MUST return the decoded, validated route; a 404 MUST be a not-found error for `route`; a 400 MUST carry the hub's detail; a malformed body MUST be a decode error; any other non-success status MUST be a status error. A route's volume MUST NOT be clearable through this call. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
-
 - **FR-182**: Renaming `PlaybackRequest.Volume` to `OutputVolume` is a breaking change to the public `hub` package. While the module is `v0.x` it is allowed, but the release notes MUST call it out, and every new exported identifier MUST carry godoc that stands without this repository's specs. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
-
 - **FR-183**: `sonora play` MUST accept `--output-volume N` (0-100), which sends `outputVolume`, and `--route-volume N` (0-100), which sends `routeVolume`. `--volume` MUST NOT exist: it is an unknown flag, with usage exit `2`, and it MUST have no alias or notice. An out-of-range value for either flag MUST be rejected before any request, with an error that names the flag and the validation exit code. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **FR-184**: `sonora play` MUST accept `--ducking-level DB` (-60 to 0, decimals allowed), which sends `duckingLevelDb`. Without `--join-mode DUCK_OTHERS` it MUST be a usage error (exit `2`); an out-of-range value MUST be a validation error. Both checks MUST run before any request. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **FR-185**: `sonora set routes/<route-id> volume <0-100>` MUST call `SetRouteVolume` and print the returned route with the route renderers, exit `0`. Its missing-identifier, attribute, value and extra-argument errors MUST match `set outputs/<id> volume` in message and exit code, and an unknown route MUST exit with the not-found code and print nothing to standard output. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **FR-186**: `get routes/<id>` and the routes shown by `get outputs/<id> --include-routes` MUST print `routeVolume` and `duckingLevelDb` after `joinMode`, and `get inputs/<id>` MUST print `defaultRouteVolume` and `defaultDuckingLevelDb` after `defaultJoinMode`, each only when set. A level MUST print in its shortest form (`-25`, `-12.5`). `--json` MUST carry the fields as the `hub` types encode them, null when unset. The list views MUST NOT change. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **FR-187**: Removing `--volume` from `sonora play` is a breaking CLI change, and the release notes MUST say so. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **FR-188**: The public `hub` package MUST provide `DiagnoseTTSUnavailable`, which makes one extension-inventory request and returns the reason TTS is unavailable on the hub, using the mapping in FR-110's table, so that a caller outside the CLI can explain a TTS 404 the same way the CLI does. The CLI MUST use it, and its output and exit codes MUST NOT change. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
-
 - **FR-189**: `hub.ClassifyError` MUST classify a TTS 404 (`TTSNotOfferedError`), wrapped or not, as text-to-speech unavailable, with the message "text-to-speech is not available on this hub", and not as a network failure. The v0.3.3 release notes MUST say that the class changed for callers that matched the old one. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
-
 - **FR-190**: The public `hub` package's `TTSCacheStats` MUST marshal to JSON with the property names of `CacheStats` in `api/openapi.json`: `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider`. Decoding through `GetTTSCacheStats` and the CLI's output MUST NOT change. [Source: .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md]
-
 - **FR-191**: `sonora speak` MUST accept `--playback-mode MODE`, which sends `playbackMode` verbatim with no client-side check of the value; `--route-volume N` (0-100), which sends `routeVolume`; and `--ducking-level DB` (-60 to 0, decimals allowed), which sends `duckingLevelDb`. A blank `--playback-mode` MUST be a usage error (exit `2`). An out-of-range `--route-volume` or `--ducking-level` MUST be a validation error that names the flag. Each check MUST run before any request. `--ducking-level` MUST be accepted without `--playback-mode`, and with `mix`, where the hub decides. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
-
 - **FR-192**: The public `hub` package's `SpeakRequest` MUST carry the seven hub 0.1.29 fields it lacked (`engine`, `pitch`, `speakingRate`, `stylePrompt`, `playbackMode`, `routeVolume`, `duckingLevelDb`) as optional values. Each MUST be omitted from the request when unset, and sent, including zero and empty values, when set. Its godoc MUST say so. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
-
 - **FR-193**: `sonora speak` MUST NOT gain flags for `engine`, `pitch`, `speakingRate` or `stylePrompt` (`stylePrompt` is superseded by FR-204 from 2026-11-12). A `speak` invocation with none of the new flags MUST send the same request body as before this change. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 - **FR-194**: The public `hub` package MUST offer a function that calls `GET /api/v2/info` and returns a typed record of `product`, `version`, `apiVersion`, `startedAt` and `uptimeSeconds`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-001]
 - **FR-195**: The CLI MUST offer a command that shows hub info as YAML by default and as one JSON object with `--json`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-002]
@@ -2059,7 +1283,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **FR-211**: `sonora get chimes/<id>` MUST print that chime as one record. It MUST check the id against the resource id rule first (a malformed id is a usage error, exit `2`), and an unknown id MUST fail with `chime not found: <id>` (exit `5`). `chimes` MUST NOT be a play or route target and MUST have no alias. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
 - **FR-212**: `get outputs[/id]` and `get groups[/id]` MUST show `chime:`, and `get inputs[/id]` MUST show `defaultChime:`, only when set, in YAML and JSON. Output for a target with no chime MUST be unchanged. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 8]
 - **FR-213**: `sonora get` and `sonora list` with no resource name MUST name every resource that verb accepts, as FR-066 requires. `get` adds `chimes`, `info`, `master-mute` and `tts-cache`; `list` adds `chimes` and `tts-voices`. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
-
 - **FR-214**: The public `hub` package MUST offer functions to search stations, fetch one station by UUID, and list countries, languages and tags, each returning typed records that marshal to the hub's property names. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-001]
 - **FR-215**: The station search function MUST accept every filter the hub defines (name, tag, country code, language, codec, minimum bitrate), the sort field and direction, page size and offset, and MUST send only those that are set. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-002]
 - **FR-216**: Radio error answers MUST be decoded into the package's existing error type, keeping the problem kind, message, offending parameter and retry delay, and MUST be classified by `hub.ClassifyError`. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-003]
@@ -2074,7 +1297,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **FR-225**: The radio commands MUST be always present; no request is made at start-up or before the radio request to find out whether the hub has the extension. The inventory check happens only after a failed radio request. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-013]
 - **FR-226**: Every request and response shape MUST be validated against `api/openapi.json`, refreshed if it lacks any radio shape this feature uses. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-014]
 - **FR-227**: The README MUST document the radio commands and state that they need the hub's radio extension 0.2.0 or later. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-015]
-
 - **FR-228**: `sonora create inputs/<input-id> <uri> --persistent` MUST send `persistent: true` on `POST /api/v2/inputs`. Without the flag the request body MUST be unchanged. `--persistent` together with `--auto-remove` is a usage error (exit `2`), reported before any request is sent, since a kept input is never removed automatically. The created input prints as FR-090 describes, with origin `STORED`. [Source: .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md -> Requirement 1]
 - **FR-229**: `sonora keep inputs/<input-id>` MUST call `PUT /api/v2/inputs/{inputId}/persistent` and print the input record (YAML, or JSON with `--json`), exiting `0`. Keeping an input the hub already keeps MUST succeed and print it unchanged. A 404 is reported as not found (exit `5`); a 400 with the hub's detail (exit `6`); a 409 as FR-230 says (exit `14`); a 500, a store failure, with the store's `detail` (hub error, exit `3`). A path that is not `inputs/<id>`, extra arguments or a missing identifier are usage errors (exit `2`), with no request sent. [Source: .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md -> Requirement 2]
 - **FR-230**: A `409` from `create inputs` or `keep inputs` with reason `INPUT_UNPLAYABLE`, `INPUT_ID_TAKEN` or `INPUT_STORE_FULL` MUST print a short CLI message in place of the hub's detail and keep the conflict exit code (`14`, FR-137): `INPUT_UNPLAYABLE` says the input's link is not playable now, perhaps because its extension is not running, and to retry once it is; `INPUT_ID_TAKEN` says an input with that identifier already exists; `INPUT_STORE_FULL` says the store of kept inputs is full and a kept input must be deleted first. A 409 with any other reason, or none, stays a generic conflict that shows the hub's detail, or a generic conflict message when the hub gives none. [Source: .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md -> Requirement 3]
@@ -2249,7 +1471,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **SC-031**: A user receives a response confirming the hub has accepted the routing request (or a clear failure) in under 5 seconds under normal network conditions. [Source: .specify/archive/008-route-command/spec.md -> SC-002]
 - **SC-032**: 100% of route command failure cases return a message that lets the user tell apart a usage error, input not found, target not found, route creation failure, and a connectivity or timeout problem. [Source: .specify/archive/008-route-command/spec.md -> SC-003]
 - **SC-033**: A user can always tell, without ambiguity, whether the route was created successfully or the command failed. [Source: .specify/archive/008-route-command/spec.md -> SC-005]
-
 - **SC-034**: A user can trigger an announcement on any output or group with one command and no more than the text and a target path. [Source: .specify/archive/009-tts-commands/spec.md -> SC-001]
 - **SC-035**: With an audio cache hit, `speak` reports acceptance within 1 second of being run on a local network. [Source: .specify/archive/009-tts-commands/spec.md -> SC-002]
 - **SC-036**: When the hub's provider times out at its default 10-second limit, the user sees the hub's provider-timeout error — not a CLI network timeout — 100% of the time. [Source: .specify/archive/009-tts-commands/spec.md -> SC-003]
@@ -2271,7 +1492,6 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **SC-052**: A transfer refused once as transient completes successfully with no user action, and the whole command takes less than 1 second longer than an immediate success. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-003]
 - **SC-053**: A transfer that stays refused as transient ends within 3 seconds of being started, with exit code 14 and a message that names the transient cause. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-004]
 - **SC-054**: The output of every command other than `play` and `transfer`, and of `play` against a hub that omits the display name, is byte-for-byte identical to the release before the hub 0.1.25–0.1.28 alignment in the existing test suite. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> SC-005]
-
 - **SC-055**: A rename or `--reset` changes the input's display name on the hub with one request, and the record printed afterwards shows the name the hub stored, so an operator can confirm the change at once. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **SC-056**: A user can play an announcement over running music without stopping it, in one command. [Source: .specify/archive/012-join-modes/spec.md -> SC-001]
 - **SC-057**: A user can find out everything playing on an output, including group routes, in one command, without cross-referencing `list routes` and `get groups`. [Source: .specify/archive/012-join-modes/spec.md -> SC-002]
@@ -2279,31 +1499,24 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **SC-059**: Every command run without the new flags sends the same requests and prints the same output as the previous release, byte for byte, across the existing test suite, apart from the join-mode fields FR-173 and FR-174 add to the route and input YAML. [Source: .specify/archive/012-join-modes/spec.md -> SC-004]
 - **SC-060**: An invalid join mode is rejected before any request reaches the hub, in 100% of the tested cases. [Source: .specify/archive/012-join-modes/spec.md -> SC-005]
 - **SC-061**: Contract tests for the hub 0.1.29 volume and ducking fields pass for each response type that carries them (route, route on output, input) with the field set, null and absent, and for each request that sends them, with the field set and unset. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
-
 - **SC-062**: Each new volume and ducking flag, the set command and the removed `--volume` flag behave as FR-183 to FR-185 state in 100% of the tested cases, and each rejected invocation sends no request. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
-
 - **SC-063**: For each extension status that FR-110's table names, the hub package's diagnosis gives the same reason the CLI gives, with one inventory request per diagnosis. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
-
 - **SC-064**: A marshalled `TTSCacheStats` carries the four property names of the hub's `CacheStats` schema in every contract test, and `sonora get tts-cache` prints the same output as before. [Source: .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md]
-
 - **SC-065**: In every contract and unit test, the seven `SpeakRequest` fields are absent from the body when unset and present when set, and each new `speak` flag sends its field. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 - **SC-066**: An operator learns a hub's version and whether it restarted since the last check with one command and no knowledge of the REST API. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-001]
 - **SC-067**: After warming a phrase, announcing the same phrase with the same provider, voice and language reports a cache hit in 100% of tries with the local provider. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-002]
 - **SC-068**: Warming a phrase that is already stored makes no provider call and succeeds. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-003]
 - **SC-069**: Neither command produces sound or changes any speaker, output, group or route; verified by running both against the live hub with nothing playing afterwards. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-004]
 - **SC-070**: Each failure listed in the acceptance scenarios gives a distinct message and a non-zero exit code, covered by an automated test. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-005]
-
 - **SC-071**: A route-starting command without `--chime` sends the same request body as before this change, and with it sends `chime` verbatim. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirements 2, 4]
 - **SC-072**: `sonora list chimes` and `sonora get chimes` return the hub's chimes read-only, against a hub that has them, with nothing started. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Verification]
 - **SC-073**: `sonora get` and `sonora list` with no resource name print a usage error that names every resource the verb accepts. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
-
 - **SC-074**: An operator goes from a station name to hearing that station with two commands (search, play) and no web browser. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-001]
 - **SC-075**: Finding a station by part of its name takes one command and one request to the hub, whatever the size of the catalogue. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-002]
 - **SC-076**: Against a hub where the radio extension is not serving, 100% of radio commands give the same exit code and a message naming the reason; each reason listed under Edge Cases has its own message, covered by an automated test. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-003]
 - **SC-077**: Catalogue text containing escape sequences cannot change the terminal's state, verified by an automated test with such text. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-004]
 - **SC-078**: No radio command produces sound or changes any speaker, output, group, input or route; verified by running them against the live hub with nothing new playing afterwards. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-005]
 - **SC-079**: Each other failure listed in the acceptance scenarios and edge cases gives a distinct message and a non-zero exit code, covered by an automated test. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-006]
-
 - **SC-080**: A `create` with `--persistent` and `--auto-remove` sends no request to the hub, and a `create` without `--persistent` sends the same body as before; verified by contract tests against a test hub that records each request. [Source: .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md -> Requirement 1]
 - **SC-081**: Each of the three new input 409 reasons gives a message that differs from the generic conflict and exits `14`, and an unknown reason still exits `14` as a generic conflict; verified by automated tests. [Source: .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md -> Requirement 3]
 
