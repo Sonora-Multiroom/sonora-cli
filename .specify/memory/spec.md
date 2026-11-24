@@ -41,6 +41,7 @@
 > **Revision**: 2026-11-24 — tinyspec speak-style-prompt-flag (.specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md): `speak` and `warm tts-cache` gain `--style-prompt TEXT` (FR-204, FR-205, AS-061). This supersedes FR-193 and AS-055 for `stylePrompt` only; both are annotated in place, their text kept. The `hub` functions are unchanged.
 
 > **Revision**: 2026-11-24 — tinyspec route-chime (.specify/archive/tiny/2026-11-20-route-chime/route-chime.md): adds User Story 67, FR-206–FR-213, SC-071–SC-073, the Chime entity and AS-062–AS-064: `--chime` on `play` and `route`, `list chimes` and `get chimes[/<id>]`, a `chime` or `defaultChime` field on outputs, groups and inputs, and `get`/`list` with no resource naming every resource the verb accepts. FR-213 extends FR-066's list of names; FR-066 itself is unchanged.
+> **Revision**: 2026-11-24 — Archived .specify/archive/014-radio-station-search (moved to .specify/archive in the same run): added User Stories 68–71, FR-214–FR-227, SC-074–SC-079, AS-065–AS-071, the radio edge cases and the Radio Station, Radio Station Page, Radio Country, Radio Language, Radio Tag, Radio Tag Page and Radio Problem entities. Its FR-012 (conventions for new commands) is folded into FR-109; no other entry was folded, superseded or retired.
 
 ## User Scenarios & Testing
 
@@ -1567,6 +1568,84 @@ A person, or a script, wants a short sound to play before an announcement or a s
 
 ---
 
+### User Story 68 - Find a station and play it (Priority: P1)
+
+An operator wants to play a station they know by name ("Kiss FM"). They search by name, read the matching stations with their codec, bitrate and country, pick one, and pass its playable address to `sonora play` without visiting any website.
+
+**Why this priority**: this is the gap the feature closes; without it radio playback needs a browser.
+
+**Independent Test**: search for a known station name on a hub with the radio extension, then play the address from the result on a test output.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with the radio extension, **When** the operator searches with a name, **Then** the matching stations are listed with every field the hub returns, including name, codec, bitrate, country, UUID and playable address.
+2. **Given** no search terms, **When** the operator searches, **Then** the hub's default page is shown (the 20 most voted stations).
+3. **Given** filters for tag, country, language, codec and minimum bitrate, **When** the operator searches, **Then** each filter that was given is sent to the hub and only those.
+4. **Given** a sort field and direction, **When** the operator searches, **Then** results come back in that order (name, votes, click count or bitrate; ascending or descending).
+5. **Given** a page size, **When** the operator searches, **Then** at most that many stations are shown; when more exist the output carries the offset to pass for the next page.
+6. **Given** part of a name in any letter case ("kiss"), **When** the operator searches, **Then** every station whose name contains it is matched, as a `grep -i` over a full list would.
+7. **Given** `--json`, **When** the operator searches, **Then** the output is JSON with the same fields as the default YAML.
+8. **Given** a search that matches nothing, **When** the operator searches, **Then** the command succeeds with an empty result.
+
+[Source: .specify/archive/014-radio-station-search/spec.md -> "User Story 1 - Find a station and play it (Priority: P1)"]
+
+---
+
+### User Story 69 - Look up one station (Priority: P2)
+
+An operator has a UUID (from a search, a script or a saved list) and wants to see the station's details before playing it: name, homepage, tags, codec, bitrate, whether the catalogue's last check succeeded.
+
+**Why this priority**: it confirms what a UUID is, but search already gives most of this.
+
+**Independent Test**: look up a UUID from a search result and compare with the hub's answer.
+
+**Acceptance Scenarios**:
+
+1. **Given** a known UUID, **When** the operator looks it up, **Then** every station field is shown, including a station the catalogue marks as broken.
+2. **Given** an unknown UUID, **When** the operator looks it up, **Then** the command fails as not found and names the UUID.
+3. **Given** a value that is not a UUID, **When** the operator looks it up, **Then** the command fails as a validation error (exit 6) that shows the hub's message.
+
+[Source: .specify/archive/014-radio-station-search/spec.md -> "User Story 2 - Look up one station (Priority: P2)"]
+
+---
+
+### User Story 70 - Browse countries, languages and tags (Priority: P2)
+
+Tag and language filters match only a whole value, so an operator needs the lists to know what to filter by. They list countries or languages (most stations first), or page through tags, optionally narrowed by a name fragment.
+
+**Why this priority**: it makes the tag and language filters usable, but name search works without it.
+
+**Independent Test**: list tags filtered by a fragment and use one of the results as a search filter.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with the radio extension, **When** the operator lists countries or languages, **Then** the whole list is shown with each entry's station count, most stations first.
+2. **Given** a name fragment, **When** the operator lists tags, **Then** a page of matching tags is shown; a page size and an offset work as for station search.
+3. **Given** `--json`, **When** the operator lists any of the three, **Then** the output is JSON.
+
+[Source: .specify/archive/014-radio-station-search/spec.md -> "User Story 3 - Browse countries, languages and tags (Priority: P2)"]
+
+---
+
+### User Story 71 - Search from Go code (Priority: P2)
+
+A developer of sonora-mcp (or any Go program) calls the public `hub` package to search stations, fetch one, and list countries, languages and tags, and gets typed results and the package's usual error classification.
+
+**Why this priority**: sonora-mcp can add radio tools only once the client has them; a hub client change goes into this repository first.
+
+**Independent Test**: the contract tests call each function against a test server and check the request sent and the result decoded.
+
+**Acceptance Scenarios**:
+
+1. **Given** a search with some optional filters set, **When** the function is called, **Then** only the filters that were set are sent, each once.
+2. **Given** a station page, **When** it is decoded, **Then** every station field and the next-page offset are available, and a missing next-page offset means the last page.
+3. **Given** a radio problem answer (invalid parameter, station not found, catalogue bad answer, catalogue unavailable), **When** the function is called, **Then** the error carries its kind, message, the offending parameter where one is named, and the retry delay where one is given, and `hub.ClassifyError` places it in the right class.
+4. **Given** a 404 without a radio problem body, **When** any radio function is called, **Then** the error is a typed "radio not offered" error, and the diagnosis turns it into a "radio is not available" error with the reason from the extension inventory.
+
+[Source: .specify/archive/014-radio-station-search/spec.md -> "User Story 4 - Search from Go code (Priority: P2)"]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1665,6 +1744,15 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **Empty warm text**: warm text that is empty or only whitespace is rejected by the CLI as a usage error before any request, as `speak` does. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm text that is empty or only whitespace"]
 - **Missing time fields**: a hub whose `startedAt` or `uptimeSeconds` is missing still decodes; the missing field is shown as absent, not as zero. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "A hub whose `startedAt` or `uptimeSeconds` is missing"]
 - **Warm time bound**: warm-up takes as long as the provider takes; the same default time bound and `--timeout` as `speak` apply. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm-up takes as long as the provider takes"]
+
+- **The radio extension is not serving**: every radio command fails with "radio is not available on this hub" and the reason the extension inventory gives: not installed (noting when extension loading is switched off), installed but disabled, failed to load (with the hub's reason), loaded but inactive, or active yet answering 404 (an extension older than 0.2.0, which can play but not search). An inventory that also answers 404 means the hub URL is wrong; an inventory that cannot be read leaves the plain "radio is not available" message. [Source: .specify/archive/014-radio-station-search/spec.md -> "The radio extension is not serving"]
+- **The catalogue is unavailable**: a 503 with a retry delay fails the command, which says the catalogue is temporarily unavailable and when to retry, or "retry later" when the hub gives no readable delay. A catalogue answering badly (502) is reported as an upstream failure. [Source: .specify/archive/014-radio-station-search/spec.md -> "The catalogue is unavailable"]
+- **A page size outside 1–100 or an offset outside 0–10000**: rejected by the CLI as a usage error (exit 2) before any request. The hub refuses, never reduces, an out-of-range value; the CLI does not quietly clamp it either. [Source: .specify/archive/014-radio-station-search/spec.md -> "A page size outside 1–100"]
+- **An offset past the last result** gives an empty page, not an error. [Source: .specify/archive/014-radio-station-search/spec.md -> "An offset past the last result"]
+- **Station names, tags and addresses are community-edited text**: they are printed as plain text and cannot move the cursor, change colours or clear the terminal. [Source: .specify/archive/014-radio-station-search/spec.md -> "Station names, tags and addresses are community-edited text"]
+- **Absent station fields** (no codec, no country, no homepage) are shown as null, not as zero or empty text. [Source: .specify/archive/014-radio-station-search/spec.md -> "Absent station fields"]
+- **A 200 answer whose body is not the declared shape** is a malformed-response error. [Source: .specify/archive/014-radio-station-search/spec.md -> "A 200 answer whose body is not the declared shape"]
+- **The hub is unreachable**: the same unreachable-hub error and exit code as every other command. [Source: .specify/archive/014-radio-station-search/spec.md -> "The hub is unreachable"]
 
 ## Requirements
 
@@ -1800,7 +1888,7 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **FR-106**: The CLI MUST provide `sonora get tts-cache`, which displays the TTS cache's total entry count, total size in bytes, configured maximum size in bytes, and entry count per provider. `tts-cache` is a singleton keyword like `master-mute`: it takes no id and has no `list` form. [Source: .specify/archive/009-tts-commands/spec.md -> FR-006]
 - **FR-107**: The CLI MUST provide `sonora clear tts-cache [--provider <name>]`, which clears the whole TTS cache, or only the named provider's entries when `--provider` is given. On success (hub 204, no body), it prints a structured confirmation: `cleared: all`, or `cleared: provider` plus `provider: <name>`. The output is YAML by default and the same fields as a JSON object with `--json`. `--provider` follows FR-103's empty-value rule. `clear` is a new verb and applies only to `tts-cache` in this feature; any other resource is a usage error. [Source: .specify/archive/009-tts-commands/spec.md -> FR-007]
 - **FR-108**: Clearing an already-empty cache MUST succeed. [Source: .specify/archive/009-tts-commands/spec.md -> FR-008]
-- **FR-109**: Every new command MUST support `--json`, `--hub-url`, and `--verbose` with the same meaning as on existing commands, and MUST default to YAML output. [Source: .specify/archive/009-tts-commands/spec.md -> FR-009]
+- **FR-109**: Every new command MUST follow the verb-first command shape and strict GNU flag style, MUST support `--json`, `--hub-url`, and `--verbose` with the same meaning as on existing commands, MUST default to YAML output, MUST write errors to standard error, MUST use the existing exit codes for the failure classes it shares, and MUST have an entry in `sonora help`. [Source: .specify/archive/009-tts-commands/spec.md -> FR-009; .specify/archive/014-radio-station-search/spec.md -> FR-012]
 - **FR-110**: When a TTS operation answers 404, the command MUST treat TTS as unavailable on this hub and fail with a message distinguishable from "target not found" and "provider not found". To explain why, it MUST then query the hub's extension inventory once and look up the entry whose id is `tts`:
 
   | Inventory result | Reported reason |
@@ -1977,6 +2065,21 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **FR-212**: `get outputs[/id]` and `get groups[/id]` MUST show `chime:`, and `get inputs[/id]` MUST show `defaultChime:`, only when set, in YAML and JSON. Output for a target with no chime MUST be unchanged. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 8]
 - **FR-213**: `sonora get` and `sonora list` with no resource name MUST name every resource that verb accepts, as FR-066 requires. `get` adds `chimes`, `info`, `master-mute` and `tts-cache`; `list` adds `chimes` and `tts-voices`. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
 
+- **FR-214**: The public `hub` package MUST offer functions to search stations, fetch one station by UUID, and list countries, languages and tags, each returning typed records that marshal to the hub's property names. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-001]
+- **FR-215**: The station search function MUST accept every filter the hub defines (name, tag, country code, language, codec, minimum bitrate), the sort field and direction, page size and offset, and MUST send only those that are set. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-002]
+- **FR-216**: Radio error answers MUST be decoded into the package's existing error type, keeping the problem kind, message, offending parameter and retry delay, and MUST be classified by `hub.ClassifyError`. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-003]
+- **FR-217**: A 404 from a radio operation that is not a "station not found" problem MUST become a typed "radio not offered" error. The `hub` package MUST offer a diagnosis that makes one extension-inventory request, matches the extension by its id `radio`, and returns a "radio is not available" error naming the reason listed in the radio edge cases; the CLI MUST run it only after such a 404 and print its message. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-004]
+- **FR-218**: The CLI MUST offer `sonora search radio-stations [name]` with options for tag, country, language, codec, minimum bitrate, sort field, sort direction, page size and offset. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-005]
+- **FR-219**: Search and station output MUST show every station field the hub returns, including the UUID and the playable address that `sonora play` accepts, in YAML by default and in JSON with `--json`; both formats carry the same fields, and an absent field is shown as null. A single page also carries the next-page offset (null on the last page). [Source: .specify/archive/014-radio-station-search/spec.md -> FR-006]
+- **FR-220**: Every search and list command MUST make exactly one radio request per run; the CLI MUST NOT follow next-page offsets by itself. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-007]
+- **FR-221**: The CLI MUST offer `sonora get radio-stations/<uuid>`, which shows one station. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-008]
+- **FR-222**: The CLI MUST offer `sonora get radio-countries`, `sonora get radio-languages` and `sonora get radio-tags`; the tag command MUST accept a name filter, page size and offset. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-009]
+- **FR-223**: Every radio command that pages MUST validate page size (1–100) and offset (0–10000) before any request, a failure being a usage error (exit 2). Hub answers MUST map to exit codes: 400 is a validation error (exit 6) with the hub's message; 404 is not found (exit 5, station) or "radio is not available" with its reason (exit 15); 502 is an upstream failure (exit 9); 503 is temporarily unavailable (exit 10) with its retry delay. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-010]
+- **FR-224**: Every text value from the catalogue MUST be printed with control and escape characters neutralised. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-011]
+- **FR-225**: The radio commands MUST be always present; no request is made at start-up or before the radio request to find out whether the hub has the extension. The inventory check happens only after a failed radio request. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-013]
+- **FR-226**: Every request and response shape MUST be validated against `api/openapi.json`, refreshed if it lacks any radio shape this feature uses. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-014]
+- **FR-227**: The README MUST document the radio commands and state that they need the hub's radio extension 0.2.0 or later. [Source: .specify/archive/014-radio-station-search/spec.md -> FR-015]
+
 ### Key Entities
 
 - **Output**: An audio output device/zone managed by the hub. Attributes relevant to this
@@ -2091,6 +2194,12 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **Warm Result**: whether the audio was already stored (`cacheHit`). [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm result"]
 - **Chime**: a hub sound addressed by `id`, with its `durationMillis`. `none` is reserved for "no chime" and is never listed. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> "Requirements"]
 
+- **Radio Station**: one catalogue entry: UUID, playable address, name, favicon and homepage addresses, country code, languages, tags, codec, bitrate, whether it is HLS, whether the catalogue's last check succeeded, votes and recent click count. Most fields may be absent. [Source: .specify/archive/014-radio-station-search/spec.md -> "Station"; .specify/archive/014-radio-station-search/data-model.md -> "RadioStation"]
+- **Radio Station Page**: a list of stations and the offset of the next page, absent on the last page. [Source: .specify/archive/014-radio-station-search/spec.md -> "Station page"; .specify/archive/014-radio-station-search/data-model.md -> "RadioStationPage"]
+- **Radio Country** and **Radio Language**: a catalogue value and how many stations carry it. [Source: .specify/archive/014-radio-station-search/spec.md -> "Country, Language"; .specify/archive/014-radio-station-search/data-model.md -> "RadioCountry, RadioLanguage, RadioTag"]
+- **Radio Tag** and **Radio Tag Page**: a tag with its station count, and a paged list of them. [Source: .specify/archive/014-radio-station-search/spec.md -> "Tag and Tag page"; .specify/archive/014-radio-station-search/data-model.md -> "RadioTagPage"]
+- **Radio Problem**: a radio error's kind, title, detail, offending parameter and retry delay. [Source: .specify/archive/014-radio-station-search/spec.md -> "Radio problem"; .specify/archive/014-radio-station-search/data-model.md -> "Errors"]
+
 ## Success Criteria
 
 ### Measurable Outcomes
@@ -2187,6 +2296,13 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **SC-072**: `sonora list chimes` and `sonora get chimes` return the hub's chimes read-only, against a hub that has them, with nothing started. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Verification]
 - **SC-073**: `sonora get` and `sonora list` with no resource name print a usage error that names every resource the verb accepts. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
 
+- **SC-074**: An operator goes from a station name to hearing that station with two commands (search, play) and no web browser. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-001]
+- **SC-075**: Finding a station by part of its name takes one command and one request to the hub, whatever the size of the catalogue. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-002]
+- **SC-076**: Against a hub where the radio extension is not serving, 100% of radio commands give the same exit code and a message naming the reason; each reason listed under Edge Cases has its own message, covered by an automated test. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-003]
+- **SC-077**: Catalogue text containing escape sequences cannot change the terminal's state, verified by an automated test with such text. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-004]
+- **SC-078**: No radio command produces sound or changes any speaker, output, group, input or route; verified by running them against the live hub with nothing new playing afterwards. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-005]
+- **SC-079**: Each other failure listed in the acceptance scenarios and edge cases gives a distinct message and a non-zero exit code, covered by an automated test. [Source: .specify/archive/014-radio-station-search/spec.md -> SC-006]
+
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
@@ -2268,3 +2384,10 @@ A person, or a script, wants a short sound to play before an announcement or a s
 - **AS-062**: `chimes` is addressed like `outputs` but is not a play or route target, so it stays out of the `respath` resource enum; `respath.ValidID` holds the id rule it shares. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
 - **AS-063**: The hub has no `GET /api/v2/chimes/{id}`, so `get chimes/<id>` lists the chimes and picks the entry. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
 - **AS-064**: `api/openapi.json` is the hub's 0.1.35 document, a superset of the 0.1.34 this feature needs. Its 0.1.35 additions (persistent inputs, `SpeakRequest.chime`, the radio extension paths) are not adopted here. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Verification]
+- **AS-065**: the constitution requires verb-first commands, so radio uses `radio-` nouns under verbs rather than a `radio` group. Search gets its own `search` verb because a bare `get radio-stations` that returns the 20 most voted would surprise; the prefix makes the extension dependency plain in help, so no extra help note is needed. [Source: .specify/archive/014-radio-station-search/spec.md -> "Command layout"]
+- **AS-066**: the search output prints the playable address, which `sonora play` already accepts. Playing a search result by position or by name, and a `play --station` shorthand, are out of scope: they hide which of several same-named stations plays, and `play` takes the address as an argument, not a flag. [Source: .specify/archive/014-radio-station-search/spec.md -> "Play by UUID only"]
+- **AS-067**: radio commands exist on every hub and explain a missing extension only after the radio request fails, so a working hub costs one request (Principle I). [Source: .specify/archive/014-radio-station-search/spec.md -> "Always present"]
+- **AS-068**: fixtures are hand-written from `api/openapi.json` and checked against it, not copied from the extension's test resources. [Source: .specify/archive/014-radio-station-search/spec.md -> "Test fixtures"]
+- **AS-069**: they take no paging options. [Source: .specify/archive/014-radio-station-search/spec.md -> "Countries and languages are short lists returned whole"]
+- **AS-070**: the backlog's `--all` (follow every page, drop repeated UUIDs) is out of scope. Its use, listing everything to `grep` it, is what the name filter already does in one request; paging stays available through `--offset`, and a Go caller pages with the `hub` package. [Source: .specify/archive/014-radio-station-search/spec.md -> "No fetch-all"]
+- **AS-071**: follow this feature as separate work. [Source: .specify/archive/014-radio-station-search/spec.md -> "Releasing a tag and adding the tools to sonora-mcp"]

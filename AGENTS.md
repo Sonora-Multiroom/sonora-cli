@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** small changes in `specs/tiny/`.
 **Archived tinyspecs** live in `.specify/archive/tiny/<date>-<name>/`, indexed by folder name; check there before concluding a small change has no spec.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
@@ -91,6 +91,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `011-hub-0128-alignment` — hub 0.1.25–0.1.28 alignment: `enable`/`disable` help and README describe the effect on running playback; `sonora play` shows the hub's `displayName`; `sonora transfer` retries the transient `ROUTE_CHANGING_OUTPUTS` 409 (`hub.IsTransientConflict`), then exits 14
 - `012-join-modes` — `sonora play|route --join-mode`, `sonora create inputs --default-join-mode`, `sonora get outputs/<id> --include-routes` (a second request; an older hub exits 3); join modes and outputs shown in the YAML of `get routes/<id>` and `get inputs/<id>`
 - `013-info-and-tts-warm` — `sonora get info` (hub info: product, version, apiVersion, startedAt, uptimeSeconds; a 404 means a hub older than 0.1.33) and `sonora warm tts-cache <text|->` (`--provider`/`--voice`/`--language`/`--timeout`; prints `cacheHit`, plays nothing)
+- `014-radio-station-search` — `sonora search radio-stations [name]` (`--tag`, `--country`, `--language`, `--codec`, `--min-bitrate`, `--order`, `--asc`/`--desc`, `--limit`, `--offset`), `sonora get radio-stations/<uuid>`, `sonora get|list radio-countries|radio-languages|radio-tags`: radio station search through the hub's radio extension; exit code `15` means radio is not available
 
 ## Active Technologies
 
@@ -102,6 +103,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `internal/cli/tts` (009): `speak`, `get tts-cache`, `clear tts-cache`; `hub/tts.go` and `hub/extensions.go` (`listExtensions`, used only for the 404 diagnosis); `internal/render/tts.go`. The TTS commands share one failure path (`report.go`) because the extension's error shape differs from the core API's.
 - `internal/cli/joinmode` (012): the `--join-mode` and `--default-join-mode` check shared by `play`, `route` and `create inputs`; `hub/outputs.go` holds `RouteOnOutput` and `GetRoutesForOutput`
 - `internal/cli/hubinfo` (013): `get info` (`RunGet`), with `hub/info.go` holding `GetInfo`; `internal/cli/tts/warm.go` (`RunWarm`) shares the TTS failure path with `speak`
+- `internal/cli/radio` (014): `RunSearch`, `RunGetStation`, `RunCountries`, `RunLanguages`, `RunTags`, `ReportError`; `hub/radio.go` holds the five radio calls and `internal/render/radio.go` the output
 
 ## Commands
 
@@ -109,6 +111,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/014-radio-station-search: `sonora search radio-stations`, `sonora get radio-stations/<uuid>` and the `radio-countries`, `radio-languages` and `radio-tags` lists read the hub's radio extension (`/api/radio/*`); `hub` gains the five radio calls, `APIError` gains `Type`, `Parameter` and `RetryAfter`, and a 404 from a radio call is explained through the extension inventory; exit code `15` means radio is not available (CLI-014)
 - .specify/archive/013-info-and-tts-warm: `sonora get info` shows the hub's product, version, apiVersion, startedAt and uptimeSeconds (YAML, or `--json`; a 404 means hub 0.1.33 or later is needed), and `sonora warm tts-cache <text|->` warms one phrase into the TTS cache (`--provider`, `--voice`, `--language`, `--timeout`, `--json`) and prints `cacheHit` without playing; `hub` gains `GetInfo`, `Info`, `WarmTTSCache`, `WarmRequest` and `WarmResult`; the README documents both and needs hub 0.1.33
 - .specify/archive/012-join-modes: `sonora play` and `sonora route` take `--join-mode` (`REPLACE`, `MIX`, `DUCK_OTHERS`, any case, sent upper-cased; other values exit `2` with no request), `sonora create inputs` takes `--default-join-mode`, and `sonora get outputs/<id> --include-routes` lists the routes playing on the output with a second request (`GET /api/v2/outputs/{id}/routes`, hub 0.1.21), where an older hub's 404 or 405 exits `3`; `get routes/<id>` and `get inputs/<id>` YAML show the join mode, the outputs and the default join mode; `hub` gains `GetRoutesForOutput`, `RouteOnOutput` and the join-mode fields; `list` output unchanged
 - .specify/archive/011-hub-0128-alignment: no new command or flag. `sonora enable|disable <inputs|outputs|groups>/<id> --help` prints a line on what the command does to running playback (hub 0.1.25), and the README says the same; `hub.PlaybackResponse` gains `DisplayName` and `sonora play` renders `displayName` after `inputId` when non-empty (hub 0.1.28); `hub` exports `ReasonRouteChangingOutputs` and `IsTransientConflict`, `ClassifyError` gives that 409 the message "the route is still adding an output; retry in a moment", and `sonora transfer` retries only that refusal (100, 200, 400, 800 ms), then exits `14`
@@ -144,3 +147,8 @@ Retired or superseded specs kept for historical context and decision archaeology
 **Issue:** `get`, `create`, `rename` and `enable|disable inputs/<id>` all print one input record through `RenderInputYAML`, so a field added there appears in all four.
 **Root Cause:** One renderer prints the input record for every command that returns it; the JSON output already prints `hub.Input` unchanged.
 **Prevention Rule:** Change an input record's YAML in `internal/render/inputs.go` only, and check the golden output of all four commands.
+
+### ⚠️ Radio requests need a longer client timeout than the standard 5 s
+**Issue:** a radio call bounded at the standard 5 s races the hub's own 5 s catalogue budget, so the user sees "hub did not respond in time" instead of the hub's 503 with its retry delay.
+**Root Cause:** the hub bounds one catalogue request at 5 s by default and answers 503 `catalogue-unavailable` at that point; a client bound of the same length usually fires first.
+**Prevention Rule:** every radio call uses `hub.RadioTimeout` (10 s), never the standard client bound; a new radio call gets the same timeout.

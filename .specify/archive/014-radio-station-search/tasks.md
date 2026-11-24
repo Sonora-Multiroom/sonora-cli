@@ -1,6 +1,6 @@
 # Tasks: Radio Station Search and Browse
 
-**Input**: Design documents from `/specs/014-radio-station-search/`
+**Input**: Design documents from `.specify/archive/014-radio-station-search/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md,
 contracts/hub-package.md, quickstart.md
@@ -28,7 +28,7 @@ of each other. US4 (Go callers) checks the public-package rules over what US1 to
 
 - [X] T001 Confirm the baseline: run `gofmt -l .`, `go vet ./...` and `go test ./...` on branch
   `014-radio-station-search` and record commands, date and counts in
-  `specs/014-radio-station-search/verification.md` (create it with a dated "Baseline" section).
+  `.specify/archive/014-radio-station-search/verification.md` (create it with a dated "Baseline" section).
 - [X] T002 Confirm `api/openapi.json` (`info.version` 0.1.35) declares what the feature mirrors: the
   operations `searchRadioStations`, `getRadioStation`, `listRadioCountries`, `listRadioLanguages`,
   `listRadioTags`; the schemas `RadioStation`, `RadioStationPage`, `RadioCountry`, `RadioLanguage`,

@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-21
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "@docs/backlog/radio-search.md" (CLI backlog item `radio-search.md`: search and
 browse radio stations through the hub's `radio` extension, RADIO-002)

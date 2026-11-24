@@ -2,7 +2,7 @@
 
 **Branch**: `014-radio-station-search` | **Date**: 2026-11-21 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/014-radio-station-search/spec.md`
+**Input**: Feature specification from `.specify/archive/014-radio-station-search/spec.md`
 
 ## Summary
 
@@ -57,7 +57,7 @@ Post-design re-check: unchanged. No violations, so no Complexity Tracking.
 ### Documentation (this feature)
 
 ```text
-specs/014-radio-station-search/
+.specify/archive/014-radio-station-search/
 ├── plan.md
 ├── research.md
 ├── data-model.md

@@ -2,6 +2,21 @@
 
 ## Merged Features Log
 
+### Radio Station Search and Browse (`search radio-stations`, `get radio-stations/<uuid>`, radio countries, languages and tags) — archived 2026-11-24
+**Branch:** 014-radio-station-search
+**Spec:** [.specify/archive/014-radio-station-search/spec.md](../archive/014-radio-station-search/spec.md)
+
+**What was added:**
+- User Stories 68–71 (P1–P2): `sonora search radio-stations [name]` finds stations by part of a name (any letter case), tag, country, language, codec or minimum bitrate, sorted and paged; `sonora get radio-stations/<uuid>` looks one up; `get|list radio-countries`, `radio-languages` and `radio-tags` show the filter values; the public `hub` package offers the same from Go code. Needs the hub's radio extension 0.2.0 or later (CLI-014; hub API 0.1.35).
+- FR-214–FR-227, SC-074–SC-079, AS-065–AS-071, the radio edge cases and the Radio Station, Radio Station Page, Radio Country, Radio Language, Radio Tag, Radio Tag Page and Radio Problem entities. The feature's FR-012 (conventions for new commands) is folded into FR-109; nothing else was folded, superseded or retired.
+
+**New Components:**
+- `hub/radio.go` (`SearchStations`, `Station`, `Countries`, `Languages`, `Tags`, `RadioTimeout`, `RadioNotOfferedError`); `hub/extensions.go` (`DiagnoseRadioUnavailable`, `RadioUnavailableError`, the shared inventory walk); `hub/errors.go` (radio branches of `ClassifyError`, `ClassRadioUnavailable`, `APIError.Type`/`Parameter`/`RetryAfter`); `TTSDiagnosis` kept as a deprecated alias of `ExtensionDiagnosis`
+- `internal/cli/radio` (search, station, lists, failure report), `internal/render/radio.go`, the `search` verb in `cmd/sonora/main.go`, exit code 15 in `internal/cli/exitcode`
+- `tests/{contract,unit,integration}` radio tests; the README documents the commands and exit code 15
+
+**Tasks Completed:** 41/42 tasks. T042 (the release tag) is open until the user asks for a release.
+
 ### Chimes on Routes (`play --chime`, `route --chime`, `list chimes`, `get chimes`) — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-11-20-route-chime/route-chime.md
 **Implemented:** 2026-11-20
