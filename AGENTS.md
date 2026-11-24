@@ -50,7 +50,7 @@ Contains specs for features currently in development that have not yet been arch
 - When no entry exists yet in `.specify/memory/`.
 **When NOT to use:**
 - Do not treat these as final — they may be drafts or works in progress.
-**Not yet archived:** `013-info-and-tts-warm` through `014-radio-station-search`; small changes in `specs/tiny/`.
+**Not yet archived:** `014-radio-station-search`; small changes in `specs/tiny/`.
 **Archived tinyspecs** live in `.specify/archive/tiny/<date>-<name>/`, indexed by folder name; check there before concluding a small change has no spec.
 
 ### `.specify/memory/` — Consolidated Specs (primary reference)
@@ -90,6 +90,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `010-public-hub-package` — public Go client package `hub/` (importable by other Sonora projects) and `api.Spec` (the embedded `api/openapi.json`); exit-code mapping and the CLI-only usage class moved to `internal/cli/exitcode`; no CLI behavior change
 - `011-hub-0128-alignment` — hub 0.1.25–0.1.28 alignment: `enable`/`disable` help and README describe the effect on running playback; `sonora play` shows the hub's `displayName`; `sonora transfer` retries the transient `ROUTE_CHANGING_OUTPUTS` 409 (`hub.IsTransientConflict`), then exits 14
 - `012-join-modes` — `sonora play|route --join-mode`, `sonora create inputs --default-join-mode`, `sonora get outputs/<id> --include-routes` (a second request; an older hub exits 3); join modes and outputs shown in the YAML of `get routes/<id>` and `get inputs/<id>`
+- `013-info-and-tts-warm` — `sonora get info` (hub info: product, version, apiVersion, startedAt, uptimeSeconds; a 404 means a hub older than 0.1.33) and `sonora warm tts-cache <text|->` (`--provider`/`--voice`/`--language`/`--timeout`; prints `cacheHit`, plays nothing)
 
 ## Active Technologies
 
@@ -100,6 +101,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 - `cmd/sonora` entrypoint; public `hub/` (the hub client, 010) and `api/` (`api.Spec`); `internal/{config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `internal/cli/route` (`sonora route`) creates a route from an existing input; `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs, .specify/archive/007-refactor-cli-commands, .specify/archive/008-route-command)
 - `internal/cli/tts` (009): `speak`, `get tts-cache`, `clear tts-cache`; `hub/tts.go` and `hub/extensions.go` (`listExtensions`, used only for the 404 diagnosis); `internal/render/tts.go`. The TTS commands share one failure path (`report.go`) because the extension's error shape differs from the core API's.
 - `internal/cli/joinmode` (012): the `--join-mode` and `--default-join-mode` check shared by `play`, `route` and `create inputs`; `hub/outputs.go` holds `RouteOnOutput` and `GetRoutesForOutput`
+- `internal/cli/hubinfo` (013): `get info` (`RunGet`), with `hub/info.go` holding `GetInfo`; `internal/cli/tts/warm.go` (`RunWarm`) shares the TTS failure path with `speak`
 
 ## Commands
 
@@ -107,6 +109,7 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Recent Changes
 
+- .specify/archive/013-info-and-tts-warm: `sonora get info` shows the hub's product, version, apiVersion, startedAt and uptimeSeconds (YAML, or `--json`; a 404 means hub 0.1.33 or later is needed), and `sonora warm tts-cache <text|->` warms one phrase into the TTS cache (`--provider`, `--voice`, `--language`, `--timeout`, `--json`) and prints `cacheHit` without playing; `hub` gains `GetInfo`, `Info`, `WarmTTSCache`, `WarmRequest` and `WarmResult`; the README documents both and needs hub 0.1.33
 - .specify/archive/012-join-modes: `sonora play` and `sonora route` take `--join-mode` (`REPLACE`, `MIX`, `DUCK_OTHERS`, any case, sent upper-cased; other values exit `2` with no request), `sonora create inputs` takes `--default-join-mode`, and `sonora get outputs/<id> --include-routes` lists the routes playing on the output with a second request (`GET /api/v2/outputs/{id}/routes`, hub 0.1.21), where an older hub's 404 or 405 exits `3`; `get routes/<id>` and `get inputs/<id>` YAML show the join mode, the outputs and the default join mode; `hub` gains `GetRoutesForOutput`, `RouteOnOutput` and the join-mode fields; `list` output unchanged
 - .specify/archive/011-hub-0128-alignment: no new command or flag. `sonora enable|disable <inputs|outputs|groups>/<id> --help` prints a line on what the command does to running playback (hub 0.1.25), and the README says the same; `hub.PlaybackResponse` gains `DisplayName` and `sonora play` renders `displayName` after `inputId` when non-empty (hub 0.1.28); `hub` exports `ReasonRouteChangingOutputs` and `IsTransientConflict`, `ClassifyError` gives that 409 the message "the route is still adding an output; retry in a moment", and `sonora transfer` retries only that refusal (100, 200, 400, 800 ms), then exits `14`
 - .specify/archive/010-public-hub-package: the hub client is the public package `github.com/Sonora-Multiroom/sonora-cli/hub` (moved from the former internal client package), and `api.Spec` publishes `api/openapi.json` from the same file; `ClassUsage` and `ExitCode()` moved to `internal/cli/exitcode` (`exitcode.For`, `exitcode.Usage`); CLI commands, output and exit codes unchanged

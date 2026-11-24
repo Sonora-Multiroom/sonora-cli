@@ -2,6 +2,21 @@
 
 ## Merged Features Log
 
+### Hub Info and TTS Cache Warm-up (`get info`, `warm tts-cache`) — archived 2026-11-24
+**Branch:** 013-info-and-tts-warm
+**Spec:** [.specify/archive/013-info-and-tts-warm/spec.md](../archive/013-info-and-tts-warm/spec.md)
+
+**What was added:**
+- User Stories 64–66 (P1–P2): `sonora get info` shows the hub's product, version, API version, start time and uptime (read-only; a hub older than 0.1.33 gets its own message); `sonora warm tts-cache <text|->` synthesizes a phrase into the TTS cache without playing it, reporting `cacheHit`; the public `hub` package offers both as typed functions
+- FR-194–FR-203, SC-066–SC-070, AS-055–AS-060, five edge cases and the Hub Info, Warm Request and Warm Result entities; no existing entry folded, superseded or retired
+
+**New Components:**
+- `hub/info.go` (`GetInfo`, `Info`, `InfoNotOfferedError`); `hub/tts.go` (`WarmTTSCache`, `WarmRequest`, `WarmResult`); `hub/errors.go` (`ClassifyError` for the info 404 and `CACHE_WRITE_FAILED`)
+- `internal/cli/hubinfo` (`RunGet`), `internal/cli/tts/warm.go` (`RunWarm`), `internal/render/info.go`, and the warm result in `internal/render/tts.go`
+- `tests/{contract,unit,integration}` info and warm tests; the live checks on hub 0.1.33 are in the feature's `verification.md` (2026-11-09)
+
+**Tasks Completed:** 26/27 tasks. T026 (the release tag) is open until the user asks for a release.
+
 ### Join Modes in the CLI (`--join-mode`, `--default-join-mode`, `get outputs --include-routes`) — archived 2026-11-24
 **Branch:** 012-join-modes
 **Spec:** [.specify/archive/012-join-modes/spec.md](../archive/012-join-modes/spec.md)

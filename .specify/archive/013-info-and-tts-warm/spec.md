@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-06
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "Add two hub client features for hub 0.1.33 (API 0.1.33): hub info (`GET /api/v2/info`) and TTS cache warm-up (`POST /api/tts/cache/warm`), each as a function in the public `hub` package and as a CLI command."
 

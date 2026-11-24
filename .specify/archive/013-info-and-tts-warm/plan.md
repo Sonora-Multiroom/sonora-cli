@@ -2,7 +2,7 @@
 
 **Branch**: `013-info-and-tts-warm` | **Date**: 2026-11-06 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/013-info-and-tts-warm/spec.md`
+**Input**: Feature specification from `/.specify/archive/013-info-and-tts-warm/spec.md`
 
 ## Summary
 
@@ -54,7 +54,7 @@ Post-design re-check: unchanged. No violations, so no Complexity Tracking.
 ### Documentation (this feature)
 
 ```text
-specs/013-info-and-tts-warm/
+.specify/archive/013-info-and-tts-warm/
 ├── plan.md
 ├── research.md
 ├── data-model.md

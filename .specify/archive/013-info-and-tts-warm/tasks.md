@@ -1,6 +1,6 @@
 # Tasks: Hub Info and TTS Cache Warm-up
 
-**Input**: Design documents from `/specs/013-info-and-tts-warm/`
+**Input**: Design documents from `/.specify/archive/013-info-and-tts-warm/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli.md, contracts/hub-package.md
 
@@ -23,7 +23,7 @@ and Phase 5 only checks the public-package rules.
 ## Phase 1: Setup
 
 - [X] T001 Confirm the baseline: run `gofmt -l .`, `go vet ./...` and `go test ./...` on branch
-  `013-info-and-tts-warm` and record the result in `specs/013-info-and-tts-warm/verification.md` (create it
+  `013-info-and-tts-warm` and record the result in `.specify/archive/013-info-and-tts-warm/verification.md` (create it
   with a dated "Baseline" section). The baseline already includes the committed, unrelated `Group.system` mirror
   (`hub/groups.go`, `internal/render/groups.go`, their tests); do not touch it.
 - [X] T002 Confirm `api/openapi.json` declares what the feature mirrors: `HubInfoResponse` (five optional

@@ -36,6 +36,8 @@
 > **Revision**: 2026-11-24 — tinyspec tts-cache-stats-json-tags (.specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md): added FR-190 and SC-064. The public `hub.TTSCacheStats` now marshals to JSON with the property names of the hub's `CacheStats` schema, so a caller such as sonora-mcp's cache tool returns the spec's names (v0.3.4 tag pending). Decoding and the CLI's output are unchanged. No user story; no existing ID was renumbered or rewritten.
 > **Revision**: 2026-11-24 — tinyspec speak-request-fields (.specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md): added User Story 63, FR-191–FR-193, SC-065 and AS-054. `sonora speak` gains `--playback-mode`, `--route-volume` and `--ducking-level`, and the public `hub.SpeakRequest` gains the seven hub 0.1.29 fields it lacked (sent only when set). AS-048 is amended, on the user's decision: the hub 0.1.29 `SpeakRequest` documents `playbackMode`, so `speak` exposes it; sonora-tts's own playback mode is still its own. Tag pending. No existing ID was renumbered or rewritten.
 
+> **Revision**: 2026-11-24 — Archived .specify/archive/013-info-and-tts-warm (moved from specs/ in the same run): added User Stories 64–66, five edge cases, FR-194–FR-203, SC-066–SC-070, the Hub Info, Warm Request and Warm Result entities, and AS-055–AS-060. No existing entry was folded, superseded or retired. FR-009, AS-002 and AS-022 name the TTS and mutating commands without naming `get info` or `warm tts-cache`; they were left as they stand.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - View currently active outputs (Priority: P1)
@@ -1478,6 +1480,66 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 
 ---
 
+### User Story 64 - See which hub I am talking to (Priority: P1)
+
+An operator runs one command and sees the hub's product, version, API version, start time and uptime. A script uses it to confirm the target is a Sonora Multiroom hub, to check it supports a feature, or to notice that the hub restarted since the last look.
+
+**Why this priority**: it is read-only, needs no TTS extension and is the first thing anyone checks when something is wrong.
+
+**Independent Test**: run it against a hub 0.1.33 and compare the output with the hub's response.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub 0.1.33, **When** the operator asks for hub info, **Then** product, version, API version, start time and uptime are shown.
+2. **Given** `--json`, **When** the operator asks for hub info, **Then** the output is one JSON object with the same fields.
+3. **Given** a hub older than 0.1.33, **When** the operator asks for hub info, **Then** the command fails with a message that says the hub does not offer this call, not a generic error.
+4. **Given** the hub is unreachable, **When** the operator asks for hub info, **Then** the command fails with the same unreachable-hub error as every other command.
+
+[Source: .specify/archive/013-info-and-tts-warm/spec.md -> "User Story 1 - See which hub I am talking to"]
+
+---
+
+### User Story 65 - Warm the TTS cache before it is needed (Priority: P2)
+
+An operator or script has phrases it will announce often (a doorbell, "dinner is ready"). It asks the hub to synthesize them ahead of time, so the first real announcement starts at once and costs no provider call.
+
+**Why this priority**: saves time and provider cost, but only for installations with the TTS extension.
+
+**Independent Test**: warm a phrase with the free local provider, then speak the same phrase and voice and see `cacheHit: true`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a phrase not in the cache, **When** the operator warms it, **Then** the command succeeds and reports that the phrase was synthesized (`cacheHit: false`), and nothing is played.
+2. **Given** a phrase already in the cache, **When** the operator warms it again, **Then** the command succeeds and reports `cacheHit: true`.
+3. **Given** provider, voice and language options, **When** the operator warms a phrase with them, **Then** the hub receives them, and a later announcement with the same options is a cache hit.
+4. **Given** the text is `-`, **When** the operator warms, **Then** the text is read from standard input, as `speak` does.
+5. **Given** `--json`, **When** the operator warms a phrase, **Then** the output is one JSON object with `cacheHit`.
+6. **Given** empty text or a request the hub rejects as invalid, **When** the operator warms, **Then** the command fails as a usage error that shows the hub's message. **Given** an unknown provider, **Then** it fails as a not-found error with the hub's message, as `speak` does.
+7. **Given** the provider fails or the audio cannot be stored, **When** the operator warms, **Then** the command fails with the hub's message and says that repeating the request is safe.
+8. **Given** a hub without the TTS extension, **When** the operator warms, **Then** the command reports TTS as unavailable, as `speak` does.
+
+[Source: .specify/archive/013-info-and-tts-warm/spec.md -> "User Story 2 - Warm the TTS cache before it is needed"]
+
+---
+
+### User Story 66 - Use both from Go code (Priority: P2)
+
+A developer of sonora-mcp (or any Go program) calls the public `hub` package to get hub info and to warm a phrase, and gets typed results and the package's usual error classification.
+
+**Why this priority**: sonora-mcp can only expose these once the client has them. A hub client fix goes into this repository first.
+
+**Independent Test**: the contract tests call each function against a test server and check the request and the decoded result.
+
+**Acceptance Scenarios**:
+
+1. **Given** a server answering with the hub info shape, **When** the function is called, **Then** a typed record with each field is returned, and marshalling it gives the hub's property names.
+2. **Given** a warm request with all eight spec fields, **When** the function is called, **Then** only the fields that were set are sent, and `cacheHit` is returned.
+3. **Given** an answer the operation declares as an error (info: 404 or any other non-2xx; warm: 400, 404 or 503), **When** the function is called, **Then** the error is one `hub.ClassifyError` already understands.
+
+[Source: .specify/archive/013-info-and-tts-warm/spec.md -> "User Story 3 - Use both from Go code"]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1571,6 +1633,11 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 - **`--include-routes` on another resource or on a list** (`get outputs`, `get groups/<id>`, `get inputs/<id>`): a usage error before any request is sent. [Source: .specify/archive/012-join-modes/spec.md -> "`--include-routes` on another resource or on a list"]
 - **Many routes on one output**: shown in full, in the hub's order. There is no paging. [Source: .specify/archive/012-join-modes/spec.md -> "Many routes on one output"]
 - **Unknown future join mode in a response**: shown as the hub sent it. The flags still accept only the three documented modes, until the contract adds more. [Source: .specify/archive/012-join-modes/spec.md -> "Unknown future join mode in a response"]
+- **A 200 body for hub info that is malformed**: a body that is not JSON, or lacks `product`, `version` or `apiVersion`, is a malformed-response error, not an empty record. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "A 200 body for hub info that is not JSON"]
+- **Product other than multiroom**: hub info shows `product` as the hub sent it; a value other than `multiroom` is shown, not hidden or rejected. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Hub info shows `product` as the hub sent it"]
+- **Empty warm text**: warm text that is empty or only whitespace is rejected by the CLI as a usage error before any request, as `speak` does. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm text that is empty or only whitespace"]
+- **Missing time fields**: a hub whose `startedAt` or `uptimeSeconds` is missing still decodes; the missing field is shown as absent, not as zero. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "A hub whose `startedAt` or `uptimeSeconds` is missing"]
+- **Warm time bound**: warm-up takes as long as the provider takes; the same default time bound and `--timeout` as `speak` apply. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm-up takes as long as the provider takes"]
 
 ## Requirements
 
@@ -1862,6 +1929,16 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 - **FR-192**: The public `hub` package's `SpeakRequest` MUST carry the seven hub 0.1.29 fields it lacked (`engine`, `pitch`, `speakingRate`, `stylePrompt`, `playbackMode`, `routeVolume`, `duckingLevelDb`) as optional values. Each MUST be omitted from the request when unset, and sent, including zero and empty values, when set. Its godoc MUST say so. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 
 - **FR-193**: `sonora speak` MUST NOT gain flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. A `speak` invocation with none of the new flags MUST send the same request body as before this change. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+- **FR-194**: The public `hub` package MUST offer a function that calls `GET /api/v2/info` and returns a typed record of `product`, `version`, `apiVersion`, `startedAt` and `uptimeSeconds`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-001]
+- **FR-195**: The CLI MUST offer a command that shows hub info as YAML by default and as one JSON object with `--json`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-002]
+- **FR-196**: A 404 from the info call MUST be reported as "this hub does not offer hub info (needs hub 0.1.33 or later)". [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-003]
+- **FR-197**: The public `hub` package MUST offer a function that calls `POST /api/tts/cache/warm` with `text` and the optional `providerName`, `voice`, `language`, `engine`, `pitch`, `speakingRate` and `stylePrompt`, sending only the fields that are set, and returns `cacheHit`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-004]
+- **FR-198**: The CLI MUST offer a command that warms one phrase, taking the text as an argument or `-` for standard input, with `--provider`, `--voice`, `--language` and `--timeout` meaning what they mean for `speak`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-005]
+- **FR-199**: The warm command MUST print `cacheHit` as YAML by default and as one JSON object with `--json`, and MUST NOT play anything. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-006]
+- **FR-200**: The warm command MUST map hub answers as `speak` does: 400 is a usage error with the hub's message, a missing TTS extension gives the "text-to-speech is not available" message, and 503 is a failure whose message says that repeating is safe. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-007]
+- **FR-201**: Both new commands MUST follow the existing conventions: strict GNU flag style, exit codes, errors on standard error, output on standard output, and an entry in `help`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-008]
+- **FR-202**: Every request and response shape of the two new operations MUST be validated against `api/openapi.json`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-009]
+- **FR-203**: The README MUST document both commands and state that they need hub 0.1.33 or later. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-010]
 
 ### Key Entities
 
@@ -1972,6 +2049,9 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 - **Join Mode**: how a route joins the outputs it targets: `REPLACE`, `MIX` or `DUCK_OTHERS`. It is set on a route or play request, or on an input as the default for its routes, and it is reported on each route. [Source: .specify/archive/012-join-modes/spec.md -> "Join mode"]
 - **Route on Output**: one route as seen from one output. It has the route's own fields, plus its duck state on that output (`FULL` or `LOWERED`, open to more values) and whether it is the output's main route. A group route appears once under each member output it plays on. [Source: .specify/archive/012-join-modes/spec.md -> "Route on an output"]
 - **Output Main Route**: the first route to join the output that is not a ducking route, or, if every route is ducking, the first route. [Source: .specify/archive/012-join-modes/spec.md -> "Output's main route"]
+- **Hub Info**: identity and age of a running hub: `product`, `version`, `apiVersion`, `startedAt` and `uptimeSeconds`. `version` and `apiVersion` may read `unknown` and are passed through, never parsed as semver. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Hub info"]
+- **Warm Request**: the phrase and the voice choices that make up a cache entry's identity. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm request"]
+- **Warm Result**: whether the audio was already stored (`cacheHit`). [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm result"]
 
 ## Success Criteria
 
@@ -2059,6 +2139,11 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 - **SC-064**: A marshalled `TTSCacheStats` carries the four property names of the hub's `CacheStats` schema in every contract test, and `sonora get tts-cache` prints the same output as before. [Source: .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md]
 
 - **SC-065**: In every contract and unit test, the seven `SpeakRequest` fields are absent from the body when unset and present when set, and each new `speak` flag sends its field. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+- **SC-066**: An operator learns a hub's version and whether it restarted since the last check with one command and no knowledge of the REST API. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-001]
+- **SC-067**: After warming a phrase, announcing the same phrase with the same provider, voice and language reports a cache hit in 100% of tries with the local provider. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-002]
+- **SC-068**: Warming a phrase that is already stored makes no provider call and succeeds. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-003]
+- **SC-069**: Neither command produces sound or changes any speaker, output, group or route; verified by running both against the live hub with nothing playing afterwards. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-004]
+- **SC-070**: Each failure listed in the acceptance scenarios gives a distinct message and a non-zero exit code, covered by an automated test. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-005]
 
 ## Assumptions
 
@@ -2131,3 +2216,9 @@ A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--duck
 - **AS-052**: The `hub` package's volume and ducking fields follow the hub's 0.1.29 schema in `api/openapi.json`. The `SpeakRequest` route fields are not part of this change and are left to the speak-request-fields tinyspec. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
 - **AS-053**: `--volume` is not kept as an alias or a deprecated notice, so scripts that use it fail at once with exit `2` and must be updated. The removal is released as a breaking change. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
 - **AS-054**: `--playback-mode` is passed to the hub unchecked, because the spec has no enum for it; the hub's 400 is the only check on its value. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+- **AS-055**: The CLI warm command takes the same voice options as `speak` (`--provider`, `--voice`, `--language`), so a warmed phrase matches the announcements the CLI makes; `engine`, `pitch`, `speakingRate` and `stylePrompt` are in the `hub` function only. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "The CLI warm command takes the same voice options as `speak`"]
+- **AS-056**: Warming several phrases is a shell loop for now; a batch form is out of scope. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warming several phrases is a shell loop for now"]
+- **AS-057**: Command spelling follows the existing verb-first style, `sonora get info` and `sonora warm tts-cache <text|->`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Command spelling follows the existing verb-first style"]
+- **AS-058**: `Group.system` is already mirrored by a separate change and is not part of this feature. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "`Group.system` is already mirrored"]
+- **AS-059**: The hub info schema has no `required` list; the client requires `product`, `version` and `apiVersion` because a body without them does not identify a hub. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "The hub info schema has no `required` list"]
+- **AS-060**: Hubs before 0.1.33 keep working for every other command; only the two new commands need 0.1.33. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Hubs before 0.1.33 keep working"]
