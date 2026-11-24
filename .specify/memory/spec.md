@@ -30,6 +30,11 @@
 > **Revision**: 2026-11-23 — Resolved the partial contradictions left by the 011 archival, on the user's request: User Stories 32, 35 and 39 now say what disabling (and enabling an output) does to running playback since hub 0.1.25; FR-137 names `ROUTE_CHANGING_OUTPUTS` as the exception to "the hub's `detail` alone"; AS-022 names `transfer`'s retry as the exception to "one request". Each gained a ref to .specify/archive/011-hub-0128-alignment; no ID changed.
 > **Revision**: 2026-11-23 — tinyspec rename-inputs-command (.specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md): added User Story 58, FR-155–FR-160, SC-055 and AS-045. Adds `sonora rename inputs/<id> <name>` and `sonora rename inputs/<id> --reset` (`PUT /api/v2/inputs/{id}/display-name`, hub 0.1.27), and the hub client call that sonora-mcp will use. No existing ID was renumbered or rewritten.
 > **Revision**: 2026-11-24 — Archived .specify/archive/012-join-modes (moved from specs/ in the same run): added User Stories 59–61, FR-161–FR-178, SC-056–SC-060, AS-046–AS-051, eleven edge cases and the Join Mode, Route on Output and Output Main Route entities for CLI-012 (`--join-mode` on `play` and `route`, `--default-join-mode` on `create inputs`, `get outputs/<id> --include-routes`; hub 0.1.21 join modes). The Input and Route entities gained the default join mode and the route's join mode and outputs, and the Route entity's "all ten" became "all twelve". Folded: FR-018 into FR-154 (the no-dependency, no-startup-path rule now covers join modes), and AS-038 and AS-044 each gained the join-mode clause and a second source ref. No existing ID was renumbered or retired. SC-054 is partly contradicted by SC-059 (route and input records change their YAML); it is left as written and reported in the archival report.
+> **Revision**: 2026-11-24 — tinyspec hub-route-volume-client (.specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md): added FR-179–FR-182, SC-061 and AS-052 for the public `hub` package's hub 0.1.29 contract: `outputVolume` replaces `volume` on play requests, route volume and ducking level become optional fields on play, route and input records, `SetRouteVolume` is added, and the `PlaybackRequest.Volume` rename is a breaking change for the public package. No user story: the change has no command of its own (the CLI follows in route-volume-cli). No existing ID was renumbered or rewritten; the Input, Route and Playback Request entities gained the new fields.
+> **Revision**: 2026-11-24 — tinyspec route-volume-cli (.specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md): added User Story 62, FR-183–FR-187, SC-062 and AS-053. `sonora play` replaces `--volume` with `--output-volume` and gains `--route-volume` and `--ducking-level`; `sonora set routes/<id> volume <0-100>` is new; the single-record views show the route and input levels when set. User Story 29 and the join-mode edge case named `--volume` and now say `--output-volume`; User Story 24 and FR-053 call the starting volume generically and are unchanged. FR-096's `set` verb now also takes `routes/<id>` through FR-185. No existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-24 — tinyspec hub-tts-unavailable-diagnosis (.specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md): added FR-188–FR-189 and SC-063. The TTS 404 diagnosis of FR-110 is now public in the `hub` package as `DiagnoseTTSUnavailable`, and a TTS 404 classifies as text-to-speech unavailable rather than a network failure (released in v0.3.3). FR-110 and FR-111 are unchanged: the CLI's output and exit codes do not change. No user story; no existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-24 — tinyspec tts-cache-stats-json-tags (.specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md): added FR-190 and SC-064. The public `hub.TTSCacheStats` now marshals to JSON with the property names of the hub's `CacheStats` schema, so a caller such as sonora-mcp's cache tool returns the spec's names (v0.3.4 tag pending). Decoding and the CLI's output are unchanged. No user story; no existing ID was renumbered or rewritten.
+> **Revision**: 2026-11-24 — tinyspec speak-request-fields (.specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md): added User Story 63, FR-191–FR-193, SC-065 and AS-054. `sonora speak` gains `--playback-mode`, `--route-volume` and `--ducking-level`, and the public `hub.SpeakRequest` gains the seven hub 0.1.29 fields it lacked (sent only when set). AS-048 is amended, on the user's decision: the hub 0.1.29 `SpeakRequest` documents `playbackMode`, so `speak` exposes it; sonora-tts's own playback mode is still its own. Tag pending. No existing ID was renumbered or rewritten.
 
 ## User Scenarios & Testing
 
@@ -738,7 +743,7 @@ An operator using `sonora play <uri> <target-id> --output` expects `play` to add
 
 **Why this priority**: `play` is the one already-implemented command that mutates state, so its change carries the most user-facing risk (existing scripts calling it will break). It's sequenced last so the lower-risk read-command grammar lands and stabilizes first.
 
-**Independent Test**: Can be fully tested by running `sonora play <uri> outputs/<id>` and `sonora play <uri> groups/<id>` (including with `--display-name` and `--volume`), and verifying the same playback result as the pre-refactor `sonora play <uri> <id> --output` / `sonora play <uri> <id> --group`.
+**Independent Test**: Can be fully tested by running `sonora play <uri> outputs/<id>` and `sonora play <uri> groups/<id>` (including with `--display-name` and `--output-volume`), and verifying the same playback result as the pre-refactor `sonora play <uri> <id> --output` / `sonora play <uri> <id> --group`.
 
 **Acceptance Scenarios**:
 
@@ -1433,6 +1438,46 @@ fields and one that omits them, and compare the YAML and JSON output.
 
 ---
 
+### User Story 62 - Set output volume, route volume and ducking level from the command line (Priority: P2)
+
+A person plays a URI with `--output-volume`, `--route-volume` and `--ducking-level`, changes a playing route's volume with `sonora set routes/<route-id> volume <0-100>`, and sees a route's levels in `sonora get routes/<route-id>`. `--volume` is removed from `sonora play`.
+
+**Why this priority**: The hub can now set a route's volume and an announcement's ducking level separately from the output's volume; without these flags that capability is unreachable from the CLI.
+
+**Independent Test**: Run each flag and the set command against a fake hub and check the request bodies, the printed route, the exit status and the usage errors.
+
+**Acceptance Scenarios**:
+
+1. **Given** an output, **When** the user runs `sonora play <uri> outputs/<id> --output-volume 30 --route-volume 15 --join-mode DUCK_OTHERS --ducking-level -20`, **Then** the hub receives `outputVolume` 30, `routeVolume` 15 and `duckingLevelDb` -20, and the exit status is `0`.
+2. **Given** `--volume 10`, **When** the user runs `play`, **Then** it fails as an unknown flag with exit status `2`, and no request is sent.
+3. **Given** `--output-volume` or `--route-volume` outside 0-100, **When** the user runs `play`, **Then** the error names the flag, uses the validation exit code, and no request is sent.
+4. **Given** `--ducking-level` without `--join-mode DUCK_OTHERS`, **When** the user runs `play`, **Then** it is a usage error with exit status `2`; **Given** a value outside -60 to 0, **Then** it is a validation error. Neither sends a request.
+5. **Given** a playing route, **When** the user runs `sonora set routes/<route-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the returned route is printed with its `routeVolume`, and the exit status is `0`. **Given** an unknown route, **Then** the not-found exit status `5` is returned and nothing is printed to standard output.
+6. **Given** a route with `routeVolume` 40 and `duckingLevelDb` -12.5, **When** the user runs `sonora get routes/<route-id>`, **Then** the YAML shows `routeVolume: 40` and `duckingLevelDb: -12.5` after `joinMode`; **Given** either field is unset, **Then** it is left out of the YAML. `get inputs/<id>` shows `defaultRouteVolume` and `defaultDuckingLevelDb` after `defaultJoinMode` in the same way. `--json` carries all of them, null when unset. The list views are unchanged.
+
+[Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+---
+
+### User Story 63 - Announce at a chosen volume or ducking level over music (Priority: P2)
+
+A person runs `sonora speak` with `--playback-mode`, `--route-volume` or `--ducking-level`, so that an announcement ducks or mixes over what is playing at its own level rather than the output's.
+
+**Why this priority**: An announcement over music needs a level of its own; the flags reach the hub's new fields without changing anything else about `speak`.
+
+**Independent Test**: Run `speak` with each flag against a fake hub and check the request body, the exit status and the usage errors.
+
+**Acceptance Scenarios**:
+
+1. **Given** an output, **When** the user runs `sonora speak "Dinner is ready" outputs/kitchen --playback-mode duck-others --route-volume 80 --ducking-level -20`, **Then** the hub receives `playbackMode`, `routeVolume` and `duckingLevelDb`, and the command exits `0`.
+2. **Given** `--ducking-level -20` without `--playback-mode`, **When** the user runs `speak`, **Then** the request carries `duckingLevelDb` only, and the extension's configured mode applies.
+3. **Given** a blank `--playback-mode`, or a `--route-volume` or `--ducking-level` out of range, **When** the user runs `speak`, **Then** the command fails before any request is sent: a blank mode with exit `2`, an out-of-range value with the validation exit code.
+4. **Given** `speak` with none of the new flags, **When** the user runs it, **Then** the request body is the same as before this change.
+
+[Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1519,7 +1564,7 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **Empty value** (`--join-mode ""`): a usage error, not "use the default". Leaving the flag out is the way to use the default. [Source: .specify/archive/012-join-modes/spec.md -> "Empty value"]
 - **A join mode the hub refuses**: a hub older than 0.1.21 ignores or rejects the field. Whatever it answers is reported as any other hub answer is today. The CLI does not check the hub's version first. [Source: .specify/archive/012-join-modes/spec.md -> "A join mode the hub refuses"]
 - **Join mode on a group target**: allowed; the hub applies it on every member output. [Source: .specify/archive/012-join-modes/spec.md -> "Join mode on a group target"]
-- **`--join-mode` with `--volume` and `--display-name` on `play`**: all three are sent together. [Source: .specify/archive/012-join-modes/spec.md -> "`--join-mode` with `--volume` and `--display-name` on `play`"]
+- **`--join-mode` with `--output-volume` and `--display-name` on `play`**: all three are sent together. [Source: .specify/archive/012-join-modes/spec.md -> "`--join-mode` with `--output-volume` and `--display-name` on `play`"]
 - **The output disappears between the two requests of `--include-routes`**: the routes request answers 404, and the CLI reports it as an older hub. This window is narrow, and the message tells the user what to check. It is accepted, not handled. [Source: .specify/archive/012-join-modes/spec.md -> "The output disappears between the two requests of `--include-routes`"]
 - **The routes request fails for another reason** (network failure, 5xx, malformed body): reported as that failure, with its usual exit code. Nothing is printed on stdout, not even the output's record. [Source: .specify/archive/012-join-modes/spec.md -> "The routes request fails for another reason"]
 - **A hub older than 0.1.21 for `get routes/<id>`**: the route has no join mode and no outputs. The YAML leaves those two fields out instead of showing empty values. The JSON keeps printing what it prints today. [Source: .specify/archive/012-join-modes/spec.md -> "A hub older than 0.1.21 for `get routes/<id>`"]
@@ -1788,6 +1833,36 @@ fields and one that omits them, and compare the YAML and JSON output.
 
 - **FR-178**: Every new behaviour MUST be covered by tests written before the code, against a fake hub whose answers follow `api/openapi.json` at 0.1.28. That includes contract tests for the new hub client operation: a list, an empty list, a 404, and an unknown duck state. It also includes contract tests showing that each new request field is sent only when it is set. [Source: .specify/archive/012-join-modes/spec.md -> FR-017]
 
+- **FR-179**: The public `hub` package MUST send `outputVolume` on a play request, never `volume`, and MUST send `routeVolume` and `duckingLevelDb` on play and route requests, and `defaultRouteVolume` and `defaultDuckingLevelDb` on input creation, only when each is set; an unset field MUST be omitted, not sent as null. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+
+- **FR-180**: The public `hub` package MUST decode `routeVolume` and `duckingLevelDb` on routes and on routes-per-output records, and `defaultRouteVolume` and `defaultDuckingLevelDb` on inputs, as optional values: null or absent (a pre-0.1.29 hub) MUST decode as unset, and a set value MUST decode as sent, including negative and fractional levels. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+
+- **FR-181**: The public `hub` package MUST provide `SetRouteVolume`, which sends `PUT /api/v2/routes/{routeId}/volume` with `{"volume": N}`. A 200 MUST return the decoded, validated route; a 404 MUST be a not-found error for `route`; a 400 MUST carry the hub's detail; a malformed body MUST be a decode error; any other non-success status MUST be a status error. A route's volume MUST NOT be clearable through this call. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+
+- **FR-182**: Renaming `PlaybackRequest.Volume` to `OutputVolume` is a breaking change to the public `hub` package. While the module is `v0.x` it is allowed, but the release notes MUST call it out, and every new exported identifier MUST carry godoc that stands without this repository's specs. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+
+- **FR-183**: `sonora play` MUST accept `--output-volume N` (0-100), which sends `outputVolume`, and `--route-volume N` (0-100), which sends `routeVolume`. `--volume` MUST NOT exist: it is an unknown flag, with usage exit `2`, and it MUST have no alias or notice. An out-of-range value for either flag MUST be rejected before any request, with an error that names the flag and the validation exit code. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **FR-184**: `sonora play` MUST accept `--ducking-level DB` (-60 to 0, decimals allowed), which sends `duckingLevelDb`. Without `--join-mode DUCK_OTHERS` it MUST be a usage error (exit `2`); an out-of-range value MUST be a validation error. Both checks MUST run before any request. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **FR-185**: `sonora set routes/<route-id> volume <0-100>` MUST call `SetRouteVolume` and print the returned route with the route renderers, exit `0`. Its missing-identifier, attribute, value and extra-argument errors MUST match `set outputs/<id> volume` in message and exit code, and an unknown route MUST exit with the not-found code and print nothing to standard output. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **FR-186**: `get routes/<id>` and the routes shown by `get outputs/<id> --include-routes` MUST print `routeVolume` and `duckingLevelDb` after `joinMode`, and `get inputs/<id>` MUST print `defaultRouteVolume` and `defaultDuckingLevelDb` after `defaultJoinMode`, each only when set. A level MUST print in its shortest form (`-25`, `-12.5`). `--json` MUST carry the fields as the `hub` types encode them, null when unset. The list views MUST NOT change. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **FR-187**: Removing `--volume` from `sonora play` is a breaking CLI change, and the release notes MUST say so. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **FR-188**: The public `hub` package MUST provide `DiagnoseTTSUnavailable`, which makes one extension-inventory request and returns the reason TTS is unavailable on the hub, using the mapping in FR-110's table, so that a caller outside the CLI can explain a TTS 404 the same way the CLI does. The CLI MUST use it, and its output and exit codes MUST NOT change. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
+
+- **FR-189**: `hub.ClassifyError` MUST classify a TTS 404 (`TTSNotOfferedError`), wrapped or not, as text-to-speech unavailable, with the message "text-to-speech is not available on this hub", and not as a network failure. The v0.3.3 release notes MUST say that the class changed for callers that matched the old one. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
+
+- **FR-190**: The public `hub` package's `TTSCacheStats` MUST marshal to JSON with the property names of `CacheStats` in `api/openapi.json`: `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider`. Decoding through `GetTTSCacheStats` and the CLI's output MUST NOT change. [Source: .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md]
+
+- **FR-191**: `sonora speak` MUST accept `--playback-mode MODE`, which sends `playbackMode` verbatim with no client-side check of the value; `--route-volume N` (0-100), which sends `routeVolume`; and `--ducking-level DB` (-60 to 0, decimals allowed), which sends `duckingLevelDb`. A blank `--playback-mode` MUST be a usage error (exit `2`). An out-of-range `--route-volume` or `--ducking-level` MUST be a validation error that names the flag. Each check MUST run before any request. `--ducking-level` MUST be accepted without `--playback-mode`, and with `mix`, where the hub decides. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+
+- **FR-192**: The public `hub` package's `SpeakRequest` MUST carry the seven hub 0.1.29 fields it lacked (`engine`, `pitch`, `speakingRate`, `stylePrompt`, `playbackMode`, `routeVolume`, `duckingLevelDb`) as optional values. Each MUST be omitted from the request when unset, and sent, including zero and empty values, when set. Its godoc MUST say so. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+
+- **FR-193**: `sonora speak` MUST NOT gain flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. A `speak` invocation with none of the new flags MUST send the same request body as before this change. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+
 ### Key Entities
 
 - **Output**: An audio output device/zone managed by the hub. Attributes relevant to this
@@ -1809,7 +1884,7 @@ fields and one that omits them, and compare the YAML and JSON output.
 
   [Source: .specify/archive/001-list-outputs/data-model.md -> Output; .specify/archive/002-outputs-get/data-model.md -> Output]
 
-- **Input**: An audio source registered with the hub, either statically configured or created ephemerally via the API. Attributes relevant to this feature: unique identifier, human-readable display name, source URI, whether it is enabled, source type (STATIC or EPHEMERAL), whether it auto-removes when its route stops, whether it supports pause/resume, its creation timestamp (absent for static inputs), and its default join mode (null when the input has none; CLI-012). The inputs get command returns one decoded object, regardless of enabled state. Field mapping to `InputResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `inputId` or `displayName`, or a `source` other than STATIC or EPHEMERAL is malformed per FR-013; `uri` is passed through unvalidated):
+- **Input**: An audio source registered with the hub, either statically configured or created ephemerally via the API. Attributes relevant to this feature: unique identifier, human-readable display name, source URI, whether it is enabled, source type (STATIC or EPHEMERAL), whether it auto-removes when its route stops, whether it supports pause/resume, its creation timestamp (absent for static inputs), its default join mode (null when the input has none; CLI-012), and its default route volume and default ducking level (null when unset; API 0.1.29). The inputs get command returns one decoded object, regardless of enabled state. Field mapping to `InputResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `inputId` or `displayName`, or a `source` other than STATIC or EPHEMERAL is malformed per FR-013; `uri` is passed through unvalidated):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -1824,7 +1899,7 @@ fields and one that omits them, and compare the YAML and JSON output.
 
   [Source: .specify/archive/003-inputs-list-get/spec.md -> "Input"; .specify/archive/003-inputs-list-get/data-model.md -> "Input"]
 
-- **Route**: A live connection routing audio from one input to one output or output group, managed by the hub. Attributes relevant to this feature: unique identifier, source input identifier, target identifier, target type (single output or output group), current lifecycle status (starting, active, stopping, stopped, or failed), creation timestamp, playback-started timestamp (absent until playback begins), whether it can be transferred to another target, whether it supports pause/resume, and whether it is currently paused, its join mode, and the outputs it plays on right now (API 0.1.21; CLI-012). The routes list command shows the first five of these; the routes get command returns one decoded object with all twelve. Field mapping to `RouteResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `routeId`, `inputId` or `targetId`, a `targetType` other than SINGLE_OUTPUT or OUTPUT_GROUP, or a `status` outside the five values is malformed per FR-013; timestamps are passed through unparsed):
+- **Route**: A live connection routing audio from one input to one output or output group, managed by the hub. Attributes relevant to this feature: unique identifier, source input identifier, target identifier, target type (single output or output group), current lifecycle status (starting, active, stopping, stopped, or failed), creation timestamp, playback-started timestamp (absent until playback begins), whether it can be transferred to another target, whether it supports pause/resume, and whether it is currently paused, its join mode, the outputs it plays on right now (API 0.1.21; CLI-012), and its route volume and ducking level, each null when unset (API 0.1.29). The routes list command shows the first five of these; the routes get command returns one decoded object with all fourteen. Field mapping to `RouteResponse` in `api/openapi.json` (required fields; wrong JSON type, empty `routeId`, `inputId` or `targetId`, a `targetType` other than SINGLE_OUTPUT or OUTPUT_GROUP, or a `status` outside the five values is malformed per FR-013; timestamps are passed through unparsed):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -1853,7 +1928,7 @@ fields and one that omits them, and compare the YAML and JSON output.
 
   [Source: .specify/archive/005-groups-list-get/spec.md -> "Output Group"; .specify/archive/005-groups-list-get/data-model.md -> "Group"]
 
-- **Playback Request**: A one-shot instruction to play a given audio source URI to a given target (a single output or an output group), with an optional starting volume and an optional display name for the resulting input. Field mapping to `PlaybackRequest` in `api/openapi.json` (required fields; the target type is set by the CLI from the target path's prefix (`outputs/` or `groups/`), never supplied by the user directly; `volume` is range-checked client-side to 0–100 before any request is sent; `uri` scheme and reachability are validated by the hub, not the CLI):
+- **Playback Request**: A one-shot instruction to play a given audio source URI to a given target (a single output or an output group), with an optional starting volume and an optional display name for the resulting input. Field mapping to `PlaybackRequest` in `api/openapi.json` (required fields; the target type is set by the CLI from the target path's prefix (`outputs/` or `groups/`), never supplied by the user directly; `outputVolume` is range-checked client-side to 0–100 before any request is sent; `uri` scheme and reachability are validated by the hub, not the CLI):
 
   | Field | Type | openapi.json field |
   |-------|------|--------------------|
@@ -1861,7 +1936,9 @@ fields and one that omits them, and compare the YAML and JSON output.
   | `TargetID` | string | `targetId` |
   | `TargetType` | string (SINGLE_OUTPUT \| OUTPUT_GROUP) | `targetType` |
   | `DisplayName` | string, optional | `displayName` |
-  | `Volume` | int, optional (0–100) | `volume` |
+  | `OutputVolume` | int, optional (0–100) | `outputVolume` |
+  | `RouteVolume` | int, optional | `routeVolume` |
+  | `DuckingLevelDb` | float, optional | `duckingLevelDb` |
 
   [Source: .specify/archive/006-play-command/spec.md -> "Playback Request"; .specify/archive/006-play-command/data-model.md -> "PlaybackRequest (outbound, `internal/hub.PlaybackRequest`)"]
 
@@ -1882,7 +1959,7 @@ fields and one that omits them, and compare the YAML and JSON output.
 
 - **Announcement Request**: A one-shot request to speak a text on a target (one output or one output group, by id), with optional provider, voice, and language overrides. Sent to the extension's `speak` operation as text, a target id and target type, and the optional fields only when supplied. [Source: .specify/archive/009-tts-commands/spec.md -> "Announcement request"]
 - **Announcement Acceptance**: The hub's acceptance of an announcement: the announcement identifier, a flag saying whether the audio was served from cache, and the queue depth for the target, including this announcement. [Source: .specify/archive/009-tts-commands/spec.md -> "Announcement acceptance"]
-- **TTS Cache Statistics**: The TTS cache's total entries, total size in bytes, maximum size in bytes, and a provider-name to entry-count breakdown (which may be empty). [Source: .specify/archive/009-tts-commands/spec.md -> "TTS cache statistics"]
+- **TTS Cache Statistics**: The TTS cache's total entries, total size in bytes, maximum size in bytes, and a provider-name to entry-count breakdown (which may be empty). Its JSON encoding uses the hub's property names `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider` (FR-190). [Source: .specify/archive/009-tts-commands/spec.md -> "TTS cache statistics"]
 - **TTS Error**: A machine-readable code plus a human-readable message, returned by the extension alongside a 400 (caller-fixable) or 503 (provider-side) status. The CLI keeps its own error shape separate from the core API's problem details. [Source: .specify/archive/009-tts-commands/spec.md -> "TTS error"]
 
 - **TTS Voice**: One voice a provider offers: `shortName`, `fullName`, `engine`, `language` and `gender`. The hub leaves out fields it does not have, so each is shown as `null` when absent; a Gemini voice has no `language`, and its `engine` is the provider entry's model. [Source: .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md -> Context]
@@ -1973,6 +2050,15 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **SC-058**: Against a hub older than 0.1.21, `get outputs/<id> --include-routes` never says that an existing output was not found. Its message names the hub version required. [Source: .specify/archive/012-join-modes/spec.md -> SC-003]
 - **SC-059**: Every command run without the new flags sends the same requests and prints the same output as the previous release, byte for byte, across the existing test suite, apart from the join-mode fields FR-173 and FR-174 add to the route and input YAML. [Source: .specify/archive/012-join-modes/spec.md -> SC-004]
 - **SC-060**: An invalid join mode is rejected before any request reaches the hub, in 100% of the tested cases. [Source: .specify/archive/012-join-modes/spec.md -> SC-005]
+- **SC-061**: Contract tests for the hub 0.1.29 volume and ducking fields pass for each response type that carries them (route, route on output, input) with the field set, null and absent, and for each request that sends them, with the field set and unset. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+
+- **SC-062**: Each new volume and ducking flag, the set command and the removed `--volume` flag behave as FR-183 to FR-185 state in 100% of the tested cases, and each rejected invocation sends no request. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+
+- **SC-063**: For each extension status that FR-110's table names, the hub package's diagnosis gives the same reason the CLI gives, with one inventory request per diagnosis. [Source: .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md]
+
+- **SC-064**: A marshalled `TTSCacheStats` carries the four property names of the hub's `CacheStats` schema in every contract test, and `sonora get tts-cache` prints the same output as before. [Source: .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md]
+
+- **SC-065**: In every contract and unit test, the seven `SpeakRequest` fields are absent from the body when unset and present when set, and each new `speak` flag sends its field. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 
 ## Assumptions
 
@@ -2038,7 +2124,10 @@ fields and one that omits them, and compare the YAML and JSON output.
 - **AS-045**: Name length, allowed characters and trimming are the hub's rules, not the CLI's: the CLI sends the name as given, and a name the hub refuses is reported with the hub's detail. A rename does not persist past a restart for a configured input, and a runtime input's rename ends when it is removed (FR-158). [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 - **AS-046**: **List views stay as they are** (the backlog's open question, settled in Clarifications). `list routes` and `list inputs` keep their fixed fields. The join mode appears in `get routes/<id>`, `get inputs/<id>` and in the routes shown by `--include-routes`, which is where a user asks about one route or one output. Adding columns to the lists would change their shape for every script that reads them, for little gain. [Source: .specify/archive/012-join-modes/spec.md -> "List views stay as they are"]
 - **AS-047**: `sonora play` and `sonora route` do not show the join mode in their own output. Their output stays as it is, and `get routes/<id>` shows the join mode afterwards. [Source: .specify/archive/012-join-modes/spec.md -> "sonora play and sonora route do not show the join mode"]
-- **AS-048**: sonora-tts's announcement playback mode is out of scope until sonora-tts documents it. [Source: .specify/archive/012-join-modes/spec.md -> "sonora-tts's announcement playback mode"]
+- **AS-048**: sonora-tts's announcement playback mode is out of scope until sonora-tts documents it. Amended by speak-request-fields: the hub 0.1.29 `SpeakRequest` documents `playbackMode`, so `sonora speak --playback-mode` exposes it (FR-191). [Source: .specify/archive/012-join-modes/spec.md -> "sonora-tts's announcement playback mode"]
 - **AS-049**: The flag check mirrors `--status` on `list routes`: the valid values are a fixed list in the CLI, taken from the contract's enum. [Source: .specify/archive/012-join-modes/spec.md -> "The flag check mirrors"]
 - **AS-050**: The exit code for an older hub on `--include-routes` (3) follows the README's meaning "hub returned an unexpected response". The hub answered 404 to a request for an output it had just returned. [Source: .specify/archive/012-join-modes/spec.md -> "The exit code for an older hub on --include-routes"]
 - **AS-051**: If the hub later adds `?includeRoutes=true` to the output request (proposed in `sonora-multiroom/docs/backlog/routes-per-output-in-outputs-list.md`), the flag can switch to one request without changing what users see. That switch is not part of this feature. [Source: .specify/archive/012-join-modes/spec.md -> "If the hub later adds"]
+- **AS-052**: The `hub` package's volume and ducking fields follow the hub's 0.1.29 schema in `api/openapi.json`. The `SpeakRequest` route fields are not part of this change and are left to the speak-request-fields tinyspec. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
+- **AS-053**: `--volume` is not kept as an alias or a deprecated notice, so scripts that use it fail at once with exit `2` and must be updated. The removal is released as a breaking change. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
+- **AS-054**: `--playback-mode` is passed to the hub unchecked, because the spec has no enum for it; the hub's 400 is the only check on its value. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]

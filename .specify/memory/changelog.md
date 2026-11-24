@@ -34,6 +34,36 @@
 
 **Tasks Completed:** 27/27 tasks
 
+### JSON Property Names on the Hub's TTS Cache Statistics (v0.3.4) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md
+**Implemented:** 2026-10-28
+
+`hub.TTSCacheStats` gains JSON tags, so marshalled it uses `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider`, the names of the hub's `CacheStats` schema that sonora-mcp's cache tool needs. Decoding and the CLI's output are unchanged. The v0.3.4 tag is still to be released. (FR-190, SC-064.)
+
+### Diagnose "TTS Not Offered" in the Hub Client (`DiagnoseTTSUnavailable`, v0.3.3) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md
+**Implemented:** 2026-10-28
+
+Makes the CLI's TTS 404 diagnosis public as `hub.DiagnoseTTSUnavailable`, so sonora-mcp can say why TTS is unavailable, and classifies a TTS 404 as text-to-speech unavailable instead of a network failure (released in v0.3.3). The CLI's output and exit codes are unchanged. (FR-188–FR-189, SC-063.)
+
+### Speak Playback Flags and Request Fields (`speak --playback-mode`, `--route-volume`, `--ducking-level`) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md
+**Implemented:** 2026-10-27
+
+`sonora speak` gains `--playback-mode`, `--route-volume` and `--ducking-level`, so an announcement can duck or mix over music at its own level, and `hub.SpeakRequest` carries the seven hub 0.1.29 fields it lacked, sent only when set. No flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. AS-048 is amended to match. The tag is still to be released. (User Story 63, FR-191–FR-193, SC-065, AS-054.)
+
+### Route and Output Volume and Ducking Level in the CLI — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md
+**Implemented:** 2026-10-25
+
+`sonora play` replaces `--volume` with `--output-volume` and gains `--route-volume` and `--ducking-level` (which needs `--join-mode DUCK_OTHERS`); `sonora set routes/<id> volume <0-100>` changes a playing route's volume; `get routes/<id>`, `get outputs/<id> --include-routes` and `get inputs/<id>` show the levels when set. Removing `--volume` is a breaking CLI change; the tag is still to be released. (User Story 62, FR-183–FR-187, SC-062, AS-053.)
+
+### Route Volume and Ducking Level in the Hub Client (hub 0.1.29) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md
+**Implemented:** 2026-10-25
+
+Brings the public `hub` package to the hub 0.1.29 contract: `PlaybackRequest.Volume` becomes `OutputVolume` (`outputVolume`, a breaking change for the public package), route volume and ducking level are optional on play, route and input records, and `SetRouteVolume` calls `PUT /api/v2/routes/{routeId}/volume`. The release tag is still to be pushed. (FR-179–FR-182, SC-061, AS-052.)
+
 ### Rename an Input (`rename`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md
 **Implemented:** 2026-10-22
