@@ -10,7 +10,7 @@
 > - User Stories 24 and 29, FR-053, FR-096 and the join-mode edge case: `--volume` became `--output-volume`; the `set` verb also takes `routes/<id>` through FR-185 (route-volume-cli).
 > - Playback Result entity: four fields plus `displayName` second when non-empty (011-hub-0128-alignment). Input, Route and Playback Request entities gained the join-mode, route-volume, ducking-level, chime and persistence fields (012-join-modes, hub-route-volume-client, route-chime, stored-inputs).
 > - AS-019 notes that stopping, pausing and transferring are separate commands (stop-routes-command); `stop` is no longer a routes-only alias.
-> - AS-048 amended: `speak` exposes `playbackMode` (speak-request-fields). FR-193 and AS-055 are superseded for `stylePrompt` only by FR-204, FR-205 and AS-061 (speak-style-prompt-flag), annotated in place. FR-090 and AS-064 are annotated by stored-inputs.
+> - AS-048 amended: `speak` exposes `playbackMode` (speak-request-fields). FR-193 and AS-055 are superseded for `stylePrompt` only by FR-204, FR-205 and AS-061 (speak-style-prompt-flag), annotated in place. FR-090 and AS-064 are annotated by stored-inputs.
 > - FR-110/FR-111 are unchanged by FR-188 and FR-189 (the TTS 404 diagnosis is public as `DiagnoseTTSUnavailable`); FR-213 extends FR-066's list of names; FR-018 is folded into FR-154 and FR-012 of 014 into FR-109.
 
 ## User Scenarios & Testing
@@ -225,169 +225,31 @@ rather than a single speaker.
 
 ---
 
-### User Story 32 - Enable or disable an input (Priority: P2)
-
-A person runs `sonora enable inputs/<input-id>` or `sonora disable inputs/<input-id>` to allow or block new playback from an input, and sees the input's updated record. Since hub 0.1.25, disabling an input also stops every route playing it (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing input, **When** the user runs `sonora enable inputs/<input-id>`, **Then** the hub receives `{"enabled": true}`, the updated input is printed and the exit status is `0`.
-2. **Given** an existing input, **When** the user runs `sonora disable inputs/<input-id>`, **Then** the hub receives `{"enabled": false}` and the updated input is printed.
-3. **Given** an unknown input identifier, **When** the user runs either verb, **Then** an "input not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-28-inputs-enable-disable-command/inputs-enable-disable-command.md]
-
----
-
-### User Story 33 - Stop a single route (Priority: P1)
-
-A person runs `sonora delete routes/<route-id>`, or its alias `sonora stop routes/<route-id>`, to stop playback and remove the route. (`stop` also has bulk forms; see User Story 43.)
-
-**Acceptance Scenarios**:
-
-1. **Given** a playing route, **When** the user runs `sonora delete routes/<route-id>`, **Then** the hub receives `DELETE /api/v2/routes/<route-id>`, the route identifier, status `stopped` and a message are printed, and the exit status is `0`.
-2. **Given** the same route, **When** the user runs `sonora stop routes/<route-id>` instead, **Then** the request, output and exit status are the same.
-3. **Given** an unknown route identifier, **When** the user runs either verb, **Then** a "route not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-28-route-delete-command/route-delete-command.md]
-
----
-
-### User Story 34 - Move a playing route to another target (Priority: P2)
-
-A person runs `sonora transfer routes/<route-id> <outputs|groups>/<target-id>` to move what is playing to another output or group without interruption. The hub replaces the route, so the command prints the new route's identifier.
-
-**Acceptance Scenarios**:
-
-1. **Given** a playing route and an existing output, **When** the user runs `sonora transfer routes/<route-id> outputs/<id>`, **Then** the hub receives the target identifier and type, the new route's identifier, status and message are printed, and the exit status is `0`.
-2. **Given** a target that does not exist, **When** the user runs the command, **Then** an "output/group not found" message goes to standard error with exit status `12`, before any transfer request.
-3. **Given** an unknown route identifier, **When** the user runs the command, **Then** a "route not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-28-route-transfer-command/route-transfer-command.md]
-
----
-
-### User Story 35 - Enable or disable an output group (Priority: P2)
-
-A person runs `sonora enable groups/<group-id>` or `sonora disable groups/<group-id>` to allow or block new playback to a group, and sees the group's updated record. Since hub 0.1.25, disabling a group also stops the routes addressed to it, while routes addressed to a member keep playing (FR-139); enabling it starts nothing. [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing group, **When** the user runs `sonora enable groups/<group-id>`, **Then** the hub receives `{"enabled": true}` and the updated group is printed with exit status `0`.
-2. **Given** an unknown group identifier, **When** the user runs either verb, **Then** a "group not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-29-groups-enable-disable-command/groups-enable-disable-command.md]
-
----
-
-### User Story 36 - Set a group's volume (Priority: P2)
-
-A person runs `sonora set groups/<group-id> volume <0-100>` to change the volume of an output group and sees the volume the hub applied.
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing group, **When** the user runs `sonora set groups/<group-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the group identifier, volume and update time are printed, and the exit status is `0`.
-2. **Given** a value outside 0–100 or not an integer, **When** the user runs the command, **Then** a usage error is printed with exit status `2` and no request is sent.
-3. **Given** an unknown group identifier, **When** the user runs the command, **Then** a "group not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-29-groups-set-volume-command/groups-set-volume-command.md]
-
----
-
-### User Story 37 - Create and delete an input (Priority: P2)
-
-A person runs `sonora create inputs/<input-id> <uri> --display-name <name>` to define a stored input, and `sonora delete inputs/<input-id>` to remove one.
-
-**Acceptance Scenarios**:
-
-1. **Given** a free input identifier, **When** the user runs `sonora create inputs/<id> <uri> --display-name <name>`, **Then** the hub receives the identifier, URI, display name, `autoRemove` false and `enabled` true, the created input is printed, and the exit status is `0`.
-2. **Given** `--disabled` or `--auto-remove`, **When** the user runs the command, **Then** `enabled` is false or `autoRemove` is true in the request.
-3. **Given** an existing input, **When** the user runs `sonora delete inputs/<id>`, **Then** the input identifier, a status and a message are printed with exit status `0`.
-
-[Source: .specify/archive/tiny/2026-08-29-inputs-create-delete-command/inputs-create-delete-command.md]
-
----
-
-### User Story 38 - Check and set the master mute (Priority: P2)
-
-A person runs `sonora get master-mute` to see whether the whole system is muted, and `sonora mute all` or `sonora unmute all` to change it.
-
-**Acceptance Scenarios**:
-
-1. **Given** a hub, **When** the user runs `sonora get master-mute`, **Then** `muted: true` or `muted: false` is printed with exit status `0`.
-2. **Given** a hub, **When** the user runs `sonora mute all`, **Then** the hub receives `{"muted": true}` and the updated state is printed.
-3. **Given** `sonora get master-mute/<id>` or `sonora list master-mute`, **Then** a usage error is printed with exit status `2`.
-
-[Source: .specify/archive/tiny/2026-08-29-master-mute-command/master-mute-command.md]
-
----
-
-### User Story 39 - Enable or disable an output (Priority: P2)
-
-A person runs `sonora enable outputs/<output-id>` or `sonora disable outputs/<output-id>` to allow or block new playback to a speaker, and sees the output's updated record. Since hub 0.1.25, disabling an output also takes it out of every route playing on it, and enabling it puts it back into the live group routes of its enabled groups (FR-139). [Source: .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing output, **When** the user runs `sonora disable outputs/<output-id>`, **Then** the hub receives `{"enabled": false}` and the updated output is printed with exit status `0`.
-2. **Given** an unknown output identifier, **When** the user runs either verb, **Then** an "output not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-29-outputs-enable-disable-command/outputs-enable-disable-command.md]
-
----
-
-### User Story 40 - Mute or unmute an output or group (Priority: P2)
-
-A person runs `sonora mute outputs/<id>`, `sonora unmute outputs/<id>`, or the same for `groups/<id>`, to silence or restore one speaker or group without changing its volume.
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing output, **When** the user runs `sonora mute outputs/<id>`, **Then** the hub receives `{"muted": true}` and the updated output is printed with exit status `0`.
-2. **Given** an existing group, **When** the user runs `sonora unmute groups/<id>`, **Then** the hub receives `{"muted": false}` and the updated group is printed.
-3. **Given** `inputs/<id>` or `routes/<id>`, **When** the user runs `mute`, **Then** a usage error is printed with exit status `2`.
-
-[Source: .specify/archive/tiny/2026-08-29-outputs-groups-mute-command/outputs-groups-mute-command.md]
-
----
-
-### User Story 41 - Set an output's volume (Priority: P2)
-
-A person runs `sonora set outputs/<output-id> volume <0-100>` to change one speaker's volume and sees the volume the hub applied.
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing output, **When** the user runs `sonora set outputs/<output-id> volume 40`, **Then** the hub receives `{"volume": 40}`, the output identifier, volume and update time are printed, and the exit status is `0`.
-2. **Given** a value outside 0–100, a non-integer value, a misspelled attribute word or a non-`volume` attribute, **When** the user runs the command, **Then** a usage error is printed with exit status `2` and no request is sent.
-3. **Given** an unknown output identifier, **When** the user runs the command, **Then** an "output not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-29-outputs-set-volume-command/outputs-set-volume-command.md]
-
----
-
-### User Story 42 - Pause and resume a route (Priority: P2)
-
-A person runs `sonora pause routes/<route-id>` to hold a playing route and `sonora resume routes/<route-id>` to continue it.
-
-**Acceptance Scenarios**:
-
-1. **Given** a playing route, **When** the user runs `sonora pause routes/<route-id>`, **Then** the hub receives `{"paused": true}`, the route identifier, paused flag, status and a message are printed, and the exit status is `0`.
-2. **Given** an already-paused route, **When** the user runs `sonora pause routes/<route-id>` again, **Then** the command still succeeds, because the hub answers 200 with the current state.
-3. **Given** an unknown route identifier, **When** the user runs either verb, **Then** a "route not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-08-29-route-pause-resume-command/route-pause-resume-command.md]
-
----
-
-### User Story 43 - Stop many routes at once (Priority: P2)
-
-A person runs `sonora stop routes` to stop everything playing, or `sonora stop outputs/<id>` / `sonora stop groups/<id>` to stop what is playing on one speaker or group, and sees which routes were stopped.
-
-**Acceptance Scenarios**:
-
-1. **Given** playing routes, **When** the user runs `sonora stop routes`, **Then** the hub receives `DELETE /api/v2/routes`, the number of stopped routes and each stopped route (identifier, target type, target identifier, stop reason) are printed, and the exit status is `0`.
-2. **Given** nothing is playing, **When** the user runs `sonora stop routes`, **Then** a count of zero is printed with exit status `0`.
-3. **Given** an unknown output or group identifier, **When** the user runs `sonora stop outputs/<id>`, **Then** a "not found" message goes to standard error with exit status `5`.
-
-[Source: .specify/archive/tiny/2026-09-09-stop-routes-command/stop-routes-command.md]
+### User Stories 32–43 and 58 - Change one resource (Priority: P1–P2)
+
+A person changes the hub's state with one verb on one resource path (`sonora <verb> <resource>/<id> [args]`).
+Every command sends a single request, prints the updated record (or the result named below) and exits `0`.
+Shared behaviour:
+
+- **Unknown identifier:** a "\<resource\> not found" message on standard error, exit `5`.
+- **Unknown target** of `transfer`: exit `12`, before any request. A hub 409 on a transfer or on `create` of a taken identifier exits `14` (FR-090, FR-137).
+- **Bad arguments** (a volume outside 0–100 or not an integer, a misspelled attribute word, a resource the verb
+  does not take): a usage error, exit `2`, no request sent.
+
+| Stories | Command | Request | Prints and notes |
+|---|---|---|---|
+| 32, 35, 39 (P2) | `enable` / `disable` `inputs`, `groups` or `outputs/<id>` | `PUT …/{id}/enabled` with `{"enabled": true\|false}` | The updated record. Since hub 0.1.25 (FR-139): disabling an input stops every route playing it; disabling a group stops the routes addressed to it (routes addressed to a member keep playing); disabling an output takes it out of every route playing on it. Enabling an input or group starts nothing; enabling an output puts it back into the live group routes of its enabled groups. |
+| 33 (P1) | `delete routes/<id>`, alias `stop routes/<id>` | `DELETE /api/v2/routes/{id}` | The route identifier, status `stopped` and a message. Same request, output and exit status for both verbs. |
+| 34 (P2) | `transfer routes/<id> <outputs\|groups>/<target-id>` | `POST /api/v2/routes/{id}/transfer` | The new route's identifier, status and message; a transfer keeps the route identifier (FR-085). The target is checked first. |
+| 36, 41 (P2) | `set groups/<id> volume <0-100>`, `set outputs/<id> volume <0-100>` | `PUT …/{id}/volume` with `{"volume": N}` | The identifier, the volume the hub applied and the update time. |
+| 37 (P2) | `create inputs/<id> <uri> --display-name <name>`, `delete inputs/<id>` | `POST /api/v2/inputs`, `DELETE /api/v2/inputs/{id}` | Create sends the identifier, URI, display name, `autoRemove` (false, or true with `--auto-remove`) and `enabled` (true, or false with `--disabled`) and prints the created input; delete prints the identifier, a status and a message. |
+| 38 (P2) | `get master-mute`, `mute all`, `unmute all` | `GET`/`PUT /api/v2/master-mute` with `{"muted": true\|false}` | `muted: true` or `muted: false`. `get master-mute/<id>` and `list master-mute` are usage errors. |
+| 40 (P2) | `mute` / `unmute` `outputs/<id>` or `groups/<id>` | `PUT …/{id}/mute` with `{"muted": true\|false}` | The updated record; the volume is unchanged. `inputs/<id>` and `routes/<id>` are usage errors. |
+| 42 (P2) | `pause routes/<id>`, `resume routes/<id>` | `PUT /api/v2/routes/{id}/pause` with `{"paused": true\|false}` | The route identifier, paused flag, status and a message. Pausing an already-paused route still succeeds, because the hub answers 200 with the current state. |
+| 43 (P2) | `stop routes`, `stop outputs/<id>`, `stop groups/<id>` | `DELETE /api/v2/routes` (narrowed by output or group) | The number of stopped routes and each one (identifier, target type, target identifier, stop reason); a count of zero when nothing is playing, exit `0`. `stop` is also the alias of Story 33. |
+| 58 (P2) | `rename inputs/<id> <name>`, `rename inputs/<id> --reset` | `PUT /api/v2/inputs/{id}/display-name` with `{"displayName": "<name>"}` or `null` (hub 0.1.27) | The updated input; `--reset` restores the original name. A name together with `--reset`, neither, extra positionals or a resource other than `inputs` is a usage error. |
+
+[Source: .specify/archive/tiny/{2026-08-28-inputs-enable-disable-command, 2026-08-28-route-delete-command, 2026-08-28-route-transfer-command, 2026-08-29-groups-enable-disable-command, 2026-08-29-groups-set-volume-command, 2026-08-29-inputs-create-delete-command, 2026-08-29-master-mute-command, 2026-08-29-outputs-enable-disable-command, 2026-08-29-outputs-groups-mute-command, 2026-08-29-outputs-set-volume-command, 2026-08-29-route-pause-resume-command, 2026-09-09-stop-routes-command, 2026-10-22-rename-inputs-command}; .specify/archive/011-hub-0128-alignment/spec.md -> FR-001]
 
 ---
 
@@ -592,21 +454,6 @@ A user re-enables the office speaker, which rejoins the living-room group route,
 6. **Given** a developer reading the hub client's documentation of refusal reasons, **When** they look up the reasons and which of them name an output, **Then** `ROUTE_CHANGING_OUTPUTS` is listed, described as transient, and listed among the reasons that name no output.
 
 [Source: .specify/archive/011-hub-0128-alignment/spec.md -> User Story 3]
-
----
-
-### User Story 58 - Rename an input or restore its original name (Priority: P2)
-
-A person runs `sonora rename inputs/<input-id> <name>` to give an input a new display name, or `sonora rename inputs/<input-id> --reset` to restore the name it had before, and sees the input's updated record. [Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
-
-**Acceptance Scenarios**:
-
-1. **Given** an existing input, **When** the user runs `sonora rename inputs/<input-id> "Kitchen radio"`, **Then** the hub receives `{"displayName": "Kitchen radio"}`, the updated input is printed and the exit status is `0`.
-2. **Given** an input that has been renamed, **When** the user runs `sonora rename inputs/<input-id> --reset`, **Then** the hub receives `{"displayName": null}` and the input is printed with its original name.
-3. **Given** an unknown input identifier, **When** the user runs either form, **Then** an "input not found" message goes to standard error with exit status `5`.
-4. **Given** a name together with `--reset`, neither of them, a missing identifier, extra positional arguments, or a resource other than `inputs`, **When** the user runs `rename`, **Then** a usage error goes to standard error with exit status `2` and no request is sent.
-
-[Source: .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md]
 
 ---
 
