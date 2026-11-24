@@ -2,6 +2,12 @@
 
 ## Merged Features Log
 
+### Persistent Inputs (`create inputs/<id> --persistent`, `keep inputs/<id>`, origin and playability) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md
+**Implemented:** 2026-11-22
+
+`sonora create inputs/<id> <uri> --persistent` creates an input the hub keeps across restarts, and `sonora keep inputs/<id>` makes an existing runtime input kept (`PUT /api/v2/inputs/{inputId}/persistent`). `--persistent` with `--auto-remove` is a usage error before any request. The input record's YAML shows `origin`, `playable` and `unplayableReason`; the three new 409 reasons (`INPUT_UNPLAYABLE`, `INPUT_ID_TAKEN`, `INPUT_STORE_FULL`) get short messages and exit `14`. Adds User Story 72, FR-228–FR-232, SC-080–SC-081 and AS-072 (HUB-041, API 0.1.35). The release tag (v0.4.2) and the `sonora-mcp` bump are still to be done.
+
 ### Radio Station Search and Browse (`search radio-stations`, `get radio-stations/<uuid>`, radio countries, languages and tags) — archived 2026-11-24
 **Branch:** 014-radio-station-search
 **Spec:** [.specify/archive/014-radio-station-search/spec.md](../archive/014-radio-station-search/spec.md)
