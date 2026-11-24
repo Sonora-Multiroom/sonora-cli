@@ -2,7 +2,7 @@
 
 > **Revision history**: the per-feature record of what each archival added (user stories, FR, SC and AS ranges, entities, edge cases) lives in [changelog.md](changelog.md). This spec's IDs are stable: no entry was renumbered. The exceptions that change how to read it are below.
 >
-> **Retired IDs** (removed by 007-refactor-cli-commands, on the user's confirmation; never reused): FR-015, FR-023, FR-033, FR-042, FR-049, FR-050, FR-051, FR-052, AS-012. Replacements: FR-060 for FR-015, FR-023, FR-033 and FR-042; FR-067 for FR-050 and FR-052; none for FR-049, FR-051 and AS-012.
+> **Retired IDs** (removed by 007-refactor-cli-commands, on the user's confirmation; never reused): FR-015, FR-023, FR-033, FR-042, FR-049, FR-050, FR-051, FR-052, AS-012. Replacements: FR-060 for FR-015, FR-023, FR-033 and FR-042; FR-067 for FR-050 and FR-052; none for FR-049, FR-051 and AS-012. Success criteria SC-006, SC-008 to SC-015 and SC-017 to SC-020 were folded into SC-001, SC-005 and SC-007, which now cover outputs, inputs, routes and groups together (SC-016 and SC-021 stay).
 >
 > **Amended in place** (later feature changed an earlier entry):
 > - FR-079 (route exit codes gain `14`), FR-085 (a transfer keeps the route identifier), FR-090 (a duplicate-ID 409 exits `14`), FR-137 (names `ROUTE_CHANGING_OUTPUTS` as the exception to "the hub's `detail` alone"), AS-022 (names `transfer`'s retry as the exception to "one request"), and FR-137/FR-138 for `Route` gaining `joinMode` and `outputs`: tinyspec decode-route-refusals-409 and 011-hub-0128-alignment.
@@ -1272,8 +1272,7 @@ An operator wants an input they play often, a stream or a file, to still be ther
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can view the full list of currently available outputs in under 1
-  second under normal network conditions. [Source: .specify/archive/001-list-outputs/spec.md -> SC-001]
+- **SC-001**: A user can view the full list of the currently available outputs, inputs, routes or groups, or retrieve one record's full state, in under 1 second under normal network conditions. [Source: .specify/archive/{001-list-outputs: SC-001; 002-outputs-get: SC-001; 003-inputs-list-get: SC-001, SC-002; 004-routes-list-get: SC-001, SC-002; 005-groups-list-get: SC-001, SC-002}/spec.md]
 - **SC-002**: When the hub is unreachable or unresponsive, the user receives a clear
   failure message within 5 seconds (not an indefinite hang) in 100% of such cases, for the outputs, inputs, routes and groups commands.
   [Source: .specify/archive/{001-list-outputs: SC-002; 002-outputs-get: SC-003; 003-inputs-list-get: SC-004; 004-routes-list-get: SC-004; 005-groups-list-get: SC-004}/spec.md]
@@ -1281,28 +1280,9 @@ An operator wants an input they play often, a stream or a file, to still be ther
   standard structured-data parser without error. [Source: .specify/archive/{001-list-outputs: SC-003; 002-outputs-get: SC-004; 003-inputs-list-get: SC-005; 004-routes-list-get: SC-005; 005-groups-list-get: SC-005; 006-play-command: SC-005; 008-route-command: SC-004}/spec.md]
 - **SC-004**: A user can always tell, without ambiguity, whether "no outputs, inputs, routes or groups were found"
   or "the command failed" occurred, and for the play command whether playback was accepted or failed. [Source: .specify/archive/{001-list-outputs: SC-004; 003-inputs-list-get: SC-006; 004-routes-list-get: SC-006; 005-groups-list-get: SC-006; 006-play-command: SC-006}/spec.md]
-- **SC-005**: A user can identify a specific output's current volume, mute state, and
-  availability from the command's output alone (a single invocation), without needing to
-  run any other command or cross-reference a list.
-  [Source: .specify/archive/{001-list-outputs, 002-outputs-get}/spec.md -> SC-005]
-- **SC-006**: A user can retrieve a specific output's full state in under 1 second under
-  normal network conditions. [Source: .specify/archive/002-outputs-get/spec.md -> SC-001]
-- **SC-007**: When the requested output does not exist, the user receives a clear "not
-  found" message — never mistaken for an empty result or a crash — in 100% of such
-  cases. [Source: .specify/archive/002-outputs-get/spec.md -> SC-002]
-- **SC-008**: A user can view the full list of currently available inputs in under 1 second under normal network conditions. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-001]
-- **SC-009**: A user can retrieve a specific input's full state in under 1 second under normal network conditions. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-002]
-- **SC-010**: When the requested input does not exist, the user receives a clear "input not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-003]
-- **SC-011**: A user can identify a specific input's source URI, enabled state, and source type from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/003-inputs-list-get/spec.md -> SC-007]
-- **SC-012**: A user can view the full list of currently active routes in under 1 second under normal network conditions. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-001]
-- **SC-013**: A user can retrieve a specific route's full state in under 1 second under normal network conditions. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-002]
-- **SC-014**: When the requested route does not exist, the user receives a clear "route not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-003]
-- **SC-015**: A user can identify a specific route's source input, target, and current status from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-007]
+- **SC-005**: A user can identify a single record's key state from one command invocation, without running another command or cross-referencing a list: an output's volume, mute state and availability; an input's source URI, enabled state and source type; a route's source input, target and status; a group's member outputs and mute state. [Source: .specify/archive/{001-list-outputs, 002-outputs-get}/spec.md -> SC-005; .specify/archive/003-inputs-list-get/spec.md -> SC-007; .specify/archive/004-routes-list-get/spec.md -> SC-007; .specify/archive/005-groups-list-get/spec.md -> SC-007]
+- **SC-007**: When the requested output, input, route or group does not exist, the user receives a clear "not found" message naming the resource kind, never mistaken for an empty result or a crash, in 100% of such cases. [Source: .specify/archive/{002-outputs-get: SC-002; 003-inputs-list-get: SC-003; 004-routes-list-get: SC-003; 005-groups-list-get: SC-003}/spec.md]
 - **SC-016**: A user can narrow a route listing to a single status, input, or target without needing to filter the output themselves after the fact. [Source: .specify/archive/004-routes-list-get/spec.md -> SC-008]
-- **SC-017**: A user can view the full list of currently enabled groups in under 1 second under normal network conditions. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-001]
-- **SC-018**: A user can retrieve a specific group's full state in under 1 second under normal network conditions. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-002]
-- **SC-019**: When the requested group does not exist, the user receives a clear "group not found" message — never mistaken for an empty result or a crash — in 100% of such cases. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-003]
-- **SC-020**: A user can identify a specific group's member outputs and mute state from a single command invocation, without needing to run any other command or cross-reference a list. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-007]
 - **SC-021**: A user can view groups that exist but are currently disabled without needing to run a separate, differently-named command. [Source: .specify/archive/005-groups-list-get/spec.md -> SC-008]
 - **SC-022**: A user can start playback to a single output or a group in one command invocation, without separately creating an input or a route. [Source: .specify/archive/006-play-command/spec.md -> SC-001]
 - **SC-023**: A user can start playback with a chosen starting volume and/or a chosen display name in the same single command invocation. [Source: .specify/archive/006-play-command/spec.md -> SC-002]
