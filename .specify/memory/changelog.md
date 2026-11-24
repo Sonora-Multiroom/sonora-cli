@@ -2,6 +2,18 @@
 
 ## Merged Features Log
 
+### Chimes on Routes (`play --chime`, `route --chime`, `list chimes`, `get chimes`) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-11-20-route-chime/route-chime.md
+**Implemented:** 2026-11-20
+
+`sonora play` and `sonora route` take `--chime <id|none>`, sent verbatim and only when given; `sonora list chimes` and `sonora get chimes[/<id>]` read the hub's chimes, and `get outputs`, `get groups` and `get inputs` show a chime only when one is set. `get` and `list` with no resource name now name every resource their verb accepts. The `hub` package gains `Chime`, `ListChimes` and `ChimeNone`, and the `chime` field on play, route, input creation and the output, group and input records (HUB-040, hub 0.1.34; FR-206–FR-213, SC-071–SC-073, AS-062–AS-064, User Story 67). `api/openapi.json` is the hub's 0.1.35 document, of which only the 0.1.34 subset is adopted. The release tag and the `sonora-mcp` bump are still to be done.
+
+### Style Prompt on `speak` and `warm tts-cache` (`--style-prompt`) — archived 2026-11-24
+**Tinyspec:** .specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md
+**Implemented:** 2026-11-12
+
+`sonora speak` and `sonora warm tts-cache` gain `--style-prompt TEXT`, sent verbatim as `stylePrompt` for `google-gemini` (the hub decides), so a Gemini announcement's delivery can be set from the shell and a styled phrase warmed under the key `speak` looks up. An empty value is sent as given, not a usage error; without the flag no `stylePrompt` key is sent. This supersedes FR-193 and AS-055 for `stylePrompt` only (FR-204, FR-205, AS-061). The release tag is still to be pushed.
+
 ### Hub Info and TTS Cache Warm-up (`get info`, `warm tts-cache`) — archived 2026-11-24
 **Branch:** 013-info-and-tts-warm
 **Spec:** [.specify/archive/013-info-and-tts-warm/spec.md](../archive/013-info-and-tts-warm/spec.md)

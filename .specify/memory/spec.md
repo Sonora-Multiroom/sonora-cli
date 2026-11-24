@@ -38,6 +38,10 @@
 
 > **Revision**: 2026-11-24 — Archived .specify/archive/013-info-and-tts-warm (moved from specs/ in the same run): added User Stories 64–66, five edge cases, FR-194–FR-203, SC-066–SC-070, the Hub Info, Warm Request and Warm Result entities, and AS-055–AS-060. No existing entry was folded, superseded or retired. FR-009, AS-002 and AS-022 name the TTS and mutating commands without naming `get info` or `warm tts-cache`; they were left as they stand.
 
+> **Revision**: 2026-11-24 — tinyspec speak-style-prompt-flag (.specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md): `speak` and `warm tts-cache` gain `--style-prompt TEXT` (FR-204, FR-205, AS-061). This supersedes FR-193 and AS-055 for `stylePrompt` only; both are annotated in place, their text kept. The `hub` functions are unchanged.
+
+> **Revision**: 2026-11-24 — tinyspec route-chime (.specify/archive/tiny/2026-11-20-route-chime/route-chime.md): adds User Story 67, FR-206–FR-213, SC-071–SC-073, the Chime entity and AS-062–AS-064: `--chime` on `play` and `route`, `list chimes` and `get chimes[/<id>]`, a `chime` or `defaultChime` field on outputs, groups and inputs, and `get`/`list` with no resource naming every resource the verb accepts. FR-213 extends FR-066's list of names; FR-066 itself is unchanged.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - View currently active outputs (Priority: P1)
@@ -1540,6 +1544,29 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 
 ---
 
+### User Story 67 - Play a chime before a route, and see the hub's chimes (Priority: P2)
+
+A person, or a script, wants a short sound to play before an announcement or a stream starts on a speaker, and wants to see which chimes the hub has and which one each output, group or input uses.
+
+**Why this priority**: an additive playback option for every command that starts a route; the existing commands do not change without it.
+
+**Independent Test**: contract tests against a test server for each hub call; unit and integration tests for the flags and renderers; a read-only check of `list chimes` and `get chimes/<id>` against a hub that has chimes, with nothing started.
+
+**Acceptance Scenarios**:
+
+1. **Given** a hub with a chime `cabin`, **When** the user runs `sonora play <uri> outputs/kitchen --chime cabin` or `sonora route inputs/<id> outputs/kitchen --chime cabin`, **Then** the request carries `chime` set to `cabin`; `--chime none` sends `none`, meaning no chime.
+2. **Given** `--chime ""` or a blank value, **When** the user runs `play` or `route`, **Then** it fails as a usage error (exit `2`) and no request is sent.
+3. **Given** an unknown chime id, **When** the user runs `play` or `route` with it, **Then** the hub's 400 (`Unknown chime: <id>`) is reported; the CLI does not check the id itself.
+4. **Given** no `--chime` flag, **When** the user runs `play` or `route`, **Then** the request carries no `chime` field.
+5. **Given** a hub with chimes, **When** the user runs `sonora list chimes` or `sonora get chimes`, **Then** each chime shows its `id` and `durationMillis`; with none, the output is `# no chimes found` and `chimes: []`. `list chimes/<id>` is a usage error.
+6. **Given** a chime id, **When** the user runs `sonora get chimes/<id>`, **Then** that chime is shown; an unknown id fails with `chime not found: <id>` (exit `5`), and a malformed id is a usage error (exit `2`).
+7. **Given** an output, group or input with a chime set, **When** the user gets it, **Then** `get outputs` and `get groups` show `chime:`, and `get inputs` shows `defaultChime:`; with none set, the output is unchanged.
+8. **Given** `sonora get` or `sonora list` with no resource name, **Then** the usage error lists every resource that verb accepts.
+
+[Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> "What"; "Requirements"]
+
+---
+
 ### Edge Cases
 
 - What happens when the hub is unreachable (host down, wrong address, network partition)?
@@ -1928,7 +1955,7 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 
 - **FR-192**: The public `hub` package's `SpeakRequest` MUST carry the seven hub 0.1.29 fields it lacked (`engine`, `pitch`, `speakingRate`, `stylePrompt`, `playbackMode`, `routeVolume`, `duckingLevelDb`) as optional values. Each MUST be omitted from the request when unset, and sent, including zero and empty values, when set. Its godoc MUST say so. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 
-- **FR-193**: `sonora speak` MUST NOT gain flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. A `speak` invocation with none of the new flags MUST send the same request body as before this change. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
+- **FR-193**: `sonora speak` MUST NOT gain flags for `engine`, `pitch`, `speakingRate` or `stylePrompt` (`stylePrompt` is superseded by FR-204 from 2026-11-12). A `speak` invocation with none of the new flags MUST send the same request body as before this change. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
 - **FR-194**: The public `hub` package MUST offer a function that calls `GET /api/v2/info` and returns a typed record of `product`, `version`, `apiVersion`, `startedAt` and `uptimeSeconds`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-001]
 - **FR-195**: The CLI MUST offer a command that shows hub info as YAML by default and as one JSON object with `--json`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-002]
 - **FR-196**: A 404 from the info call MUST be reported as "this hub does not offer hub info (needs hub 0.1.33 or later)". [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-003]
@@ -1939,6 +1966,16 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 - **FR-201**: Both new commands MUST follow the existing conventions: strict GNU flag style, exit codes, errors on standard error, output on standard output, and an entry in `help`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-008]
 - **FR-202**: Every request and response shape of the two new operations MUST be validated against `api/openapi.json`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-009]
 - **FR-203**: The README MUST document both commands and state that they need hub 0.1.33 or later. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> FR-010]
+- **FR-204**: `sonora speak` and `sonora warm tts-cache` MUST accept `--style-prompt TEXT`, which sends `stylePrompt` verbatim, so a `google-gemini` announcement's delivery, or a warmed phrase's, can be set from the shell. A given but empty or blank value MUST be sent as given (the hub turns the entry's default prompt off) and MUST NOT be a usage error. Without the flag the request MUST carry no `stylePrompt` key. The client MUST NOT check the value's length or provider; the hub's 400 decides. [Source: .specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md]
+- **FR-205**: The help text of both commands MUST name `google-gemini` as the only provider that takes the prompt and say that an empty value turns the configured prompt off. [Source: .specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md]
+- **FR-206**: `sonora play` and `sonora route` MUST accept `--chime <id|none>` and send `chime` with the value verbatim, `none` matched exactly in lower case, and MUST send no `chime` field when the flag is absent. A blank value MUST be a usage error (exit `2`) with no request sent. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirements 2, 4]
+- **FR-207**: The public `hub` package MUST send `chime` on play, route and input-creation requests only when it is set, and MUST decode `chime` on `Output`, `Group` and `Input`, where an absent value is nil and `none` is a value, never nil. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 2]
+- **FR-208**: The public `hub` package MUST offer `ListChimes`, which calls `GET /api/v2/chimes` and returns each chime's `id` and `durationMillis`. An empty list MUST NOT be an error, and a malformed body MUST be a decode error. Its godoc MUST say that `none` is reserved and never listed, without referring to this repository. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 3]
+- **FR-209**: The CLI MUST NOT check a chime id against the hub's list before sending it. The hub's 400 is reported through the existing error path, so the flag costs no extra request. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 5]
+- **FR-210**: `sonora list chimes` and `sonora get chimes` MUST print the chimes under `chimes:` as YAML by default or as one JSON object with `--json`. With no chimes they MUST print `# no chimes found` and `chimes: []`. `list chimes/<id>` MUST be a usage error. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 6]
+- **FR-211**: `sonora get chimes/<id>` MUST print that chime as one record. It MUST check the id against the resource id rule first (a malformed id is a usage error, exit `2`), and an unknown id MUST fail with `chime not found: <id>` (exit `5`). `chimes` MUST NOT be a play or route target and MUST have no alias. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
+- **FR-212**: `get outputs[/id]` and `get groups[/id]` MUST show `chime:`, and `get inputs[/id]` MUST show `defaultChime:`, only when set, in YAML and JSON. Output for a target with no chime MUST be unchanged. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 8]
+- **FR-213**: `sonora get` and `sonora list` with no resource name MUST name every resource that verb accepts, as FR-066 requires. `get` adds `chimes`, `info`, `master-mute` and `tts-cache`; `list` adds `chimes` and `tts-voices`. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
 
 ### Key Entities
 
@@ -2052,6 +2089,7 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 - **Hub Info**: identity and age of a running hub: `product`, `version`, `apiVersion`, `startedAt` and `uptimeSeconds`. `version` and `apiVersion` may read `unknown` and are passed through, never parsed as semver. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Hub info"]
 - **Warm Request**: the phrase and the voice choices that make up a cache entry's identity. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm request"]
 - **Warm Result**: whether the audio was already stored (`cacheHit`). [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warm result"]
+- **Chime**: a hub sound addressed by `id`, with its `durationMillis`. `none` is reserved for "no chime" and is never listed. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> "Requirements"]
 
 ## Success Criteria
 
@@ -2145,6 +2183,10 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 - **SC-069**: Neither command produces sound or changes any speaker, output, group or route; verified by running both against the live hub with nothing playing afterwards. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-004]
 - **SC-070**: Each failure listed in the acceptance scenarios gives a distinct message and a non-zero exit code, covered by an automated test. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> SC-005]
 
+- **SC-071**: A route-starting command without `--chime` sends the same request body as before this change, and with it sends `chime` verbatim. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirements 2, 4]
+- **SC-072**: `sonora list chimes` and `sonora get chimes` return the hub's chimes read-only, against a hub that has them, with nothing started. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Verification]
+- **SC-073**: `sonora get` and `sonora list` with no resource name print a usage error that names every resource the verb accepts. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 9]
+
 ## Assumptions
 
 - **AS-001**: The hub's network location (host/port) is available to the CLI through a mechanism
@@ -2216,9 +2258,13 @@ A developer of sonora-mcp (or any Go program) calls the public `hub` package to 
 - **AS-052**: The `hub` package's volume and ducking fields follow the hub's 0.1.29 schema in `api/openapi.json`. The `SpeakRequest` route fields are not part of this change and are left to the speak-request-fields tinyspec. [Source: .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md]
 - **AS-053**: `--volume` is not kept as an alias or a deprecated notice, so scripts that use it fail at once with exit `2` and must be updated. The removal is released as a breaking change. [Source: .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md]
 - **AS-054**: `--playback-mode` is passed to the hub unchecked, because the spec has no enum for it; the hub's 400 is the only check on its value. [Source: .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md]
-- **AS-055**: The CLI warm command takes the same voice options as `speak` (`--provider`, `--voice`, `--language`), so a warmed phrase matches the announcements the CLI makes; `engine`, `pitch`, `speakingRate` and `stylePrompt` are in the `hub` function only. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "The CLI warm command takes the same voice options as `speak`"]
+- **AS-055**: The CLI warm command takes the same voice options as `speak` (`--provider`, `--voice`, `--language`), so a warmed phrase matches the announcements the CLI makes; `engine`, `pitch` and `speakingRate` are in the `hub` function only; `stylePrompt` is also a CLI flag since FR-204. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "The CLI warm command takes the same voice options as `speak`"]
 - **AS-056**: Warming several phrases is a shell loop for now; a batch form is out of scope. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Warming several phrases is a shell loop for now"]
 - **AS-057**: Command spelling follows the existing verb-first style, `sonora get info` and `sonora warm tts-cache <text|->`. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Command spelling follows the existing verb-first style"]
 - **AS-058**: `Group.system` is already mirrored by a separate change and is not part of this feature. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "`Group.system` is already mirrored"]
 - **AS-059**: The hub info schema has no `required` list; the client requires `product`, `version` and `apiVersion` because a body without them does not identify a hub. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "The hub info schema has no `required` list"]
 - **AS-060**: Hubs before 0.1.33 keep working for every other command; only the two new commands need 0.1.33. [Source: .specify/archive/013-info-and-tts-warm/spec.md -> "Hubs before 0.1.33 keep working"]
+- **AS-061**: `--style-prompt` is passed to the hub unchecked, as `--playback-mode` is (AS-054); the hub's 400 is the only check on its value, including a `stylePrompt` sent to a provider other than `google-gemini`. [Source: .specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md]
+- **AS-062**: `chimes` is addressed like `outputs` but is not a play or route target, so it stays out of the `respath` resource enum; `respath.ValidID` holds the id rule it shares. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
+- **AS-063**: The hub has no `GET /api/v2/chimes/{id}`, so `get chimes/<id>` lists the chimes and picks the entry. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Requirement 7]
+- **AS-064**: `api/openapi.json` is the hub's 0.1.35 document, a superset of the 0.1.34 this feature needs. Its 0.1.35 additions (persistent inputs, `SpeakRequest.chime`, the radio extension paths) are not adopted here. [Source: .specify/archive/tiny/2026-11-20-route-chime/route-chime.md -> Verification]
