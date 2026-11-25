@@ -383,7 +383,7 @@ if err != nil {
 
 `hub` is protocol-only (request/response types, HTTP calls, error classification) and
 depends only on the standard library. Run `go doc github.com/Sonora-Multiroom/sonora-cli/hub`
-for the full client API, or see [contracts/public-packages.md](specs/010-public-hub-package/contracts/public-packages.md).
+for the full client API, or see [contracts/public-packages.md](.specify/archive/010-public-hub-package/contracts/public-packages.md).
 
 ## Status
 

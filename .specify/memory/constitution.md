@@ -18,8 +18,7 @@ Deferred / TODO items: none
 Rationale for MINOR bump: a new principle is added and Principle II gains a bullet; nothing
   is removed or relaxed.
 Templates requiring follow-up: none. Downstream templates read this file at runtime.
-Follow-up for in-flight work: specs/010-public-hub-package implements the `hub/` move this
-  principle governs; until it merges, `internal/hub` is the package these rules apply to.
+Follow-up: none. The `hub/` move this principle governs shipped with 010-public-hub-package (v0.1.0).
 
 # Sonora Multiroom CLI Constitution
 
