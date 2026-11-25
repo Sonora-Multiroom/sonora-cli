@@ -95,11 +95,11 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Active Technologies
 
-- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`, `net/url`) (.specify/archive/001-list-outputs, .specify/archive/002-outputs-get)
+- Go 1.27.0, standard library only (`net/http`, `encoding/json`, `flag`, `net/url`)
 
 ## Project Structure
 
-- `cmd/sonora` entrypoint; public `hub/` (the hub client, 010) and `api/` (`api.Spec`); `internal/{config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `internal/cli/route` (`sonora route`) creates a route from an existing input; `tests/{unit,contract,integration}` (.specify/archive/001-list-outputs, .specify/archive/007-refactor-cli-commands, .specify/archive/008-route-command)
+- `cmd/sonora` entrypoint; public `hub/` (the hub client, 010) and `api/` (`api.Spec`); `internal/{config,cli,render}`; `internal/cli/respath` parses resource paths (`outputs/<id>`, aliases); `internal/cli/route` (`sonora route`) creates a route from an existing input; `tests/{unit,contract,integration}`
 - `internal/cli/tts` (009): `speak`, `get tts-cache`, `clear tts-cache`; `hub/tts.go` and `hub/extensions.go` (`listExtensions`, used only for the 404 diagnosis); `internal/render/tts.go`. The TTS commands share one failure path (`report.go`) because the extension's error shape differs from the core API's.
 - `internal/cli/joinmode` (012): the `--join-mode` and `--default-join-mode` check shared by `play`, `route` and `create inputs`; `hub/outputs.go` holds `RouteOnOutput` and `GetRoutesForOutput`
 - `internal/cli/hubinfo` (013): `get info` (`RunGet`), with `hub/info.go` holding `GetInfo`; `internal/cli/tts/warm.go` (`RunWarm`) shares the TTS failure path with `speak`
@@ -107,24 +107,13 @@ Retired or superseded specs kept for historical context and decision archaeology
 
 ## Commands
 
-- `gofmt -l .` and `go vet ./...` baseline checks; `go test ./...` (.specify/archive/001-list-outputs)
+- `gofmt -l .` and `go vet ./...` baseline checks; `go test ./...`
 
 ## Recent Changes
 
-- .specify/archive/014-radio-station-search: `sonora search radio-stations`, `sonora get radio-stations/<uuid>` and the `radio-countries`, `radio-languages` and `radio-tags` lists read the hub's radio extension (`/api/radio/*`); `hub` gains the five radio calls, `APIError` gains `Type`, `Parameter` and `RetryAfter`, and a 404 from a radio call is explained through the extension inventory; exit code `15` means radio is not available (CLI-014)
-- .specify/archive/013-info-and-tts-warm: `sonora get info` shows the hub's product, version, apiVersion, startedAt and uptimeSeconds (YAML, or `--json`; a 404 means hub 0.1.33 or later is needed), and `sonora warm tts-cache <text|->` warms one phrase into the TTS cache (`--provider`, `--voice`, `--language`, `--timeout`, `--json`) and prints `cacheHit` without playing; `hub` gains `GetInfo`, `Info`, `WarmTTSCache`, `WarmRequest` and `WarmResult`; the README documents both and needs hub 0.1.33
-- .specify/archive/012-join-modes: `sonora play` and `sonora route` take `--join-mode` (`REPLACE`, `MIX`, `DUCK_OTHERS`, any case, sent upper-cased; other values exit `2` with no request), `sonora create inputs` takes `--default-join-mode`, and `sonora get outputs/<id> --include-routes` lists the routes playing on the output with a second request (`GET /api/v2/outputs/{id}/routes`, hub 0.1.21), where an older hub's 404 or 405 exits `3`; `get routes/<id>` and `get inputs/<id>` YAML show the join mode, the outputs and the default join mode; `hub` gains `GetRoutesForOutput`, `RouteOnOutput` and the join-mode fields; `list` output unchanged
-- .specify/archive/011-hub-0128-alignment: no new command or flag. `sonora enable|disable <inputs|outputs|groups>/<id> --help` prints a line on what the command does to running playback (hub 0.1.25), and the README says the same; `hub.PlaybackResponse` gains `DisplayName` and `sonora play` renders `displayName` after `inputId` when non-empty (hub 0.1.28); `hub` exports `ReasonRouteChangingOutputs` and `IsTransientConflict`, `ClassifyError` gives that 409 the message "the route is still adding an output; retry in a moment", and `sonora transfer` retries only that refusal (100, 200, 400, 800 ms), then exits `14`
-- .specify/archive/010-public-hub-package: the hub client is the public package `github.com/Sonora-Multiroom/sonora-cli/hub` (moved from the former internal client package), and `api.Spec` publishes `api/openapi.json` from the same file; `ClassUsage` and `ExitCode()` moved to `internal/cli/exitcode` (`exitcode.For`, `exitcode.Usage`); CLI commands, output and exit codes unchanged
-- .specify/archive/009-tts-commands: `sonora speak <text|-> <outputs|groups>/<id>` (`--provider`, `--voice`, `--language`, `--timeout`, `--json`, `--verbose`, `--hub-url`) announces text through the hub's TTS extension (`POST /api/tts/speak`), returning on hub acceptance; `sonora get tts-cache` (`GET /api/tts/cache/stats`) and `sonora clear tts-cache [--provider]` (`DELETE /api/tts/cache`); exit code `13` for TTS not available, with a single `listExtensions` lookup on a 404
-- .specify/archive/008-route-command: `sonora route inputs/<input-id> <outputs|groups>/<target-id>` routes an existing input to one output or group via one `POST /api/v2/routes` call, creating no input; input and target are checked first (`GET /api/v2/inputs/{id}`, then the target type's own endpoint); exit codes `11` (input not found) and `12` (target not found) added, route creation failed reuses `8`
-- .specify/archive/007-refactor-cli-commands: verb-first grammar — `sonora get <resource>[/<id>]` and `sonora list <resource>` (inputs, outputs, groups, routes; aliases `in`, `out`, `gr`, `rt`) replace `sonora <resource> list|get`; `sonora play <uri> <outputs|groups>/<id>` with `--display-name` replaces `<target-id>` plus `--group`/`--output`/`--name`; old forms fail with a usage error (exit `2`); exit code `7` (ambiguous target) retired
-- .specify/archive/006-play-command: `sonora play <uri> <target-id>` (`--group`, `--output`, `--volume`, `--name`, `--json`, `--verbose`, `--hub-url`); one `POST /api/v2/play` call, returns on hub acceptance without polling; exit codes 6–10 for validation, ambiguous target, route creation failed, source unreachable and service unavailable; target resolved via `GET /api/v2/outputs/{id}` and `GET /api/v2/groups/{id}`
-- .specify/archive/005-groups-list-get: `sonora groups list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora groups get <group-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`, `inputs get` and `routes get`
-- .specify/archive/004-routes-list-get: `sonora routes list` (`--status`, `--input-id`, `--target-id`, `--json`, `--verbose`, `--hub-url`) and `sonora routes get <route-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get` and `inputs get`
-- .specify/archive/003-inputs-list-get: `sonora inputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`) and `sonora inputs get <input-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5, shared with `outputs get`
-- .specify/archive/002-outputs-get: `sonora outputs get <output-id>` (`--json`, `--verbose`, `--hub-url`); 404 maps to exit code 5; `outputs.Run` renamed `RunList`
-- .specify/archive/001-list-outputs: `sonora outputs list` (`--include-disabled`, `--json`, `--verbose`, `--hub-url`); exit codes 0/2/3/4; 5s single-attempt timeout
+Nothing is in progress: `specs/` holds no unfinished feature or tinyspec. Shipped work is folded into
+`.specify/memory/` and listed per feature in `.specify/memory/changelog.md`; this section keeps only
+work that is not archived yet.
 
 ## Known Issues & Gotchas
 
