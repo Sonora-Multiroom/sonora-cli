@@ -1375,7 +1375,7 @@ An operator wants an input they play often, a stream or a file, to still be ther
 - **AS-014**: Only commands already implemented are in scope of the verb-first refactor: the `inputs`/`outputs`/`groups`/`routes` `list`/`get` commands and `play`. The `route` command is out of scope here; it is specified separately.
   [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "Only commands that are already implemented today are in scope"]
 - **AS-015**: Commands documented in the command landscape but not yet implemented (`create`, `delete`, `enable`/`disable`, `mute`/`unmute`, `set ... volume`, `transfer`, `stop`/`pause`/`resume`, `master-mute`) are out of scope; the refactor only brought already-shipped commands in line with the documented grammar.
-  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "Commands documented in `docs/cli-command-landscape.md` that aren't implemented yet"]
+  [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "Commands documented in `docs/cli-command-landscape.md` that aren't implemented yet"] *Superseded in part:* every command in that list is implemented now (see [changelog.md](changelog.md)); the grammar rule still holds.
 - **AS-016**: `--json`, `--hub-url`, and `--verbose` are unaffected by the refactor; it changed only command and argument parsing, not request behavior or output rendering.
   [Source: .specify/archive/007-refactor-cli-commands/spec.md -> "`--json`, `--hub-url`, and `--verbose` are unaffected by this refactor"]
 - **AS-017**: The hub API and its response shapes are unchanged by the refactor; it is a CLI-surface-only change.

@@ -6,7 +6,7 @@
 **Tinyspec:** .specify/archive/tiny/2026-11-22-stored-inputs/stored-inputs.md
 **Implemented:** 2026-11-22
 
-`sonora create inputs/<id> <uri> --persistent` creates an input the hub keeps across restarts, and `sonora keep inputs/<id>` makes an existing runtime input kept (`PUT /api/v2/inputs/{inputId}/persistent`). `--persistent` with `--auto-remove` is a usage error before any request. The input record's YAML shows `origin`, `playable` and `unplayableReason`; the three new 409 reasons (`INPUT_UNPLAYABLE`, `INPUT_ID_TAKEN`, `INPUT_STORE_FULL`) get short messages and exit `14`. Adds User Story 72, FR-228–FR-232, SC-080–SC-081 and AS-072 (HUB-041, API 0.1.35). The release tag (v0.4.2) and the `sonora-mcp` bump are still to be done.
+`sonora create inputs/<id> <uri> --persistent` creates an input the hub keeps across restarts, and `sonora keep inputs/<id>` makes an existing runtime input kept (`PUT /api/v2/inputs/{inputId}/persistent`). `--persistent` with `--auto-remove` is a usage error before any request. The input record's YAML shows `origin`, `playable` and `unplayableReason`; the three new 409 reasons (`INPUT_UNPLAYABLE`, `INPUT_ID_TAKEN`, `INPUT_STORE_FULL`) get short messages and exit `14`. Adds User Story 72, FR-228–FR-232, SC-080–SC-081 and AS-072 (HUB-041, API 0.1.35). Released in v0.4.2; the `sonora-mcp` bump to this version is still to be done.
 
 ### Radio Station Search and Browse (`search radio-stations`, `get radio-stations/<uuid>`, radio countries, languages and tags) — archived 2026-11-24
 **Branch:** 014-radio-station-search
@@ -21,19 +21,19 @@
 - `internal/cli/radio` (search, station, lists, failure report), `internal/render/radio.go`, the `search` verb in `cmd/sonora/main.go`, exit code 15 in `internal/cli/exitcode`
 - `tests/{contract,unit,integration}` radio tests; the README documents the commands and exit code 15
 
-**Tasks Completed:** 41/42 tasks. T042 (the release tag) is open until the user asks for a release.
+**Tasks Completed:** 42/42 tasks. Released in v0.4.0.
 
 ### Chimes on Routes (`play --chime`, `route --chime`, `list chimes`, `get chimes`) — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-11-20-route-chime/route-chime.md
 **Implemented:** 2026-11-20
 
-`sonora play` and `sonora route` take `--chime <id|none>`, sent verbatim and only when given; `sonora list chimes` and `sonora get chimes[/<id>]` read the hub's chimes, and `get outputs`, `get groups` and `get inputs` show a chime only when one is set. `get` and `list` with no resource name now name every resource their verb accepts. The `hub` package gains `Chime`, `ListChimes` and `ChimeNone`, and the `chime` field on play, route, input creation and the output, group and input records (HUB-040, hub 0.1.34; FR-206–FR-213, SC-071–SC-073, AS-062–AS-064, User Story 67). `api/openapi.json` is the hub's 0.1.35 document, of which only the 0.1.34 subset is adopted. The release tag and the `sonora-mcp` bump are still to be done.
+`sonora play` and `sonora route` take `--chime <id|none>`, sent verbatim and only when given; `sonora list chimes` and `sonora get chimes[/<id>]` read the hub's chimes, and `get outputs`, `get groups` and `get inputs` show a chime only when one is set. `get` and `list` with no resource name now name every resource their verb accepts. The `hub` package gains `Chime`, `ListChimes` and `ChimeNone`, and the `chime` field on play, route, input creation and the output, group and input records (HUB-040, hub 0.1.34; FR-206–FR-213, SC-071–SC-073, AS-062–AS-064, User Story 67). `api/openapi.json` is the hub's 0.1.35 document, of which only the 0.1.34 subset is adopted. Released in v0.3.7; `sonora-mcp` already requires v0.4.1, which includes it.
 
 ### Style Prompt on `speak` and `warm tts-cache` (`--style-prompt`) — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-11-12-speak-style-prompt-flag/speak-style-prompt-flag.md
 **Implemented:** 2026-11-12
 
-`sonora speak` and `sonora warm tts-cache` gain `--style-prompt TEXT`, sent verbatim as `stylePrompt` for `google-gemini` (the hub decides), so a Gemini announcement's delivery can be set from the shell and a styled phrase warmed under the key `speak` looks up. An empty value is sent as given, not a usage error; without the flag no `stylePrompt` key is sent. This supersedes FR-193 and AS-055 for `stylePrompt` only (FR-204, FR-205, AS-061). The release tag is still to be pushed.
+`sonora speak` and `sonora warm tts-cache` gain `--style-prompt TEXT`, sent verbatim as `stylePrompt` for `google-gemini` (the hub decides), so a Gemini announcement's delivery can be set from the shell and a styled phrase warmed under the key `speak` looks up. An empty value is sent as given, not a usage error; without the flag no `stylePrompt` key is sent. This supersedes FR-193 and AS-055 for `stylePrompt` only (FR-204, FR-205, AS-061). Released in v0.3.6.
 
 ### Hub Info and TTS Cache Warm-up (`get info`, `warm tts-cache`) — archived 2026-11-24
 **Branch:** 013-info-and-tts-warm
@@ -48,7 +48,7 @@
 - `internal/cli/hubinfo` (`RunGet`), `internal/cli/tts/warm.go` (`RunWarm`), `internal/render/info.go`, and the warm result in `internal/render/tts.go`
 - `tests/{contract,unit,integration}` info and warm tests; the live checks on hub 0.1.33 are in the feature's `verification.md` (2026-11-09)
 
-**Tasks Completed:** 26/27 tasks. T026 (the release tag) is open until the user asks for a release.
+**Tasks Completed:** 27/27 tasks. Released in v0.3.5.
 
 ### Join Modes in the CLI (`--join-mode`, `--default-join-mode`, `get outputs --include-routes`) — archived 2026-11-24
 **Branch:** 012-join-modes
@@ -78,7 +78,7 @@
 - `--help` description lines in `internal/cli/{inputs,outputs,groups}/enabled.go`; `displayName` rendering in `internal/render/play.go`
 
 **Superseded:**
-- Playback Result entity (no ID; from .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"): "renders exactly four" fields replaced in place by four fields plus `displayName` second when non-empty, on the user's confirmation. Not a `RETIRED:` line: entities carry no ID to retire.
+- Playback Result entity (no ID; from .specify/archive/006-play-command/spec.md -> "Playback Result"; .specify/archive/006-play-command/data-model.md -> "PlaybackResult (rendered view)"): "renders exactly four" fields replaced in place by four fields plus `displayName` second when non-empty, a deliberate change to the entity's contract. Not a `RETIRED:` line: entities carry no ID to retire.
 
 **Tasks Completed:** 27/27 tasks
 
@@ -86,7 +86,7 @@
 **Tinyspec:** .specify/archive/tiny/2026-10-28-tts-cache-stats-json-tags/tts-cache-stats-json-tags.md
 **Implemented:** 2026-10-28
 
-`hub.TTSCacheStats` gains JSON tags, so marshalled it uses `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider`, the names of the hub's `CacheStats` schema that sonora-mcp's cache tool needs. Decoding and the CLI's output are unchanged. The v0.3.4 tag is still to be released. (FR-190, SC-064.)
+`hub.TTSCacheStats` gains JSON tags, so marshalled it uses `totalEntries`, `totalSizeBytes`, `maxSizeBytes` and `entriesByProvider`, the names of the hub's `CacheStats` schema that sonora-mcp's cache tool needs. Decoding and the CLI's output are unchanged. Released in v0.3.4. (FR-190, SC-064.)
 
 ### Diagnose "TTS Not Offered" in the Hub Client (`DiagnoseTTSUnavailable`, v0.3.3) — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-10-28-hub-tts-unavailable-diagnosis/hub-tts-unavailable-diagnosis.md
@@ -98,19 +98,19 @@ Makes the CLI's TTS 404 diagnosis public as `hub.DiagnoseTTSUnavailable`, so son
 **Tinyspec:** .specify/archive/tiny/2026-10-27-speak-request-fields/speak-request-fields.md
 **Implemented:** 2026-10-27
 
-`sonora speak` gains `--playback-mode`, `--route-volume` and `--ducking-level`, so an announcement can duck or mix over music at its own level, and `hub.SpeakRequest` carries the seven hub 0.1.29 fields it lacked, sent only when set. No flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. AS-048 is amended to match. The tag is still to be released. (User Story 63, FR-191–FR-193, SC-065, AS-054.)
+`sonora speak` gains `--playback-mode`, `--route-volume` and `--ducking-level`, so an announcement can duck or mix over music at its own level, and `hub.SpeakRequest` carries the seven hub 0.1.29 fields it lacked, sent only when set. No flags for `engine`, `pitch`, `speakingRate` or `stylePrompt`. AS-048 is amended to match. Released in v0.3.2. (User Story 63, FR-191–FR-193, SC-065, AS-054.)
 
 ### Route and Output Volume and Ducking Level in the CLI — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-10-25-route-volume-cli/route-volume-cli.md
 **Implemented:** 2026-10-25
 
-`sonora play` replaces `--volume` with `--output-volume` and gains `--route-volume` and `--ducking-level` (which needs `--join-mode DUCK_OTHERS`); `sonora set routes/<id> volume <0-100>` changes a playing route's volume; `get routes/<id>`, `get outputs/<id> --include-routes` and `get inputs/<id>` show the levels when set. Removing `--volume` is a breaking CLI change; the tag is still to be released. (User Story 62, FR-183–FR-187, SC-062, AS-053.)
+`sonora play` replaces `--volume` with `--output-volume` and gains `--route-volume` and `--ducking-level` (which needs `--join-mode DUCK_OTHERS`); `sonora set routes/<id> volume <0-100>` changes a playing route's volume; `get routes/<id>`, `get outputs/<id> --include-routes` and `get inputs/<id>` show the levels when set. Removing `--volume` is a breaking CLI change; it was released in v0.3.1. (User Story 62, FR-183–FR-187, SC-062, AS-053.)
 
 ### Route Volume and Ducking Level in the Hub Client (hub 0.1.29) — archived 2026-11-24
 **Tinyspec:** .specify/archive/tiny/2026-10-25-hub-route-volume-client/hub-route-volume-client.md
 **Implemented:** 2026-10-25
 
-Brings the public `hub` package to the hub 0.1.29 contract: `PlaybackRequest.Volume` becomes `OutputVolume` (`outputVolume`, a breaking change for the public package), route volume and ducking level are optional on play, route and input records, and `SetRouteVolume` calls `PUT /api/v2/routes/{routeId}/volume`. The release tag is still to be pushed. (FR-179–FR-182, SC-061, AS-052.)
+Brings the public `hub` package to the hub 0.1.29 contract: `PlaybackRequest.Volume` becomes `OutputVolume` (`outputVolume`, a breaking change for the public package), route volume and ducking level are optional on play, route and input records, and `SetRouteVolume` calls `PUT /api/v2/routes/{routeId}/volume`. Released in v0.3.0. (FR-179–FR-182, SC-061, AS-052.)
 
 ### Rename an Input (`rename`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-10-22-rename-inputs-command/rename-inputs-command.md
@@ -139,7 +139,7 @@ A hub 409 on route creation, transfer or play (disabled target, route limit, inp
 - Module path `github.com/Sonora-Multiroom/sonora-cli`, with the `-X` version injection sites in `Makefile`, `.goreleaser.yaml` and the local `build.sh`
 - Guard tests: exit-code table, `api.Spec`, godoc rules, CLI-neutral messages, stray old-path references, version injection
 
-**Tasks Completed:** 47/50 tasks. The three open checkboxes (T045–T047) are the PR, release-tag and post-tag steps; `main` carries the merge commit `b87cf4d`.
+**Tasks Completed:** 49/50 tasks. The PR merged as `b87cf4d` and v0.1.0 is tagged; T047 (the post-tag consumer check) is still open.
 
 ### List TTS Voices (`list tts-voices`) — archived 2026-11-23
 **Tinyspec:** .specify/archive/tiny/2026-09-27-list-tts-voices-command/list-tts-voices-command.md
@@ -285,7 +285,7 @@ Adds `sonora help`, `-h`/`--help` and bare `sonora`, which print the command tab
 
 ### Instant Playback (`play`) — archived 2026-11-23
 **Branch:** 006-play-command
-**Spec:** [.specify/archive/006-play-command/spec.md](../../.specify/archive/006-play-command/spec.md)
+**Spec:** [.specify/archive/006-play-command/spec.md](../archive/006-play-command/spec.md)
 
 **What was added:**
 - User Stories 22–25 (P1–P3): `sonora play <uri> <target-id>` starts playback of a URI to one output or a group in one command and reports the created input identifier, route identifier and status as the hub returned them; `--volume` sets a starting volume (0–100), `--name` names the ephemeral input
