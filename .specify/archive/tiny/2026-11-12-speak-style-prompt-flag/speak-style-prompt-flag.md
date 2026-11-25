@@ -2,7 +2,7 @@
 
 **Branch**: feature/speak-style-prompt-flag
 **Date**: 2026-11-12
-**Status**: done, tag pending
+**Status**: released in v0.3.6
 **Complexity**: small
 
 ## What

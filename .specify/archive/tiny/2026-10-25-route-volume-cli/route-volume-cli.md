@@ -2,7 +2,7 @@
 
 **Branch**: feature/route-volume-cli
 **Date**: 2026-10-25
-**Status**: implemented, tag pending
+**Status**: released in v0.3.1
 **Complexity**: small
 
 ## What
@@ -69,7 +69,7 @@ this tinyspec replaces the backlog item it came from.
 ## Done When
 
 - [x] All tasks checked off; tests pass; no vet or gofmt findings
-- [ ] Tag released with the `--volume` removal as a breaking change in its notes
+- [X] Tag released with the `--volume` removal as a breaking change in its notes
 
 ## Verification (2026-10-25)
 

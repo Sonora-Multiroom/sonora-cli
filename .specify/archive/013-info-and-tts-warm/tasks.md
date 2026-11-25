@@ -205,7 +205,7 @@ and T012; this phase adds only what they do not cover.
   with the same options and expect `cacheHit: true`; restore state and run the ALSA/metrics checks from the
   repository-parent `AGENTS.md`.
 - [X] T025 Mark every finished task `[X]` in this file.
-- [ ] T026 Release (only when the user asks): after merge, cut a minor tag for the additive `hub` API so
+- [X] T026 Release (only when the user asks): after merge, cut a minor tag for the additive `hub` API so
   sonora-mcp can bump to it; never move or re-create a published tag.
 
 ---

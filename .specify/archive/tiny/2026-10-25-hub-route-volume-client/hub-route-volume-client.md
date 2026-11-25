@@ -2,7 +2,7 @@
 
 **Branch**: feature/hub-route-volume-client
 **Date**: 2026-10-25
-**Status**: implemented, tag pending
+**Status**: released in v0.3.0
 **Complexity**: small
 
 ## What
@@ -65,7 +65,7 @@ and release a tag so `sonora-mcp` can bump it. The CLI changes follow in
 ## Done When
 
 - [x] All tasks checked off; tests pass; no vet or gofmt findings
-- [ ] Tag released with the `PlaybackRequest.Volume` → `OutputVolume` breaking change in its notes
+- [X] Tag released with the `PlaybackRequest.Volume` → `OutputVolume` breaking change in its notes
 
 ## Verification (2026-10-25)
 

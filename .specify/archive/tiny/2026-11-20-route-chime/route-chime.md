@@ -2,7 +2,7 @@
 
 **Branch**: feature/route-chime
 **Date**: 2026-11-20
-**Status**: implemented, tag pending
+**Status**: released in v0.3.7
 **Complexity**: small (top of the range: ~12 files, all additive)
 
 ## What
@@ -85,7 +85,7 @@ Source: backlog `adopt-route-chime.md`; hub `specs/040-route-chime/contracts/chi
 - [x] All tasks checked off; tests pass; no vet or gofmt findings; `git ls-files --eol` shows no `w/crlf`
 - [x] Read-only live check on `multiroom.lan`: `sonora get chimes` lists the hub's chimes
 - [x] Read-only live check: `list chimes`, `get chimes/<id>` (known and unknown id)
-- [ ] Tag released (additive, no breaking change); `sonora-mcp` bump is a separate item
+- [X] Tag released (additive, no breaking change); `sonora-mcp` bump is a separate item
 
 ## Verification (2026-11-20)
 

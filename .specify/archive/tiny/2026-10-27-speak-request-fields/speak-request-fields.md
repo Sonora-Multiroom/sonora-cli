@@ -2,7 +2,7 @@
 
 **Branch**: feature/speak-request-fields
 **Date**: 2026-10-27
-**Status**: done, tag pending
+**Status**: released in v0.3.2
 **Complexity**: small
 
 ## What

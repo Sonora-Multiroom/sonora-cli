@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-26
 
-**Status**: Approved
+**Status**: Completed
 
 **Input**: User description: "next feature, similar to already implemented `list` and `get` for outputs, inputs and routes, logically, would be `groups list` and `groups get`"
 

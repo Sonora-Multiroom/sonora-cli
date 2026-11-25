@@ -351,7 +351,7 @@ with no second copy (research §7).
       compare against constants; requires Go ≥ 1.27; no CLI behavior change; `go install
       github.com/Sonora-Multiroom/sonora-cli/cmd/sonora@v0.1.0` now works. Commit with
       `spec:` type
-- [ ] T045 [US4] Open the PR for `010-public-hub-package` and merge after review and green
+- [X] T045 [US4] Open the PR for `010-public-hub-package` and merge after review and green
       CI (outward-facing — confirm with the maintainer before pushing/merging). The PR
       touches `go.mod` and moves HTTP client construction (`hub.NewClient`), so its
       description MUST include the constitution's Development Workflow self-review against
@@ -362,7 +362,7 @@ with no second copy (research §7).
       https://github.com/Sonora-Multiroom/sonora-cli/pull/19 (with the required Constitution
       self-review in its description). Merge is pending review/green CI and maintainer
       go-ahead.
-- [ ] T046 [US4] On `main` after merge, run `./release.sh --minor` (expects `v0.0.17` →
+- [X] T046 [US4] On `main` after merge, run `./release.sh --minor` (expects `v0.0.17` →
       `v0.1.0`; `--minor` skips the version prompt, but the script still asks
       "Continue? [y/N]" before tagging and pushing — answer only after maintainer approval); paste T044's notes into the GitHub release body. Confirm with the
       maintainer before pushing the tag. Never move, delete or re-create a pushed tag —

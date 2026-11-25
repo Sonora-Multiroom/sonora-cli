@@ -380,7 +380,7 @@ T020, T026.
   (record state, `office` output, low volume, stop the route first, then restore, then the ALSA and
   metrics checks).
 - [X] T041 Mark every finished task `[X]` in this file.
-- [ ] T042 Release (only when the user asks): after merge, cut a minor tag for the additive `hub` API so
+- [X] T042 Release (only when the user asks): after merge, cut a minor tag for the additive `hub` API so
   sonora-mcp can follow T036's entry; never move or re-create a published tag.
 
 ---

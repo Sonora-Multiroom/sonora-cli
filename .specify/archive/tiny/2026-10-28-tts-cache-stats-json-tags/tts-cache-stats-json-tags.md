@@ -2,7 +2,7 @@
 
 **Branch**: fix/tts-cache-stats-json-tags
 **Date**: 2026-10-28
-**Status**: implemented, tag pending
+**Status**: released in v0.3.4
 **Complexity**: small
 
 ## What
@@ -39,7 +39,7 @@ type as is, and its conformance test would reject the Go names (sonora-mcp
 ## Done When
 
 - [x] All tasks checked off; tests pass; no vet or gofmt findings
-- [ ] Tag `v0.3.4` released
+- [X] Tag `v0.3.4` released
 
 ## Verification (2026-10-28)
 
